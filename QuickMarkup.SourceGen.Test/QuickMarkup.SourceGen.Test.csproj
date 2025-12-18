@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\QuickMarkup.Infra\QuickMarkup.Infra.csproj" />
+		<ProjectReference Include="..\QuickMarkup.SourceGen\QuickMarkup.SourceGen.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+	</ItemGroup>
+</Project>

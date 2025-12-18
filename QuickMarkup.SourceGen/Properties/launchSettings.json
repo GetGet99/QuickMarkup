@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Source Gen - QuickMarkup.SourceGen.Test": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\QuickMarkup.SourceGen.Test\\QuickMarkup.SourceGen.Test.csproj"
+    }
+  }
+}
