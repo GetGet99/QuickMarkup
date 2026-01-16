@@ -80,6 +80,12 @@ Self-closing tag is also supported
 <UIClassName Property1=Value Property2=Value />
 ```
 
+### Comments
+
+Oh yeah before anything else. Unlike XML and HTML that uses `<!-- -->` as comments, we'll use `//` and `/* */` for comments.
+
+because we make our own parser and because we can :)
+
 ### Property Syntax
 
 Unlike XAML/XML, we do not need to enclose everything in "quotes."
