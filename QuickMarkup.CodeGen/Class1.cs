@@ -11,18 +11,18 @@ public static class QuickMarkupCodeGen
         return $"""
         var QUICKMARKUP_EFFECTS = new global::System.Collections.Generic.List<IReference>();
         {sfc.Scirpt.RawScript}
-        {ImportNamespaceSafetyGenFromNode((sfc.Template.Children[0] as QuickMarkupXMLNode)!, ref counterRef, out var nodeName)}
+        {ImportNamespaceSafetyGenFromNode((sfc.Template.Children[0] as QuickMarkupQMNode)!, ref counterRef, out var nodeName)}
         return {nodeName};
         """;
     }
-    private static string ImportNamespaceSafetyGenFromNode(QuickMarkupXMLNode node, ref int counterRef, out string varNameOut)
+    private static string ImportNamespaceSafetyGenFromNode(QuickMarkupQMNode node, ref int counterRef, out string varNameOut)
     {
         string varName = varNameOut = $"QUICKMARKUP_NODE_{counterRef++}";
         var code = new StringBuilder();
         code.AppendLine($"var {varName} = new {node.Name}();");
-        void AddProperty(QuickMarkupXMLPropertiesKeyValue prop, ref int counterRef)
+        void AddProperty(QuickMarkupQMPropertiesKeyValue prop, ref int counterRef)
         {
-            if (prop is QuickMarkupXMLPropertiesKeyForeign foreign)
+            if (prop is QuickMarkupQMPropertiesKeyForeign foreign)
             {
                 code.AppendLine($$"""
                 QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange(() => {
@@ -32,10 +32,10 @@ public static class QuickMarkupCodeGen
                 }));
                 """);
             }
-            else if (prop is QuickMarkupXMLPropertiesKeyXML xml)
+            else if (prop is QuickMarkupQMPropertiesKeyQM markup)
             {
                 code.AppendLine($"""
-                    {GenFromNode(xml.Value, ref counterRef, out var childVarName)}
+                    {GenFromNode(markup.Value, ref counterRef, out var childVarName)}
                     {varName}.{prop.Key} = {childVarName};
                     """);
             }
@@ -44,9 +44,9 @@ public static class QuickMarkupCodeGen
                 code.AppendLine($"""
                 {varName}.{prop.Key} = {prop switch
                 {
-                    QuickMarkupXMLPropertiesKeyString str => $"\"{SymbolDisplay.FormatLiteral(str.Value, false)}\"",
-                    QuickMarkupXMLPropertiesKeyBoolean boolean => boolean.Value ? "true" : "false",
-                    QuickMarkupXMLPropertiesKeyInt32 int32 => int32.Value.ToString(),
+                    QuickMarkupQMPropertiesKeyString str => $"\"{SymbolDisplay.FormatLiteral(str.Value, false)}\"",
+                    QuickMarkupQMPropertiesKeyBoolean boolean => boolean.Value ? "true" : "false",
+                    QuickMarkupQMPropertiesKeyInt32 int32 => int32.Value.ToString(),
                     _ => throw new NotImplementedException()
                 }};
                 """);
@@ -58,12 +58,12 @@ public static class QuickMarkupCodeGen
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupXMLPropertiesKeyValue prop)
+            if (child is QuickMarkupQMPropertiesKeyValue prop)
                 AddProperty(prop, ref counterRef);
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupXMLNode childNode)
+            if (child is QuickMarkupQMNode childNode)
             {
                 code.AppendLine($"""
                     {GenFromNode(childNode, ref counterRef, out var childNodeName)}
@@ -79,18 +79,18 @@ public static class QuickMarkupCodeGen
         return $"""
         var QUICKMARKUP_EFFECTS = new List<IReference>();
         {sfc.Scirpt.RawScript}
-        {GenFromNode((sfc.Template.Children[0] as QuickMarkupXMLNode)!, ref counterRef, out var nodeName)}
+        {GenFromNode((sfc.Template.Children[0] as QuickMarkupQMNode)!, ref counterRef, out var nodeName)}
         return {nodeName};
         """;
     }
-    private static string GenFromNode(QuickMarkupXMLNode node, ref int counterRef, out string varNameOut)
+    private static string GenFromNode(QuickMarkupQMNode node, ref int counterRef, out string varNameOut)
     {
         string varName = varNameOut = $"QUICKMARKUP_NODE_{counterRef++}";
         var code = new StringBuilder();
         code.AppendLine($"var {varName} = new {node.Name}();");
-        void AddProperty(QuickMarkupXMLPropertiesKeyValue prop, ref int counterRef)
+        void AddProperty(QuickMarkupQMPropertiesKeyValue prop, ref int counterRef)
         {
-            if (prop is QuickMarkupXMLPropertiesKeyForeign foreign)
+            if (prop is QuickMarkupQMPropertiesKeyForeign foreign)
             {
                 code.AppendLine($$"""
                 QUICKMARKUP_EFFECTS.Add(ReferenceTracker.RunAndRerunOnReferenceChange(() => {
@@ -100,10 +100,10 @@ public static class QuickMarkupCodeGen
                 }));
                 """);
             }
-            else if (prop is QuickMarkupXMLPropertiesKeyXML xml)
+            else if (prop is QuickMarkupQMPropertiesKeyQM markup)
             {
                 code.AppendLine($"""
-                    {GenFromNode(xml.Value, ref counterRef, out var childVarName)}
+                    {GenFromNode(markup.Value, ref counterRef, out var childVarName)}
                     {varName}.{prop.Key} = {childVarName};
                     """);
             }
@@ -112,9 +112,9 @@ public static class QuickMarkupCodeGen
                 code.AppendLine($"""
                 {varName}.{prop.Key} = {prop switch
                 {
-                    QuickMarkupXMLPropertiesKeyString str => $"\"{SymbolDisplay.FormatLiteral(str.Value, false)}\"",
-                    QuickMarkupXMLPropertiesKeyBoolean boolean => boolean.Value ? "true" : "false",
-                    QuickMarkupXMLPropertiesKeyInt32 int32 => int32.Value.ToString(),
+                    QuickMarkupQMPropertiesKeyString str => $"\"{SymbolDisplay.FormatLiteral(str.Value, false)}\"",
+                    QuickMarkupQMPropertiesKeyBoolean boolean => boolean.Value ? "true" : "false",
+                    QuickMarkupQMPropertiesKeyInt32 int32 => int32.Value.ToString(),
                     _ => throw new NotImplementedException()
                 }};
                 """);
@@ -126,12 +126,12 @@ public static class QuickMarkupCodeGen
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupXMLPropertiesKeyValue prop)
+            if (child is QuickMarkupQMPropertiesKeyValue prop)
                 AddProperty(prop, ref counterRef);
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupXMLNode childNode)
+            if (child is QuickMarkupQMNode childNode)
             {
                 code.AppendLine($"""
                     {GenFromNode(childNode, ref counterRef, out var childNodeName)}

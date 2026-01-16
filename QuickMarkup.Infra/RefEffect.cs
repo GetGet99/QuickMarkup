@@ -3,7 +3,7 @@
 public class RefEffect(Action<RefEffect> callback)
 {
     internal HashSet<IReference> Dependencies { get; } = [];
-    internal void AddDependency(IReference reference)
+    public void AddDependency(IReference reference)
     {
         if (Dependencies.Add(reference))
         {

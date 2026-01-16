@@ -38,25 +38,66 @@ namespace QuickMarkup.Syntax.Test
                 {""}
                 """, output.Scirpt.RawScript);
             Assert.HasCount(1, output.Template.Children);
-            var ABC = (QuickMarkupXMLNode)output.Template.Children[0];
+            var ABC = (QuickMarkupQMNode)output.Template.Children[0];
             Assert.HasCount(6, ABC.Properties);
             Assert.AreEqual("PropInt", ABC.Properties[0].Key);
-            Assert.AreEqual(1, ((QuickMarkupXMLPropertiesKeyInt32)ABC.Properties[0]).Value);
+            Assert.AreEqual(1, ((QuickMarkupQMPropertiesKeyInt32)ABC.Properties[0]).Value);
             Assert.AreEqual("PropBool", ABC.Properties[1].Key);
-            Assert.IsTrue(((QuickMarkupXMLPropertiesKeyBoolean)ABC.Properties[1]).Value);
+            Assert.IsTrue(((QuickMarkupQMPropertiesKeyBoolean)ABC.Properties[1]).Value);
             Assert.AreEqual("PropTrue", ABC.Properties[2].Key);
-            Assert.IsTrue(((QuickMarkupXMLPropertiesKeyBoolean)ABC.Properties[2]).Value);
+            Assert.IsTrue(((QuickMarkupQMPropertiesKeyBoolean)ABC.Properties[2]).Value);
             Assert.AreEqual("PropFalse", ABC.Properties[3].Key);
-            Assert.IsFalse(((QuickMarkupXMLPropertiesKeyBoolean)ABC.Properties[3]).Value);
+            Assert.IsFalse(((QuickMarkupQMPropertiesKeyBoolean)ABC.Properties[3]).Value);
             Assert.AreEqual("PropStr", ABC.Properties[4].Key);
-            Assert.AreEqual("Hello", ((QuickMarkupXMLPropertiesKeyString)ABC.Properties[4]).Value);
+            Assert.AreEqual("Hello", ((QuickMarkupQMPropertiesKeyString)ABC.Properties[4]).Value);
             Assert.AreEqual("PropScript", ABC.Properties[5].Key);
-            Assert.AreEqual("1 + 1", ((QuickMarkupXMLPropertiesKeyForeign)ABC.Properties[5]).ForeignAsString);
+            Assert.AreEqual("1 + 1", ((QuickMarkupQMPropertiesKeyForeign)ABC.Properties[5]).ForeignAsString);
         }
 
-        IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
+        [TestMethod]
+        public void TestDecimal()
         {
-            return new QuickMarkupLexer(new StreamSeeker(new MemoryStream(Encoding.UTF8.GetBytes(code)))).GetTokens();
+            var output = Lex("<Test Double=0.01 />", QuickMarkupLexer.LexerStates.Default).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagOpen, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[1].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Equal, output[3].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Double, output[4].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagCloseAuto, output[5].TokenType);
+        }
+
+        [TestMethod]
+        public void ForLoopRange()
+        {
+            var output = Lex("for (i in ..3) { }", QuickMarkupLexer.LexerStates.Default).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.For, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.OpenBracket, output[1].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.In, output[3].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Range, output[4].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Integer, output[5].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.CloseBracket, output[6].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.OpenCuryBracket, output[7].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.CloseCuryBracket, output[8].TokenType);
+        }
+
+        [TestMethod]
+        public void ForLoopForeign()
+        {
+            var output = Lex("for (i in /-(string[])[\"1\"]-/) { }", QuickMarkupLexer.LexerStates.Default).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.For, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.OpenBracket, output[1].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.In, output[3].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Foreign, output[4].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.CloseBracket, output[5].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.OpenCuryBracket, output[6].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.CloseCuryBracket, output[7].TokenType);
+        }
+
+        IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code, QuickMarkupLexer.LexerStates initState = QuickMarkupLexer.LexerStates.Start)
+        {
+            return new QuickMarkupLexer(new StreamSeeker(new MemoryStream(Encoding.UTF8.GetBytes(code))), initState).GetTokens();
         }
         QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
         {

@@ -1,6 +1,6 @@
 ﻿namespace QuickMarkup.Infra;
 
-internal class ReactiveScheduler
+public class ReactiveScheduler
 {
     private ReactiveScheduler() { }
     internal static ThreadLocal<ReactiveScheduler> Instance { get; } = new(() => new());
@@ -30,8 +30,8 @@ internal class ReactiveScheduler
     {
         Instance.Value = new ReactiveScheduler();
     }
-    internal bool ContinueOnException { get; set; } = true;
-    internal bool AutoTick { get; set; }
+    internal bool ContinueOnException { get; set; } = false;
+    internal bool AutoTick { get; set; } = true;
     private readonly HashSet<RefEffect> Effects = [];
     private bool NeedsSchedulingTick = true;
     private event Action? ScheduleTickAction;
