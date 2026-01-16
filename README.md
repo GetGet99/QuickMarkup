@@ -336,6 +336,24 @@ Please note that if your list do change, the UI does not change. Support for cha
 
 To get most out of QuickMarkup, here's the pattern that works for me.
 
+### Define Global Usings
+
+Usings that apply globally in C# will also work in the markup.
+
+```cs
+global using Windows.UI.Core;
+global using Windows.Foundation;
+global using Windows.UI.Xaml.Controls;
+global using Microsoft.UI.Xaml.Controls;
+global using Windows.UI.Xaml;
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Text;
+global using System.Threading.Tasks;
+global using static QuickMarkup.Infra.QuickRefs;
+```
+
 ### Define Extension properties
 
 Latest C# is amazing at this. I know you cannot use these in XAML, but you can use them in QuickMarkup.
