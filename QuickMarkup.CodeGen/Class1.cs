@@ -19,10 +19,10 @@ public static class QuickMarkupCodeGen
     {
         string varName = varNameOut = $"QUICKMARKUP_NODE_{counterRef++}";
         var code = new StringBuilder();
-        code.AppendLine($"var {varName} = new {node.Name}();");
-        void AddProperty(QuickMarkupQMPropertiesKeyValue prop, ref int counterRef)
+        code.AppendLine($"var {varName} = new {node.AssignToVarName}();");
+        void AddProperty(QuickMarkupQMPropertyKeyValue prop, ref int counterRef)
         {
-            if (prop is QuickMarkupQMPropertiesKeyForeign foreign)
+            if (prop is QuickMarkupQMPropertyKeyForeign foreign)
             {
                 code.AppendLine($$"""
                 QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange(() => {
@@ -58,7 +58,7 @@ public static class QuickMarkupCodeGen
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupQMPropertiesKeyValue prop)
+            if (child is QuickMarkupQMPropertyKeyValue prop)
                 AddProperty(prop, ref counterRef);
         }
         foreach (var child in node.Children)
@@ -87,10 +87,10 @@ public static class QuickMarkupCodeGen
     {
         string varName = varNameOut = $"QUICKMARKUP_NODE_{counterRef++}";
         var code = new StringBuilder();
-        code.AppendLine($"var {varName} = new {node.Name}();");
-        void AddProperty(QuickMarkupQMPropertiesKeyValue prop, ref int counterRef)
+        code.AppendLine($"var {varName} = new {node.AssignToVarName}();");
+        void AddProperty(QuickMarkupQMPropertyKeyValue prop, ref int counterRef)
         {
-            if (prop is QuickMarkupQMPropertiesKeyForeign foreign)
+            if (prop is QuickMarkupQMPropertyKeyForeign foreign)
             {
                 code.AppendLine($$"""
                 QUICKMARKUP_EFFECTS.Add(ReferenceTracker.RunAndRerunOnReferenceChange(() => {
@@ -126,7 +126,7 @@ public static class QuickMarkupCodeGen
         }
         foreach (var child in node.Children)
         {
-            if (child is QuickMarkupQMPropertiesKeyValue prop)
+            if (child is QuickMarkupQMPropertyKeyValue prop)
                 AddProperty(prop, ref counterRef);
         }
         foreach (var child in node.Children)

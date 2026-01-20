@@ -31,16 +31,20 @@ public record class QuickMarkupUsings(string RawScript) : AST, ISFCTag;
 public record class QuickMarkupProps(string RawScript) : AST, ISFCTag;
 public record class QuickMarkupScript(string RawScript) : AST, ISFCTag;
 public interface IQMNodeChild;
-public record class QuickMarkupTemplate(ListAST<QuickMarkupQMPropertiesKeyValue> Properties) : QuickMarkupQMNode("template", Properties), ISFCTag
+public record class QuickMarkupTemplate(ListAST<QuickMarkupQMProperty> Properties) : QuickMarkupQMNode(new("template"), Properties), ISFCTag
 {
-    public QuickMarkupTemplate(ListAST<QuickMarkupQMPropertiesKeyValue> Properties, ListAST<IQMNodeChild> Children) : this(Properties) {
+    public QuickMarkupTemplate(ListAST<QuickMarkupQMProperty> Properties, ListAST<IQMNodeChild> Children) : this(Properties) {
         foreach (var child in Children)
         {
             this.Children.Add(child);
         }
     }
 }
-public record class QuickMarkupQMNode(string TypeName, ListAST<QuickMarkupQMPropertiesKeyValue> Properties, string? Name = null) : AST, ISFCTag, IQMNodeChild
+public record class QuickMarkupConstructor(string TypeName, ListAST<QuickMarkupValue> Parameters)
+{
+    public QuickMarkupConstructor(string TypeName) : this(TypeName, []) { }
+}
+public record class QuickMarkupQMNode(QuickMarkupConstructor Constructor, ListAST<QuickMarkupQMProperty> Properties, string? AssignToVarName = null) : AST, ISFCTag, IQMNodeChild
 {
     public ListAST<IQMNodeChild> Children { get; private set; } = [];
     public void Add(ListAST<IQMNodeChild> children)
@@ -65,13 +69,17 @@ public record class QuickMarkupForNode(string VarType, string TargetVariable, Qu
     }
 }
 public interface ISFCTag;
-public abstract record class QuickMarkupQMPropertiesKeyValue(string? Key) : AST, IQMNodeChild;
-public record class QuickMarkupQMPropertiesKeyString(string Key, string Value) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyForeign(string? Key, string ForeignAsString, bool IsEventMode = false, bool IsBindBack = false) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyEnum(string Key, string EnumMember) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesBoolOrExtension(string ExtensionMethod) : QuickMarkupQMPropertiesKeyValue(default(string));
-public record class QuickMarkupQMPropertiesKeyBoolean(string Key, bool Value) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyQM(string Key, QuickMarkupQMNode Value) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyQMs(string Key, ListAST<IQMNodeChild> Value) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyInt32(string Key, int Value) : QuickMarkupQMPropertiesKeyValue(Key);
-public record class QuickMarkupQMPropertiesKeyDouble(string Key, double Value) : QuickMarkupQMPropertiesKeyValue(Key);
+public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
+public record class QuickMarkupString(string Value) : QuickMarkupValue();
+public record class QuickMarkupForeign(string Code) : QuickMarkupValue();
+public record class QuickMarkupEnum(string EnumMember) : QuickMarkupValue();
+public record class QuickMarkupBoolean(bool Value) : QuickMarkupValue();
+public record class QuickMarkupQM(QuickMarkupQMNode Value) : QuickMarkupValue();
+public record class QuickMarkupQMs(ListAST<IQMNodeChild> Value) : QuickMarkupValue();
+public record class QuickMarkupInt32(int Value) : QuickMarkupValue();
+public record class QuickMarkupDouble(double Value) : QuickMarkupValue();
+public record class QuickMarkupQMProperty() : AST, IQMNodeChild;
+public record class QuickMarkupQMPropertyKeyValue(string Key, QuickMarkupValue Value) : QuickMarkupQMProperty, IQMNodeChild;
+public record class QuickMarkupQMPropertyKeyForeign(string Key, QuickMarkupForeign Foreign, bool IsEventMode = false, bool IsBindBack = false) : QuickMarkupQMPropertyKeyValue(Key, Foreign);
+public record class QuickMarkupQMPropertyBoolOrExtension(string ExtensionMethod) : QuickMarkupQMProperty();
+public record class QuickMarkupQMPropertiesExtension(QuickMarkupForeign Extension) : QuickMarkupQMProperty();

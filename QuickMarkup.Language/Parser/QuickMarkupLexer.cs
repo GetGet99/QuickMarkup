@@ -54,8 +54,12 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         AddEqual,
         [Regex(@"\.", State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex(@"\.", State = (int)LexerStates.InsideQMCloseTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Dot,
+        [Regex(@",", State = (int)LexerStates.InsideQMOpenTag)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        Comma,
         [Regex(@"!", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Not,
@@ -113,8 +117,10 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"\.\.", State = (int)LexerStates.Default)]
         Range,
         [Regex(@"\(", State = (int)LexerStates.Default)]
+        [Regex(@"\(", State = (int)LexerStates.InsideQMOpenTag)]
         OpenBracket,
         [Regex(@"\)", State = (int)LexerStates.Default)]
+        [Regex(@"\)", State = (int)LexerStates.InsideQMOpenTag)]
         CloseBracket,
         [Regex(@"\{", State = (int)LexerStates.Default)]
         OpenCuryBracket,

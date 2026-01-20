@@ -51,7 +51,7 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("PropStr", ABC.Properties[4].Key);
             Assert.AreEqual("Hello", ((QuickMarkupQMPropertiesKeyString)ABC.Properties[4]).Value);
             Assert.AreEqual("PropScript", ABC.Properties[5].Key);
-            Assert.AreEqual("1 + 1", ((QuickMarkupQMPropertiesKeyForeign)ABC.Properties[5]).ForeignAsString);
+            Assert.AreEqual("1 + 1", ((QuickMarkupQMPropertyKeyForeign)ABC.Properties[5]).ForeignAsString);
         }
 
         [TestMethod]
