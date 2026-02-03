@@ -18,7 +18,7 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
     // CGen - no target or target is read-only
     // CGenWrite - side effect will be made on the target
 
-    public (string varName, ITypeSymbol type) CGen(QuickMarkupQMNode node)
+    public (string varName, ITypeSymbol? type) CGen(QuickMarkupQMNode node)
     {
         var type = resolver.GetTypeSymbol(node.Constructor.TypeName);
         var typeName = type is null ? node.Constructor.TypeName : new FullType(type).TypeWithNamespace;
@@ -103,6 +103,19 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                         codeBuilder.AppendLine($"{childTarget} = {childInstance};");
                     }
                     break;
+                case QuickMarkupValue qmValue:
+                    var (value, _) = CGen(qmValue, target);
+                    if (addMode)
+                    {
+                        codeBuilder.AppendLine($"{childTarget}.Add({value});");
+                    }
+                    else
+                    {
+                        codeBuilder.AppendLine($"{childTarget} = {value};");
+                    }
+                    break;
+                default:
+                    throw new NotImplementedException();
             }
         }
     }
@@ -143,9 +156,14 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
             case QuickMarkupQMPropertyBoolOrExtension extension:
                 CGenWrite(extension, target);
                 break;
+            case QuickMarkupQMPropertyExtension extension:
+                CGenWrite(extension, target);
+                break;
             case QuickMarkupQMPropertyKeyValue kv:
                 CGenWrite(kv, target);
                 break;
+            default:
+                throw new NotImplementedException();
         }
     }
 
@@ -153,10 +171,7 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
     {
         if (kf.Key is null)
         {
-            var typedArg = target.Type is null ? "" : $"<{new FullType(target.Type)}>";
-            codeBuilder.AppendLine($"""
-                global::QuickMarkup.Infra.CompilerHelpers.Closure{typedArg}({target}, {kf.Foreign.Code});
-                """);
+            CGenWriteClosure(target, kf.Foreign.Code);
             return;
         }
         if (kf.IsEventMode)
@@ -183,29 +198,13 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
             else
             {
                 propSym = CodeGenTypeResolver.FindProperty(target.Type, kf.Key);
-                codeBuilder.AppendLine($$"""
-                    QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
-                        propSym is null ? "" : $"<{new FullType(propSym.Type)}>"
-                    )}} (() => {
-                        return {{target}}.{{kf.Key}};
-                    }, x => {
-                        {{kf.Foreign.Code}} = x;
-                    }));
-                    """);
+                CGenWriteRunAndRerunOnreferneceChange(propSym?.Type, $"{target}.{kf.Key}", kf.Foreign.Code);
             }
         }
         else
         {
             var propSym = CodeGenTypeResolver.FindProperty(target.Type, kf.Key);
-            codeBuilder.AppendLine($$"""
-                QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
-                    propSym is null ? "" : $"<{new FullType(propSym.Type)}>"
-                )}} (() => {
-                    return {{kf.Foreign.Code}};
-                }, x => {
-                    {{target}}.{{kf.Key}} = x;
-                }));
-                """);
+            CGenWriteRunAndRerunOnreferneceChange(propSym?.Type, kf.Foreign.Code, $"{target}.{kf.Key}");
         }
     }
 
@@ -224,6 +223,11 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                 {target}.{extension.ExtensionMethod}();
                 """);
         }
+    }
+
+    void CGenWrite(QuickMarkupQMPropertyExtension extension, TargetField target)
+    {
+        CGenWriteClosure(target, extension.Extension.Code);
     }
 
     void CGenWrite(QuickMarkupQMPropertyKeyValue kv, TargetField target)
@@ -260,6 +264,29 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
         }
         codeBuilder.AppendLine($"""
             {target}.{kv.Key} = {value};
+            """);
+    }
+
+    void CGenWriteClosure(TargetField target, string labmdaExpression)
+    {
+        codeBuilder.AppendLine($"""
+            global::QuickMarkup.Infra.CompilerHelpers.Closure{(target.Type is null ? "" : $"<{new FullType(target.Type)}>")}(
+                {target},
+                {labmdaExpression}
+            );
+            """);
+    }
+
+    void CGenWriteRunAndRerunOnreferneceChange(ITypeSymbol? type, string inputExpression, string outputExpression, string tempVarOutputName = "x")
+    {
+        codeBuilder.AppendLine($$"""
+            QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
+                        type is null ? "" : $"<{new FullType(type)}>"
+                    )}} (() => {
+                return {{inputExpression}};
+            }, {{tempVarOutputName}} => {
+                {{outputExpression}} = {{tempVarOutputName}};
+            }));
             """);
     }
 

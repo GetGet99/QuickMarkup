@@ -14,8 +14,10 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
     public ITypeSymbol? Int32 => field ??= Type<int>();
     public ITypeSymbol? Double => field ??= Type<double>();
     public ITypeSymbol? Boolean => field ??= Type<bool>();
+    readonly Dictionary<string, INamedTypeSymbol?> Cache = [];
     public INamedTypeSymbol? GetTypeSymbol(string typeName)
     {
+        if (Cache.TryGetValue(typeName, out var cached)) return cached;
         var parseOptions = (CSharpParseOptions)
             compilation.SyntaxTrees.First().Options;
 
@@ -37,7 +39,7 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
             .OfType<FieldDeclarationSyntax>()
             .Single();
 
-        return model.GetTypeInfo(field.Declaration.Type)
+        return Cache[typeName] = model.GetTypeInfo(field.Declaration.Type)
             .Type as INamedTypeSymbol;
     }
 

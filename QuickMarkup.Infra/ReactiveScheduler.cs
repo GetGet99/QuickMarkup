@@ -5,6 +5,9 @@ public class ReactiveScheduler
     private ReactiveScheduler() { }
     internal static ThreadLocal<ReactiveScheduler> Instance { get; } = new(() => new());
 
+    internal static void DoNowIfScheduled(RefEffect effect)
+        => Instance.Value!.DoNowIfScheduledPrivate(effect);
+
     /// <summary>
     /// Schedules work to be executed on this thread's next tick.
     /// </summary>
@@ -33,6 +36,7 @@ public class ReactiveScheduler
     internal bool ContinueOnException { get; set; } = false;
     internal bool AutoTick { get; set; } = true;
     private readonly HashSet<RefEffect> Effects = [];
+    private HashSet<RefEffect> TickingEffects = [];
     private bool NeedsSchedulingTick = true;
     private event Action? ScheduleTickAction;
     private bool isTicking;
@@ -44,19 +48,45 @@ public class ReactiveScheduler
             ScheduleTickAction?.Invoke();
         }
     }
+    private void DoNowIfScheduledPrivate(RefEffect effect)
+    {
+        if (isTicking && TickingEffects.Remove(effect))
+        {
+            goto tick;
+        }
+        else if (Effects.Remove(effect))
+        {
+            goto tick;
+        }
+        return;
+    tick:
+        if (isTicking)
+        {
+            effect.Tick();
+        }
+        else
+        {
+            isTicking = true;
+            effect.Tick();
+            isTicking = false;
+        }
+    }
     public void TickPrivate()
     {
         if (isTicking)
             return;
         isTicking = true;
+        //System.Diagnostics.Debug.WriteLine("Tick");
         try
         {
             NeedsSchedulingTick = true;
             // clone
-            var newEffects = new HashSet<RefEffect>(Effects);
+            TickingEffects = [.. Effects];
             Effects.Clear();
-            foreach (var effect in newEffects)
+            while (TickingEffects.Count > 0)
             {
+                var effect = TickingEffects.First();
+                TickingEffects.Remove(effect);
                 try
                 {
                     effect.Tick();
@@ -68,7 +98,8 @@ public class ReactiveScheduler
                         throw;
                 }
             }
-        } finally
+        }
+        finally
         {
             isTicking = false;
         }

@@ -9,13 +9,14 @@ using static QuickMarkup.Parser.QuickMarkupLexer;
 namespace QuickMarkup.Parser;
 
 [Lexer<Tokens>]
-public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState = LexerStates.Start) : LexerBase<LexerStates, Tokens>(text, initState)
+public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState = LexerStates.Usings) : LexerBase<LexerStates, Tokens>(text, initState)
 {
     public enum LexerStates
     {
         CatchAll,
-        Start,
-        Default,
+        Usings,
+        Props,
+        BeforeRoot,
         InsideQMOpenTag,
         InsideQMCloseTag,
         InsideForeign,
@@ -26,30 +27,39 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     [CompileTimeConflictCheck]
     public enum Tokens
     {
-        [Regex<string>(@"[^<]*", nameof(CaptureStart), State = (int)LexerStates.Start)]
-        UsingStatements,
-        [Regex(@"<", nameof(QMOpenTagOpenHandler), State = (int)LexerStates.Default)]
+        [Regex<string>(@"using[^<\r\n]*;", nameof(Identity), State = (int)LexerStates.Usings)]
+        UsingStatement,
+        [Regex(@"", nameof(GotoProps), ShouldReturnToken = false, State = (int)LexerStates.Usings)]
+        UsingHelper,
+        [Regex(@"", nameof(GotoBeforeRoot), ShouldReturnToken = false, State = (int)LexerStates.Props)]
+        PropsHelper,
+
+        [Regex(@"<", nameof(QMOpenTagOpenHandler), State = (int)LexerStates.BeforeRoot)]
         [Regex(@"<", nameof(QMOpenTagOpenHandler), State = (int)LexerStates.InsideQMOpenTag)]
         QMOpenTagOpen,
-        [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = (int)LexerStates.Default)]
+        [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = (int)LexerStates.BeforeRoot)]
         Setup,
-        [Regex<string>(@"<props>[^]*</props>", nameof(GetPropsInner), State = (int)LexerStates.Default)]
-        Props,
-        [Regex<string>(@"[a-zA-Z][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMOpenTag)]
-        [Regex<string>(@"[a-zA-Z][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMCloseTag)]
-        [Regex<string>(@"[a-zA-Z][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.Default)]
+        [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.Props)]
+        [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMCloseTag)]
+        [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.BeforeRoot)]
         [TextmateOtherVariableScope(VariableType.Other, Priority = (int)TextmateOrder.Identifier)]
         Identifier,
-        [Regex(@"@[a-zA-Z][a-zA-Z0-9]*", State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex(@"@[a-zA-Z_][a-zA-Z0-9]*", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateOtherVariableScope(VariableType.Other, Priority = (int)TextmateOrder.Identifier)]
         EventIdentifier,
+        [Regex(@"=", State = (int)LexerStates.Props)]
         [Regex(@"=", State = (int)LexerStates.InsideQMOpenTag)]
-        [Regex(@"=", State = (int)LexerStates.Default)]
+        [Regex(@"=", State = (int)LexerStates.BeforeRoot)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Equal,
+        [Regex(@";", State = (int)LexerStates.Props)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        Semicolon,
+        [Regex(@"=>", State = (int)LexerStates.Props)]
         [Regex(@"=>", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
-        EqualBindBack,
+        EqualArrowRight,
         [Regex(@"\+=", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         AddEqual,
@@ -60,9 +70,15 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@",", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Comma,
+        [Regex(@"\?", State = (int)LexerStates.Props)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        QuestionMark,
         [Regex(@"!", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Not,
+        [Regex<string>("""
+            "([^\r\n\"\\]|(\\(n|t|r|\'|\")))*"
+            """, nameof(StringUnescape), State = (int)LexerStates.Props)]
         [Regex<string>("""
             "([^\r\n\"\\]|(\\(n|t|r|\'|\")))*"
             """, nameof(StringUnescape), State = (int)LexerStates.InsideQMOpenTag)]
@@ -72,28 +88,53 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"root", State = (int)LexerStates.InsideQMCloseTag, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         RootKeyword,
+        [Regex(@"private", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Private,
+        [Regex(@"set", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Set,
+        [Regex<bool>(@"true", nameof(TrueValue), State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex<bool>(@"false", nameof(FalseValue), State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [Regex<bool>(@"true", nameof(TrueValue), State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
         [Regex<bool>(@"false", nameof(FalseValue), State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
         Boolean,
+        [Regex(@"null", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
+        Null,
+        [Regex(@"default", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
+        Default,
+        [Regex<int>(@"-[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.Props)]
+        [Regex<int>(@"[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.Props)]
         [Regex<int>(@"-[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.InsideQMOpenTag)]
         [Regex<int>(@"[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.InsideQMOpenTag)]
-        [Regex<int>(@"-[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.Default)]
-        [Regex<int>(@"[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.Default)]
+        [Regex<int>(@"-[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.BeforeRoot)]
+        [Regex<int>(@"[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.BeforeRoot)]
         [TextmateConstantNumericScope(NumericType.Decimal, Priority = (int)TextmateOrder.Number, Regexes = [@"(-|)[0-9][0-9_]*"])]
+        [Regex<int>(@"0x[0-9a-fA-F]+", nameof(ParseHex), State = (int)LexerStates.Props)]
         [Regex<int>(@"0x[0-9a-fA-F]+", nameof(ParseHex), State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex<int>(@"0x[0-9a-fA-F]+", nameof(ParseHex), State = (int)LexerStates.BeforeRoot)]
         [TextmateConstantNumericScope(NumericType.Hex, Priority = (int)TextmateOrder.Number, Regexes = [@"0x[0-9a-fA-F]+"])]
+        [Regex<int>(@"0b[01]+", nameof(ParseBinary), State = (int)LexerStates.Props)]
         [Regex<int>(@"0b[01]+", nameof(ParseBinary), State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex<int>(@"0b[01]+", nameof(ParseBinary), State = (int)LexerStates.BeforeRoot)]
         [TextmateConstantNumericScope(NumericType.Binary, Priority = (int)TextmateOrder.Number, Regexes = [@"0b[01]+"])]
         Integer,
+        [Regex<double>(@"-[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.Props)]
+        [Regex<double>(@"[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.Props)]
         [Regex<double>(@"-[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.InsideQMOpenTag)]
         [Regex<double>(@"[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex<double>(@"-[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.BeforeRoot)]
+        [Regex<double>(@"[0-9][0-9_]*\.[0-9][0-9_]*", nameof(ParseDouble), State = (int)LexerStates.BeforeRoot)]
         [TextmateConstantNumericScope(NumericType.Decimal, Priority = (int)TextmateOrder.Number, Regexes = [@"(-|)[0-9][0-9_]*\.[0-9][0-9_]*"])]
         Double,
         [Regex<string>(@"-/", nameof(HandleForeignEnd), State = (int)LexerStates.InsideForeign)]
         Foreign,
+        [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
-        [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Default)]
+        [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"[^\-/]+", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideForeign)]
         [Regex(@"[\-/]", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideForeign)]
         ForeignHelperToken,
@@ -101,45 +142,51 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         QMOpenTagClose,
         [Regex(@"/>", nameof(QMOpenTagAutoCloseHandler), State = (int)LexerStates.InsideQMOpenTag)]
         QMOpenTagCloseAuto,
-        [Regex(@"</", nameof(QMCloseTagOpenHandler), State = (int)LexerStates.Default)]
+        [Regex(@"</", nameof(QMCloseTagOpenHandler), State = (int)LexerStates.BeforeRoot)]
         QMCloseTagOpen,
         [Regex(@">", nameof(QMCloseTagCloseHandler), State = (int)LexerStates.InsideQMCloseTag)]
         QMCloseTagClose,
-        [Regex(@"for", State = (int)LexerStates.Default, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [Regex(@"foreach", State = (int)LexerStates.Default, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"for", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"foreach", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         For,
-        [Regex(@"if", State = (int)LexerStates.Default, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"if", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         If,
-        [Regex(@"else", State = (int)LexerStates.Default, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"else", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         Else,
-        [Regex(@"in", State = (int)LexerStates.Default, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"in", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         In,
-        [Regex(@"\.\.", State = (int)LexerStates.Default)]
+        [Regex(@"\.\.", State = (int)LexerStates.BeforeRoot)]
         Range,
-        [Regex(@"\(", State = (int)LexerStates.Default)]
+        [Regex(@"\(", State = (int)LexerStates.BeforeRoot)]
         [Regex(@"\(", State = (int)LexerStates.InsideQMOpenTag)]
         OpenBracket,
-        [Regex(@"\)", State = (int)LexerStates.Default)]
+        [Regex(@"\)", State = (int)LexerStates.BeforeRoot)]
         [Regex(@"\)", State = (int)LexerStates.InsideQMOpenTag)]
         CloseBracket,
-        [Regex(@"\{", State = (int)LexerStates.Default)]
+        [Regex(@"\{", State = (int)LexerStates.BeforeRoot)]
         OpenCuryBracket,
-        [Regex(@"\}", State = (int)LexerStates.Default)]
+        [Regex(@"\}", State = (int)LexerStates.BeforeRoot)]
         CloseCuryBracket,
         // don't output anything against whitespace
-        [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = (int)LexerStates.Default)]
+        [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = (int)LexerStates.Usings)]
+        [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = (int)LexerStates.Props)]
+        [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         // + cuz it will not invoke the empty rule
         [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
         Whitespace,
-        
+
         // line comments
-        [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.Default)]
+        [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.Usings)]
+        [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.Props)]
+        [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
         [Regex(@"//[^\r\n]*[\r\n]", ShouldReturnToken = false, State = (int)LexerStates.InsideQMCloseTag)]
 
 
         // block comments
-        [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.Default)]
+        [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.Usings)]
+        [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
+        [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMCloseTag)]
         [Regex(@"/\*", nameof(HandleBlockCommentStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
         [Regex(@"[^\*/]*", ShouldReturnToken = false, State = (int)LexerStates.InsideBlockComment)]
@@ -148,7 +195,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Comment,
         [Regex<string>(@"[^]+", nameof(Identity), State = (int)LexerStates.CatchAll, Order = (int)Order.CatchAll)]
         CatchAll,
-        [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.Default, Order = (int)Order.CatchAll)]
+        [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot, Order = (int)Order.CatchAll)]
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.CatchAll)]
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.InsideQMCloseTag, Order = (int)Order.CatchAll)]
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.InsideBlockComment, Order = (int)Order.CatchAll)]
@@ -165,14 +212,21 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         else
             GoTo(LexerStates.End);
     }
-    private partial string CaptureStart()
+    //private partial string CaptureStart()
+    //{
+    //    GoTo(LexerStates.BeforeRoot);
+    //    return MatchedText;
+    //}
+    private partial void GotoProps()
     {
-        GoTo(LexerStates.Default);
-        return MatchedText;
+        GoTo(LexerStates.Props);
+    }
+    private partial void GotoBeforeRoot()
+    {
+        GoTo(LexerStates.BeforeRoot);
     }
     private partial string Identity() => MatchedText;
     private partial string GetScriptInner() => MatchedText["<setup>".Length..^"</setup>".Length];
-    private partial string GetPropsInner() => MatchedText["<props>".Length..^"</props>".Length];
     private partial bool TrueValue() => true;
     private partial bool FalseValue() => false;
     private partial int ParseInt() => int.Parse(MatchedText.Replace("_", ""));
@@ -220,7 +274,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     }
     private partial IToken<Tokens> QMOpenTagCloseHandler()
     {
-        GoTo(LexerStates.Default);
+        GoTo(LexerStates.BeforeRoot);
         return Make(Tokens.QMOpenTagClose);
     }
     private partial IToken<Tokens> QMCloseTagCloseHandler()

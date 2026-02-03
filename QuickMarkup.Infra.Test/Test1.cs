@@ -236,6 +236,80 @@ namespace QuickMarkup.Infra.Test
             Assert.IsFalse(tickRequested);
         }
 
+        [TestMethod]
+        public void ComputedShouldRerunImmedietely()
+        {
+            int rerunCount = 0;
+            Reference<int> value = new(0);
+            Computed<int> comp = new(() =>
+            {
+                rerunCount++;
+                return value.Value + 1;
+            });
+
+            Assert.AreEqual(1, rerunCount);
+            Assert.AreEqual(1, comp.Value);
+            value.Value = 1;
+
+            // without reading the value, it should not rerun yet.
+            Assert.AreEqual(1, rerunCount);
+
+            // this line should trigger rerun
+            var newValue = comp.Value;
+            Assert.AreEqual(2, rerunCount);
+            Assert.AreEqual(2, newValue);
+
+            // because value is not changed
+            // this line should not trigger rerun
+            newValue = comp.Value;
+            Assert.AreEqual(2, rerunCount);
+            Assert.AreEqual(2, newValue);
+        }
+
+        [TestMethod]
+        public void ComputedShouldRerunImmedietelyWhileTicking()
+        {
+            int rerunCount = 0;
+            Reference<int> value = new(0);
+            Computed<int> comp = new(() =>
+            {
+                rerunCount++;
+                return value.Value + 1;
+            });
+
+            Assert.AreEqual(1, rerunCount);
+            Assert.AreEqual(1, comp.Value);
+
+            OnNextTick(NextTickHandler);
+
+            ReactiveScheduler.Tick();
+
+            void NextTickHandler()
+            {
+                value.Value = 1;
+
+                // without reading the value, it should not rerun yet.
+                Assert.AreEqual(1, rerunCount);
+
+                // this line should trigger rerun
+                var newValue = comp.Value;
+                Assert.AreEqual(2, rerunCount);
+                Assert.AreEqual(2, newValue);
+
+                // because value is not changed
+                // this line should not trigger rerun
+                newValue = comp.Value;
+                Assert.AreEqual(2, rerunCount);
+                Assert.AreEqual(2, newValue);
+            }
+        }
+
+        void OnNextTick(Action callback)
+        {
+            RefEffect effect = new(_ => callback());
+            ReactiveScheduler.ScheduleEffect(effect);
+        }
+
         class NumberBox
         {
             public event Action? ValueChanegd;

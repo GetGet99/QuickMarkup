@@ -11,6 +11,16 @@ public class ReferenceTracker
         Instance.Value!.ReferenceRead?.Invoke(reference);
     }
 
+    public static T NoCapture<T>(Func<T> action)
+    {
+        var current = Instance.Value!;
+        var refRead = current.ReferenceRead;
+        current.ReferenceRead -= refRead;
+        var result = action();
+        current.ReferenceRead += refRead;
+        return result;
+    }
+
     internal RefEffect? CurrentEffect;
     public static RefEffect RunAndRerunOnReferenceChange<T>(Func<T> func, Action<T> continueAction)
     {
@@ -24,7 +34,7 @@ public class ReferenceTracker
         {
             Console.WriteLine(e);
             if (!ReactiveScheduler.Instance.Value!.ContinueOnException)
-                throw e;
+                throw;
         }
 
         return effect;

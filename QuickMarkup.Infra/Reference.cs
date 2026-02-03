@@ -1,6 +1,6 @@
 ﻿namespace QuickMarkup.Infra;
 
-public class Reference<T>(T defaultValue) : IReference
+public class Reference<T>(T defaultValue, string name = "") : IReference
 {
     T _value = defaultValue;
     public T Value
@@ -8,12 +8,14 @@ public class Reference<T>(T defaultValue) : IReference
         get
         {
             ReferenceTracker.NotifyRefernceRead(this);
+            DebugPrintCalleeRead();
             return _value;
         }
         set
         {
             if (!EqualityComparer<T>.Default.Equals(_value, value))
             {
+                DebugPrintCalleeWrite();
                 var oldValue = _value;
                 _value = value;
                 ValueChanged?.Invoke(oldValue, value);
@@ -35,47 +37,12 @@ public class Reference<T>(T defaultValue) : IReference
         if (immediete)
             effect.Tick();
     }
-}
-public class Computed<T> : IReference
-{
-    RefEffect effect;
-
-    internal event Action<T, T>? ValueChanged;
-    event Action? ValueChangedBase;
-    event Action IReference.ValueChanged
+    private void DebugPrintCalleeRead()
     {
-        add => ValueChangedBase += value;
-        remove => ValueChangedBase -= value;
+        //System.Diagnostics.Debug.WriteLine($"Reference Read: {name}");
     }
-
-    public Computed(Func<T> computed)
+    private void DebugPrintCalleeWrite()
     {
-        effect = ReferenceTracker.RunAndRerunOnReferenceChange(computed, x =>
-        {
-            var oldVal = _Value;
-            _Value = x;
-            ValueChanged?.Invoke(oldVal ?? x, x);
-            ValueChangedBase?.Invoke();
-        });
-    }
-    T _Value = default!;
-    public T Value
-    {
-        get
-        {
-            ReferenceTracker.NotifyRefernceRead(this);
-            return _Value;
-        }
-    }
-    ~Computed()
-    {
-        effect.Dispose();
-    }
-    public void Watch(Action<T> action, bool immediete = false)
-    {
-        var effect = new RefEffect(_ => action(Value));
-        effect.AddDependency(this);
-        if (immediete)
-            effect.Tick();
+        //System.Diagnostics.Debug.WriteLine($"Reference Write: {name}");
     }
 }
