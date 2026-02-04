@@ -105,7 +105,8 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(OnInitialize);
-        var output = context.SyntaxProvider.CreateSyntaxProvider(
+        var output = context.SyntaxProvider.ForAttributeWithMetadataName(
+            FullAttributeName,
             static (syntaxNode, cancelationToken) => syntaxNode is TSyntaxNode,
             Transform
         );
@@ -122,7 +123,7 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
     protected abstract TAttributeDataType1? TransformAttribute(AttributeData attributeData, Compilation compilation);
     protected abstract string? OnPointVisit(OnPointVisitArguments args);
     protected record struct OnPointVisitArguments(
-        GeneratorSyntaxContext GenContext,
+        GeneratorAttributeSyntaxContext GenContext,
         TSyntaxNode SyntaxNode,
         TSymbol Symbol,
         (AttributeData Original, TAttributeDataType1 Wrapper)[] AttributeDatas,
@@ -143,13 +144,13 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
                 """;
         }
     }
-    (string? FileName, string? Content, Diagnostic[]) Transform(GeneratorSyntaxContext genContext, CancellationToken cancelationToken)
+    (string? FileName, string? Content, Diagnostic[]) Transform(GeneratorAttributeSyntaxContext genContext, CancellationToken cancelationToken)
     {
 #if DEBUG
         //System.Diagnostics.Debugger.Launch();
         DateTime TransformBegin = DateTime.Now;
 #endif
-        var syntaxNode = (TSyntaxNode)genContext.Node;
+        var syntaxNode = (TSyntaxNode)genContext.TargetNode;
         // Filter out everything which has no attribute
         if (syntaxNode.AttributeLists.Count is 0) return (null, null, []);
 
@@ -238,9 +239,9 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
             }
             """, [.. diagnostics]);
     }
-    protected virtual IEnumerable<TSymbol> GetSymbols(GeneratorSyntaxContext genContext, TSyntaxNode syntaxNode)
+    protected virtual IEnumerable<TSymbol> GetSymbols(GeneratorAttributeSyntaxContext genContext, TSyntaxNode syntaxNode)
     {
-        if (genContext.SemanticModel.GetDeclaredSymbol(syntaxNode) is TSymbol symbol) yield return symbol;
+        if (genContext.TargetSymbol is TSymbol symbol) yield return symbol;
     }
 }
 abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribute2, TAttributeDataType2, TSyntaxNode, TSymbol> : IIncrementalGenerator
