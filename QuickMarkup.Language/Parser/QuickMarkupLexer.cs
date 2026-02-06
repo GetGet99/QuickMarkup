@@ -20,7 +20,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         InsideQMOpenTag,
         InsideQMCloseTag,
         InsideForeign,
-        InsideCuryForeign,
+        InsideTickForeign,
         InsideBlockComment,
         InsideLineComment,
         End
@@ -132,18 +132,18 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateConstantNumericScope(NumericType.Decimal, Priority = (int)TextmateOrder.Number, Regexes = [@"(-|)[0-9][0-9_]*\.[0-9][0-9_]*"])]
         Double,
         [Regex<string>(@"-/", nameof(HandleForeignEnd), State = (int)LexerStates.InsideForeign)]
-        [Regex<string>(@"\}", nameof(HandleForeignEnd), State = (int)LexerStates.InsideCuryForeign)]
+        [Regex<string>(@"`", nameof(HandleForeignEnd), State = (int)LexerStates.InsideTickForeign)]
         Foreign,
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
-        [Regex(@"\{", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
-        [Regex(@"\{", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
+        [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
         // disallow as conflicting with for block structure
         //[Regex(@"\{", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"[^\-/]+", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideForeign)]
         [Regex(@"[\-/]", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideForeign)]
-        [Regex(@"[^\}]+", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideCuryForeign)]
+        [Regex(@"[^`]+", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideTickForeign)]
         ForeignHelperToken,
         [Regex(@">", nameof(QMOpenTagCloseHandler), State = (int)LexerStates.InsideQMOpenTag)]
         QMOpenTagClose,
@@ -252,7 +252,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     {
         Foriegn = "";
         ForeignStoredStates.Push(CurrentState);
-        GoTo(LexerStates.InsideForeign);
+        GoTo(LexerStates.InsideTickForeign);
     }
     private partial string HandleForeignEnd()
     {
