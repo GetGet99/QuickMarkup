@@ -57,3 +57,7 @@ And that's it.
 - [QuickMarkup Backend Infrastructure](./docs/infra.md)
 - [The QuickMarkup Language](./docs/qm-language.md)
 - [Get The most out of QuickMarkup](./docs/get-most-out-of-qm.md)
+
+## Example Project
+
+- [PhotoToys Next](https://github.com/GetGet99/PhotoToysNext)
