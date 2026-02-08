@@ -139,6 +139,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.Props)]
         [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag)]
+        [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         // disallow as conflicting with for block structure
         //[Regex(@"\{", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot)]
         [Regex(@"[^\-/]+", nameof(AppendForeign), ShouldReturnToken = false, State = (int)LexerStates.InsideForeign)]
