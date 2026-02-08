@@ -128,6 +128,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ParsedPropertyOperator>]
         [Rule(Terminal.Equal, WITHPARAM, VALUE, ParsedPropertyOperator.Assign, IDENTITY)]
         [Rule(Terminal.EqualArrowRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindBack, IDENTITY)]
+        [Rule(Terminal.EqualArrowLeftRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindTwoWay, IDENTITY)]
         [Rule(Terminal.AddEqual, WITHPARAM, VALUE, ParsedPropertyOperator.AddAssign, IDENTITY)]
         PropertyOperator,
         [Type<QuickMarkupInlineMember>]
@@ -204,6 +205,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(QuickMarkupParsedForNode)
         )]
         ParsedForNode,
+        ParsedIfNode,
         [Type<QuickMarkupValue>]
         [Rule(Terminal.Integer, AS, nameof(QuickMarkupInt32.Value), typeof(QuickMarkupInt32))]
         [Rule(Terminal.Double, AS, nameof(QuickMarkupDouble.Value), typeof(QuickMarkupDouble))]

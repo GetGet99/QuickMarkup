@@ -70,6 +70,13 @@ public record class QuickMarkupParsedForNode(
     ListAST<IQMNodeChild> Body
 ) : AST, IQMNodeChild;
 
+// Not implemented yet
+public record class QuickMarkupParsedIfNode(
+    QuickMarkupValue Condition,
+    ListAST<IQMNodeChild> BodyWhenTrue,
+    ListAST<IQMNodeChild>? BodyWhenFalse
+) : AST, IQMNodeChild;
+
 public record class QuickMarkupConstructor(string TagName, ListAST<QuickMarkupValue> Parameters) : ITagStart
 {
     public QuickMarkupConstructor(string TagName) : this(TagName, []) { }
