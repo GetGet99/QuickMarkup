@@ -1,5 +1,6 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
 using System.Text;
 
@@ -72,8 +73,14 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                         case QMNodeSymbol<ITypeSymbol> nodeChild:
                             codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
                             break;
+                        case QMValueSymbol<ITypeSymbol> nodeChild:
+                            codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
+                            break;
                         case QMForNodeSymbol<ITypeSymbol> forChild:
-                            codeBuilder.AddForEachStart(forChild.VarType, forChild.VarName, CGen(forChild.Iterable));
+                            if (forChild.Iterable is QMRangeSymbol range)
+                                codeBuilder.AddForEachStart(forChild.VarType, forChild.VarName, range);
+                            else
+                                codeBuilder.AddForEachStart(forChild.VarType, forChild.VarName, CGen(forChild.Iterable));
                             CGenWrite(forChild.Body, target);
                             codeBuilder.AddForEachEnd();
                             break;
@@ -141,6 +148,9 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                     break;
                 case QMExtensionMember extension:
                     codeBuilder.AddMethodCall($"{target}.{extension.Method}");
+                    break;
+                case QMCallbackMember<ITypeSymbol> callback:
+                    codeBuilder.AddClosure(callback.Type, target, callback.RawDelegateCode);
                     break;
                 default:
                     throw new NotImplementedException();

@@ -16,8 +16,8 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
     QMNodeSymbol<ITypeSymbol> BindPrivate(QuickMarkupParsedTag tag, ITypeSymbol? rootType)
     {
         if (tag.HasMismatchedEndTag)
-            throw new InvalidOperationException($"Mismatched Ending tag: <{tag.Constructor.TagName}>...</{tag.EndTagName}>");
-        var type = rootType ?? resolver.GetTypeSymbol(tag.Constructor.TagName);
+            throw new InvalidOperationException($"Mismatched Ending tag: <{tag.TagStart.TagName}>...</{tag.EndTagName}>");
+        var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
             throw new InvalidOperationException($"Unable to resolve type {type}");
         resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
@@ -25,13 +25,13 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
 
 
         var members = new List<IQMMemberSymbol>();
-        Bind(tag.Properties, tagInfo, members);
+        Bind(tag.InlineMembers, tagInfo, members);
 
         var propertiesCount = members.Count;
         Bind(tag.Children, tagInfo, members);
         return new(
             type,
-            Bind(tag.Constructor, tagInfo),
+            Bind((QuickMarkupConstructor)tag.TagStart, tagInfo),
             members,
             tag.Name
         );
@@ -67,6 +67,20 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             switch (child)
             {
                 case QuickMarkupParsedTag tag:
+                    if (tag.TagStart is QuickMarkupPropertyTagStart tagStart)
+                    {
+                        if (tag.HasMismatchedEndTag)
+                            throw new InvalidOperationException($"Mismatched Ending tag: <.{tag.TagStart.TagName}>...</{tag.EndTagName}>");
+                        if (tag.InlineMembers.Count > 0)
+                            throw new NotImplementedException("Not supported now");
+                        if (tag.Children is { } tagChildren)
+                            Bind(new QuickMarkupParsedProperty(
+                                tagStart.TagName,
+                                ParsedPropertyOperator.Assign,
+                                new QuickMarkupQMs(tagChildren)
+                            ), tagInfo, targetCollection);
+                        break;
+                    }
                     if (childrenMode is ChildrenModes.None)
                     {
                         throw new InvalidOperationException($"Node <{tagInfo.TagType}> contains too many children");
@@ -116,7 +130,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                 NullableAnnotation.NotAnnotated
             ), forNode.VarName, Bind(forNode.Iterable, type, tagInfo), Bind(forNode.Body, tagInfo));
     }
-    void Bind(ListAST<QuickMarkupParsedProperty> properties, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    void Bind(ListAST<QuickMarkupInlineMember> properties, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         if (properties is null) return;
         foreach (var property in properties)
@@ -124,8 +138,15 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             Bind(property, tagInfo, targetCollection);
         }
     }
-    void Bind(QuickMarkupParsedProperty property, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    void Bind(QuickMarkupInlineMember inlineMember, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
+        if (inlineMember is QuickMarkupCallback cb)
+        {
+            targetCollection.Add(new QMCallbackMember<ITypeSymbol>(tagInfo.TagType, cb.Code));
+            return;
+        }
+        if (inlineMember is not QuickMarkupParsedProperty property)
+            throw new NotImplementedException();
         var targetPropSymbol = CodeGenTypeResolver.FindProperty(tagInfo.TagType, property.Key);
         var targetType = targetPropSymbol?.Type;
         switch (property.Operator)
@@ -254,6 +275,8 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                 return new QMNestedValuesSymbol<ITypeSymbol>(type, Bind(x.Value, tagInfo));
             case QuickMarkupParsedTag x:
                 return Bind(x);
+            case QuickMarkupRange x:
+                return new QMRangeSymbol(x.Start, x.End);
             default:
                 throw new NotImplementedException();
         }

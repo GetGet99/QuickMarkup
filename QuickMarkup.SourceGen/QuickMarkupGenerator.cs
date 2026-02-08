@@ -7,6 +7,7 @@ using QuickMarkup.AST;
 using QuickMarkup.Parser;
 using QuickMarkup.SourceGen.Analyzers;
 using QuickMarkup.SourceGen.CodeGen;
+using System.Diagnostics;
 using System.Text;
 
 namespace QuickMarkup.SourceGen;

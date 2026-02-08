@@ -2,6 +2,7 @@
 using Get.PLShared;
 using QuickMarkup.AST;
 using System.Data.Common;
+using System.Diagnostics;
 using static QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
 using NonTerminal = QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
 using Terminal = QuickMarkup.Parser.QuickMarkupLexer.Tokens;
@@ -72,8 +73,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<QuickMarkupParsedTag>]
         [Rule(
             Terminal.QMOpenTagOpen,
-            QMConstructor, AS, nameof(QuickMarkupParsedTag.Constructor),
-            ParsedProperties, AS, nameof(QuickMarkupParsedTag.Properties),
+            ParsedTagStart, AS, nameof(QuickMarkupParsedTag.TagStart),
+            InlineMembers, AS, nameof(QuickMarkupParsedTag.InlineMembers),
             Terminal.QMOpenTagCloseAuto,
             WITHPARAM, nameof(QuickMarkupParsedTag.Children), null,
             WITHPARAM, nameof(QuickMarkupParsedTag.EndTagName), null,
@@ -82,12 +83,12 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         [Rule(
             Terminal.QMOpenTagOpen,
-            QMConstructor, AS, nameof(QuickMarkupParsedTag.Constructor),
-            ParsedProperties, AS, nameof(QuickMarkupParsedTag.Properties),
+            ParsedTagStart, AS, nameof(QuickMarkupParsedTag.TagStart),
+            InlineMembers, AS, nameof(QuickMarkupParsedTag.InlineMembers),
             Terminal.QMOpenTagClose,
             QMChildren, AS, nameof(QuickMarkupParsedTag.Children),
             Terminal.QMCloseTagOpen,
-            Terminal.Identifier, AS, nameof(QuickMarkupParsedTag.EndTagName),
+            ParsedTagEnd, AS, nameof(QuickMarkupParsedTag.EndTagName),
             Terminal.QMCloseTagClose,
             WITHPARAM, nameof(QuickMarkupParsedTag.IsSelfClosing), false,
             typeof(QuickMarkupParsedTag)
@@ -114,15 +115,24 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(QMValue, AS, VALUE, SINGLELIST)]
         [Rule(QMConstructorParametersInside, AS, LIST, Terminal.Comma, QMValue, AS, VALUE, APPENDLIST)]
         QMConstructorParametersInside,
+        // TAGSTART/TAGEND HELPER
+        [Type<ITagStart>]
+        [Rule(Terminal.Dot, Terminal.Identifier, AS, nameof(QuickMarkupPropertyTagStart.TagName), typeof(QuickMarkupPropertyTagStart))]
+        [Rule(QMConstructor, AS, VALUE, IDENTITY)]
+        ParsedTagStart,
+        [Type<string>]
+        [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
+        [Rule(Terminal.Dot, Terminal.Identifier, AS, "name", nameof(AddDot))]
+        ParsedTagEnd,
         // PROPERTIES
         [Type<ParsedPropertyOperator>]
         [Rule(Terminal.Equal, WITHPARAM, VALUE, ParsedPropertyOperator.Assign, IDENTITY)]
         [Rule(Terminal.EqualArrowRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindBack, IDENTITY)]
         [Rule(Terminal.AddEqual, WITHPARAM, VALUE, ParsedPropertyOperator.AddAssign, IDENTITY)]
         PropertyOperator,
-        [Type<QuickMarkupParsedProperty>]
+        [Type<QuickMarkupInlineMember>]
         [Rule(
-            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            ParsedPropertyKey, AS, nameof(QuickMarkupParsedProperty.Key),
             PropertyOperator, AS, nameof(QuickMarkupParsedProperty.Operator),
             QMValue, AS, nameof(QuickMarkupParsedProperty.Value),
             typeof(QuickMarkupParsedProperty)
@@ -134,21 +144,36 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(QuickMarkupParsedProperty)
         )]
         [Rule(
+            Terminal.Foreign, AS, nameof(QuickMarkupCallback.Code),
+            typeof(QuickMarkupCallback)
+        )]
+        [Rule(
             Terminal.Not,
-            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            ParsedPropertyKey, AS, nameof(QuickMarkupParsedProperty.Key),
             WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.Assign,
             WITHPARAM, nameof(QuickMarkupParsedProperty.Value), false,
             typeof(QuickMarkupParsedProperty)
         )]
-        ParsedProperty,
-        [Type<ListAST<QuickMarkupParsedProperty>>]
+        InlineMember,
+        [Type<string>]
+        [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
+        [Rule(Terminal.Foreign, AS, VALUE, IDENTITY)]
+        ParsedPropertyKey,
+        [Type<ListAST<QuickMarkupInlineMember>>]
+        [Rule(InlineMember, AS, VALUE, SINGLELIST)]
+        [Rule(InlineMembersInner, AS, LIST, InlineMember, AS, VALUE, APPENDLIST)]
+        InlineMembersInner,
+        [Type<ListAST<QuickMarkupInlineMember>>]
         [Rule(EMPTYLIST)]
-        [Rule(ParsedProperties, AS, LIST, ParsedProperty, AS, VALUE, APPENDLIST)]
-        ParsedProperties,
+        [Rule(InlineMembersInner, AS, VALUE, IDENTITY)]
+        InlineMembers,
         [Type<ListAST<IQMNodeChild>>]
         [Rule(EMPTYLIST)]
         [Rule(QMChildren, AS, LIST, QMChild, AS, VALUE, APPENDLIST)]
         QMChildren,
+        [Type<ListAST<IQMNodeChild>>]
+        [Rule(QMChild, AS, VALUE, SINGLELIST)]
+        QMSingleChildList,
         [Type<IQMNodeChild>]
         [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
         [Rule(QMValue, AS, VALUE, IDENTITY)]
@@ -160,11 +185,22 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             OptionalTypeDecl, AS, nameof(QuickMarkupParsedForNode.VarType),
             Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
             Terminal.In,
-            QMValue, AS, nameof(QuickMarkupParsedForNode.Iterable),
+            QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
             Terminal.CloseBracket,
             Terminal.OpenCuryBracket,
             QMChildren, AS, nameof(QuickMarkupParsedForNode.Body),
             Terminal.CloseCuryBracket,
+            typeof(QuickMarkupParsedForNode)
+        )]
+        [Rule(
+            Terminal.For,
+            Terminal.OpenBracket,
+            OptionalTypeDecl, AS, nameof(QuickMarkupParsedForNode.VarType),
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
+            Terminal.In,
+            QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
+            Terminal.CloseBracket,
+            QMSingleChildList, AS, nameof(QuickMarkupParsedForNode.Body),
             typeof(QuickMarkupParsedForNode)
         )]
         ParsedForNode,
@@ -175,6 +211,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Boolean, AS, nameof(QuickMarkupBoolean.Value), typeof(QuickMarkupBoolean))]
         [Rule(Terminal.Foreign, AS, nameof(QuickMarkupForeign.Code), typeof(QuickMarkupForeign))]
         [Rule(Terminal.Identifier, AS, nameof(QuickMarkupIdentifier.Identifier), typeof(QuickMarkupIdentifier))]
+        [Rule(Terminal.Null, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), true, typeof(QuickMarkupDefault))]
+        [Rule(Terminal.Default, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
         [Rule(ParsedTag, AS, VALUE, IDENTITY)]
         [Rule(NamedTag, AS, VALUE, IDENTITY)]
         [Rule(Terminal.QMOpenTagOpen, Terminal.QMOpenTagClose,
@@ -183,6 +221,21 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(QuickMarkupQMs)
         )]
         QMValue,
+        // only for foreach loop due to ambiguity
+        [Type<QuickMarkupValue>]
+        [Rule(QMValue, AS, VALUE, IDENTITY)]
+        [Rule(QMRange, AS, VALUE, IDENTITY)]
+        QMIterable,
+        [Type<QuickMarkupRange>]
+        [Rule(Terminal.Integer, AS, nameof(QuickMarkupRange.Start),
+              Terminal.Range,
+              Terminal.Integer, AS, nameof(QuickMarkupRange.End),
+              typeof(QuickMarkupRange))]
+        [Rule(Terminal.Range,
+              Terminal.Integer, AS, nameof(QuickMarkupRange.End),
+              WITHPARAM, nameof(QuickMarkupRange.Start), 0,
+              typeof(QuickMarkupRange))]
+        QMRange,
         // TYPES
         [Type<TypeDeclaration>]
         [Rule(Terminal.Foreign, AS, nameof(TypeDeclaration.Type), typeof(TypeDeclaration))]
@@ -198,6 +251,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
     }
     static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
         => tag with { Name = name };
+    static string AddDot(string name)
+        => $".{name}";
     static string CombineUsings(string A, string B)
     {
         return $"""
@@ -224,6 +279,6 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
                     yield return CreateValue(inputTerminal.TokenType);
             }
         }
-        return Parse(TerminalValues(), debug: true);
+        return Parse(TerminalValues(), debug: Debugger.IsAttached);
     }
 }

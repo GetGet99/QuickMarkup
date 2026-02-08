@@ -1,6 +1,8 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.AST;
+using QuickMarkup.Language.Symbols;
 using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
@@ -12,7 +14,7 @@ static class CodeSnippetsExtension
         public void AddClosure(ITypeSymbol? type, string target, string labmdaExpression)
         {
             codeBuilder.AppendLine($"""
-            global::QuickMarkup.Infra.CompilerHelpers.Closure{(type is null ? "" : type.FullName())}(
+            global::QuickMarkup.Infra.CompilerHelpers.Closure{(type is null ? "" : $"<{type.FullName()}>")}(
                 {target},
                 {labmdaExpression}
             );
@@ -37,6 +39,16 @@ static class CodeSnippetsExtension
         {
             codeBuilder.AppendLine($$"""
             foreach ({{(targetType is null ? "var" : targetType.FullName())}} {{targetName}} in {{iterable}}) {
+                global::QuickMarkup.Infra.CompilerHelpers.Closure{{(targetType is null ? "" : $"<{targetType.FullName()}>")}}(
+                    {{targetName}},
+                    ({{targetName}}) => {
+            """);
+        }
+
+        public void AddForEachStart(ITypeSymbol? targetType, string targetName, QMRangeSymbol iterable)
+        {
+            codeBuilder.AppendLine($$"""
+            for ({{(targetType is null ? "var" : targetType.FullName())}} {{targetName}} = {{iterable.Start}}; {{targetName}} < {{iterable.End}}; {{targetName}}++) {
                 global::QuickMarkup.Infra.CompilerHelpers.Closure{{(targetType is null ? "" : $"<{targetType.FullName()}>")}}(
                     {{targetName}},
                     ({{targetName}}) => {
