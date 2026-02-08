@@ -1,0 +1,82 @@
+﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
+using Microsoft.CodeAnalysis;
+using System.Text;
+
+namespace QuickMarkup.SourceGen.CodeGen;
+
+static class CodeSnippetsExtension
+{
+    extension(StringBuilder codeBuilder)
+    {
+        public void AddClosure(ITypeSymbol? type, string target, string labmdaExpression)
+        {
+            codeBuilder.AppendLine($"""
+            global::QuickMarkup.Infra.CompilerHelpers.Closure{(type is null ? "" : type.FullName())}(
+                {target},
+                {labmdaExpression}
+            );
+            """);
+        }
+
+        public void AddPropertyAssign(string target, string valueExpression)
+        {
+            codeBuilder.AppendLine($"""
+            {target} = {valueExpression};
+            """);
+        }
+
+        public void AddEventAssign(string target, string valueExpression)
+        {
+            codeBuilder.AppendLine($"""
+            {target} += {valueExpression};
+            """);
+        }
+
+        public void AddForEachStart(ITypeSymbol? targetType, string targetName, string iterable)
+        {
+            codeBuilder.AppendLine($$"""
+            foreach ({{(targetType is null ? "var" : targetType.FullName())}} {{targetName}} in {{iterable}}) {
+                global::QuickMarkup.Infra.CompilerHelpers.Closure{{(targetType is null ? "" : $"<{targetType.FullName()}>")}}(
+                    {{targetName}},
+                    ({{targetName}}) => {
+            """);
+        }
+
+        public void AddForEachEnd()
+        {
+            codeBuilder.AppendLine($$"""
+                });
+            }
+            """);
+        }
+
+        public void AddMethodCall(string target, params string[] parameters)
+        {
+            codeBuilder.Append($"{target}(");
+            if (parameters.Length > 0)
+            {
+                codeBuilder.Append(parameters[0]);
+                for (int i = 1; i < parameters.Length; i++)
+                {
+                    codeBuilder.Append(", ");
+                    codeBuilder.Append(parameters[i]);
+                }
+            }
+            codeBuilder.Append($");");
+        }
+
+        public void AddPropertyBindOneWay(ITypeSymbol? type, string target, string valueExpression, string tempVarOutputName = "QUICKMARUP_TEMPVALUE")
+        {
+            codeBuilder.AppendLine($$"""
+            QUICKMARKUP_EFFECTS.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
+                            type is null ? "" : $"<{new FullType(type)}>"
+                        )}} (() => {
+                return {{valueExpression}};
+            }, {{tempVarOutputName}} => {
+                {{target}} = {{tempVarOutputName}};
+            }));
+            """);
+        }
+    }
+}

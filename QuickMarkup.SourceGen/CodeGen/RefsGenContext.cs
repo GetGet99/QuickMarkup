@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
 
-namespace QuickMarkup.SourceGen;
+namespace QuickMarkup.SourceGen.CodeGen;
 
 class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder, string nameHint)
 {
@@ -24,7 +24,8 @@ class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
         var typeName =
             (type is null ? refDeclaration.Name : new FullType(type).TypeWithNamespace)
             + (typeDecl.IsTypeNullable ? "?" : "");
-        var (defaultValue, _) = refDeclaration.DefaultValue is null ? ("default", null) : CGen(refDeclaration.DefaultValue, new(type, refDeclaration.Name));
+        var (defaultValue, _) = refDeclaration.DefaultValue is null ? ("default", null) : CGen(refDeclaration.DefaultValue,
+            new(type, refDeclaration.Name));
         var accessibility = refDeclaration.IsPrivate ? "private" : "public";
         if (refDeclaration.IsComputedDeclaration)
         {
@@ -70,12 +71,12 @@ class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                 return (int32.Value.ToString(), resolver.Int32);
             case QuickMarkupDouble @double:
                 return (@double.Value.ToString(), resolver.Double);
-            case QuickMarkupEnum @enum:
+            case QuickMarkupIdentifier @enum:
                 if (refPropertyForEnum is null) goto default;
                 if (refPropertyForEnum.Type is null)
                     // use property name as fallback
-                    return ($"{refPropertyForEnum}.{@enum.EnumMember}", null);
-                return ($"{new FullType(refPropertyForEnum.Type)}.{@enum.EnumMember}", refPropertyForEnum.Type);
+                    return ($"{refPropertyForEnum}.{@enum.Identifier}", null);
+                return ($"{new FullType(refPropertyForEnum.Type)}.{@enum.Identifier}", refPropertyForEnum.Type);
             case QuickMarkupDefault @default:
                 if (@default.IsExplicitlyNull)
                 {

@@ -13,6 +13,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
 {
     public enum NonTerminal
     {
+        // SFC LEVEL SETUP
         [Type<QuickMarkupSFC>]
         [Rule(
             UsingStatementsOrEmpty, AS, nameof(QuickMarkupSFC.Usings),
@@ -20,155 +21,24 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(QuickMarkupSFC))]
         [Rule(SFC, AS, LIST, SFCTag, AS, VALUE, APPENDLIST)]
         SFC,
+        [Type<ISFCTag>]
+        [Rule(Terminal.Setup, AS, nameof(QuickMarkupScript.RawScript), typeof(QuickMarkupScript))]
+        [Rule(ParsedTag, AS, VALUE, IDENTITY)]
+        SFCTag,
+        // USINGS
         [Type<string>]
         [Rule(UsingStatements, AS, VALUE, IDENTITY)]
         [Rule(WITHPARAM, VALUE, "", IDENTITY)]
         UsingStatementsOrEmpty,
-        [Type<ISFCTag>]
-        [Rule(Terminal.Setup, AS, nameof(QuickMarkupScript.RawScript), typeof(QuickMarkupScript))]
-        [Rule(TemplateTag, AS, VALUE, IDENTITY)]
-        SFCTag,
-        [Type<QuickMarkupTemplate>]
-        [Rule(Terminal.QMOpenTagOpen, Terminal.RootKeyword, QMPropertiesInline, AS, nameof(QuickMarkupTemplate.Properties), Terminal.QMOpenTagCloseAuto, typeof(QuickMarkupTemplate))]
-        [Rule(Terminal.QMOpenTagOpen, Terminal.RootKeyword, QMPropertiesInline, AS, nameof(QuickMarkupTemplate.Properties), Terminal.QMOpenTagClose,
-            QMChildren, AS, nameof(QuickMarkupTemplate.Children), Terminal.QMCloseTagOpen, Terminal.RootKeyword, Terminal.QMCloseTagClose, typeof(QuickMarkupTemplate))]
-        TemplateTag,
-        [Type<ListAST<IQMNodeChild>>]
-        [Rule(QMChildren, AS, LIST, QMChild, AS, VALUE, APPENDLIST)]
-        [Rule(QMChild, AS, VALUE, SINGLELIST)]
-        QMChildren,
-        [Type<IQMNodeChild>]
-        [Rule(QMNode, AS, VALUE, IDENTITY)]
-        [Rule(Terminal.OpenBracket, QMValueNoQM, AS, VALUE, Terminal.CloseBracket, IDENTITY)]
-        [Rule(QMPropertyInChild, AS, VALUE, IDENTITY)]
-        [Rule(QMForNode, AS, VALUE, IDENTITY)]
-        QMChild,
         [Type<string>]
         [Rule(Terminal.UsingStatement, AS, VALUE, IDENTITY)]
         [Rule(UsingStatements, AS, "A", Terminal.UsingStatement, AS, "B", nameof(CombineUsings))]
         UsingStatements,
-        [Type<string>]
-        //[Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
-        [Rule(WITHPARAM, VALUE, "var", IDENTITY)]
-        OptionalType,
-        [Type<QuickMarkupForNode>]
-        [Rule(Terminal.For, Terminal.OpenBracket,
-            OptionalType, AS, nameof(QuickMarkupForNode.VarType),
-            Terminal.Identifier, AS, nameof(QuickMarkupForNode.TargetVariable),
-            Terminal.In,
-            ForList, AS, nameof(QuickMarkupForNode.ListExpression),
-            Terminal.CloseBracket,
-            typeof(QuickMarkupForNode)
-        )]
-        QMForNodeStart,
-        [Type<QuickMarkupForNode>]
-        [Rule(QMForNodeStart, AS, LIST, Terminal.OpenCuryBracket, QMChildren, AS, VALUE, Terminal.CloseCuryBracket, APPENDLIST)]
-        [Rule(QMForNodeStart, AS, LIST, QMNode, AS, VALUE, APPENDLIST)]
-        [Rule(QMForNodeStart, AS, LIST, QMForNode, AS, VALUE, APPENDLIST)]
-        QMForNode,
-        [Type<QuickMarkupForNodeListExpression>]
-        [Rule(Terminal.Integer, AS, nameof(QuickMarkupForNodeListRangeExpression.Start), Terminal.Range, Terminal.Integer, AS, nameof(QuickMarkupForNodeListRangeExpression.End), typeof(QuickMarkupForNodeListRangeExpression))]
-        [Rule(Terminal.Range, Terminal.Integer, AS, nameof(QuickMarkupForNodeListRangeExpression.End), WITHPARAM, nameof(QuickMarkupForNodeListRangeExpression.Start), 0, typeof(QuickMarkupForNodeListRangeExpression))]
-        [Rule(Terminal.Foreign, AS, nameof(QuickMarkupForNodeListForeignExpression.ForeignAsString), typeof(QuickMarkupForNodeListForeignExpression))]
-        ForList,
-        [Type<QuickMarkupQMNode>]
-        [Rule(QMNodeStart, AS, VALUE, Terminal.QMOpenTagCloseAuto, IDENTITY)]
-        [Rule(QMNodeStart, AS, "node", Terminal.QMOpenTagClose, QMChildren, AS, "children", Terminal.QMCloseTagOpen, Terminal.Identifier, AS, "endTagName", Terminal.QMCloseTagClose, nameof(BuildWithChildren))]
-        [Rule(Terminal.Identifier, AS, "name", Terminal.Equal, QMNode, AS, "node", nameof(AddName))]
-        QMNode,
-        [Type<QuickMarkupQMNode>]
-        [Rule(Terminal.QMOpenTagOpen, QMConstructor, AS, nameof(QuickMarkupQMNode.Constructor),
-            QMPropertiesInline, AS, nameof(QuickMarkupQMNode.Properties),
-            typeof(QuickMarkupQMNode))]
-        QMNodeStart,
-        [Type<QuickMarkupConstructor>]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TypeName), typeof(QuickMarkupConstructor))]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TypeName),
-            Terminal.OpenBracket,
-            QMConstructorParameters, AS, nameof(QuickMarkupConstructor.Parameters),
-            Terminal.CloseBracket, typeof(QuickMarkupConstructor))]
-        QMConstructor,
-        [Type<ListAST<QuickMarkupValue>>]
+        // REFS
+        [Type<ListAST<RefDeclaration>>]
         [Rule(EMPTYLIST)]
-        [Rule(QMConstructorParametersInside, AS, VALUE, IDENTITY)]
-        QMConstructorParameters,
-        [Type<ListAST<QuickMarkupValue>>]
-        [Rule(QMValueAndEnum, AS, VALUE, SINGLELIST)]
-        [Rule(QMConstructorParametersInside, AS, LIST, Terminal.Comma, QMValueAndEnum, AS, VALUE, APPENDLIST)]
-        QMConstructorParametersInside,
-        [Type<ListAST<QuickMarkupQMProperty>>]
-        [Rule(EMPTYLIST)]
-        [Rule(QMPropertiesInline, AS, LIST, QMPropertyInline, AS, VALUE, APPENDLIST)]
-        QMPropertiesInline,
-        [Type<string>]
-        [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
-        [Rule(Terminal.Foreign, AS, VALUE, IDENTITY)]
-        QMKey,
-        [Type<QuickMarkupQMProperty>]
-        [Rule(QMKey, AS, nameof(QuickMarkupQMPropertyKeyValue.Key), Terminal.Equal, QMMultiValue, AS, nameof(QuickMarkupQMPropertyKeyValue.Value), typeof(QuickMarkupQMPropertyKeyValue))]
-        [Rule(QMKey, AS, nameof(QuickMarkupQMPropertyKeyForeign.Key), Terminal.EqualArrowRight, QMForeign, AS, nameof(QuickMarkupQMPropertyKeyForeign.Foreign), WITHPARAM, nameof(QuickMarkupQMPropertyKeyForeign.IsBindBack), true, typeof(QuickMarkupQMPropertyKeyForeign))]
-        [Rule(QMKey, AS, nameof(QuickMarkupQMPropertyKeyForeign.Key), Terminal.AddEqual, QMForeign, AS, nameof(QuickMarkupQMPropertyKeyForeign.Foreign), WITHPARAM, nameof(QuickMarkupQMPropertyKeyForeign.IsEventMode), true, typeof(QuickMarkupQMPropertyKeyForeign))]
-        [Rule(QMKey, AS, nameof(QuickMarkupQMPropertyKeyValue.Key), Terminal.Equal, QMEnum, AS, nameof(QuickMarkupQMPropertyKeyValue.Value), typeof(QuickMarkupQMPropertyKeyValue))]
-        [Rule(QMNotAsFalse, AS, nameof(QuickMarkupQMPropertyKeyValue.Value), QMKey, AS, nameof(QuickMarkupQMPropertyKeyValue.Key), typeof(QuickMarkupQMPropertyKeyValue))]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupQMPropertyBoolOrExtension.ExtensionMethod), typeof(QuickMarkupQMPropertyBoolOrExtension))]
-        [Rule(QMForeign, AS, nameof(QuickMarkupQMPropertyExtension.Extension), typeof(QuickMarkupQMPropertyExtension))]
-        QMPropertyInline,
-        [Type<QuickMarkupQMPropertyKeyValue>]
-        [Rule(Terminal.QMOpenTagOpen,
-            Terminal.Dot, Terminal.Identifier, AS, nameof(QuickMarkupQMPropertyKeyValue.Key),
-            Terminal.Equal, QMValue, AS, nameof(QuickMarkupQMPropertyKeyValue.Value),
-            Terminal.QMOpenTagCloseAuto,
-        typeof(QuickMarkupQMPropertyKeyValue))]
-        [Rule(QMPropertyInChildOpenTag, AS, "key",
-            QMValueNoQM, AS, "value",
-            QMPropertyInChildCloseTag, AS, "endTagName",
-        nameof(BuildWithValue))]
-        [Rule(QMPropertyInChildOpenTag, AS, "key",
-            QMsWithoutFragment, AS, "value",
-            QMPropertyInChildCloseTag, AS, "endTagName",
-        nameof(BuildWithValue))]
-        QMPropertyInChild,
-        [Type<string>]
-        [Rule(Terminal.QMOpenTagOpen,
-            Terminal.Dot, Terminal.Identifier, AS, VALUE,
-            Terminal.QMOpenTagClose,
-            IDENTITY
-        )]
-        QMPropertyInChildOpenTag,
-        [Type<string>]
-        [Rule(Terminal.QMCloseTagOpen,
-            Terminal.Dot,
-            Terminal.Identifier, AS, VALUE,
-            Terminal.QMCloseTagClose,
-            IDENTITY
-        )]
-        QMPropertyInChildCloseTag,
-        [Type<QuickMarkupValue>]
-        [Rule(Terminal.Integer, AS, nameof(QuickMarkupInt32.Value), typeof(QuickMarkupInt32))]
-        [Rule(Terminal.Double, AS, nameof(QuickMarkupDouble.Value), typeof(QuickMarkupDouble))]
-        [Rule(Terminal.String, AS, nameof(QuickMarkupString.Value), typeof(QuickMarkupString))]
-        [Rule(Terminal.Null, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), true, typeof(QuickMarkupDefault))]
-        [Rule(Terminal.Default, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
-        [Rule(QMForeign, AS, VALUE, IDENTITY)]
-        [Rule(Terminal.Boolean, AS, nameof(QuickMarkupBoolean.Value), typeof(QuickMarkupBoolean))]
-        QMValueNoQM,
-        [Type<QuickMarkupValue>]
-        [Rule(QMValueNoQM, AS, VALUE, IDENTITY)]
-        [Rule(QMNode, AS, nameof(QuickMarkupQM.Value), typeof(QuickMarkupQM))]
-        QMValue,
-        [Type<QuickMarkupValue>]
-        [Rule(QMValue, AS, VALUE, IDENTITY)]
-        [Rule(QMEnum, AS, VALUE, IDENTITY)]
-        QMValueAndEnum,
-        [Type<QuickMarkupValue>]
-        [Rule(QMs, AS, VALUE, IDENTITY)]
-        [Rule(QMValue, AS, VALUE, IDENTITY)]
-        QMMultiValue,
-        [Type<QuickMarkupQMs>]
-        [Rule(Terminal.QMOpenTagOpen, Terminal.QMOpenTagClose,
-            QMChildren, AS, nameof(QuickMarkupQMs.Value),
-            Terminal.QMCloseTagOpen, Terminal.QMCloseTagClose, typeof(QuickMarkupQMs))]
-        QMs,
+        [Rule(RefsDecl, AS, LIST, RefDecl, AS, VALUE, APPENDLIST)]
+        RefsDecl,
         [Type<RefDeclaration>]
         [Rule(
             RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
@@ -184,69 +54,151 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             TypeDecl, AS, nameof(RefDeclaration.Type),
             Terminal.Identifier, AS, nameof(RefDeclaration.Name),
             Terminal.EqualArrowRight,
-            QMValueNoQM, AS, nameof(RefDeclaration.DefaultValue),
+            QMValue, AS, nameof(RefDeclaration.DefaultValue),
             Terminal.Semicolon,
             WITHPARAM, nameof(RefDeclaration.IsComputedDeclaration), true,
             typeof(RefDeclaration)
         )]
         RefDecl,
-        [Type<TypeDeclaration>]
-        [Rule(Terminal.Identifier, AS, nameof(TypeDeclaration.Type), typeof(TypeDeclaration))]
-        [Rule(Terminal.Identifier, AS, nameof(TypeDeclaration.Type),
-            Terminal.QuestionMark, WITHPARAM, nameof(TypeDeclaration.IsTypeNullable), true,
-            typeof(TypeDeclaration))]
-        TypeDecl,
         [Type<QuickMarkupValue>]
-        [Rule(Terminal.Equal, QMValueNoQM, AS, VALUE, IDENTITY)]
+        [Rule(Terminal.Equal, QMValue, AS, VALUE, IDENTITY)]
         [Rule(WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
         RefDeclInitialValue,
         [Type<bool>]
         [Rule(WITHPARAM, VALUE, false, IDENTITY)]
         [Rule(Terminal.Private, WITHPARAM, VALUE, true, IDENTITY)]
         RefPrivateVisibility,
-        [Type<ListAST<RefDeclaration>>]
+        // TAGS
+        [Type<QuickMarkupParsedTag>]
+        [Rule(
+            Terminal.QMOpenTagOpen,
+            QMConstructor, AS, nameof(QuickMarkupParsedTag.Constructor),
+            ParsedProperties, AS, nameof(QuickMarkupParsedTag.Properties),
+            Terminal.QMOpenTagCloseAuto,
+            WITHPARAM, nameof(QuickMarkupParsedTag.Children), null,
+            WITHPARAM, nameof(QuickMarkupParsedTag.EndTagName), null,
+            WITHPARAM, nameof(QuickMarkupParsedTag.IsSelfClosing), true,
+            typeof(QuickMarkupParsedTag)
+        )]
+        [Rule(
+            Terminal.QMOpenTagOpen,
+            QMConstructor, AS, nameof(QuickMarkupParsedTag.Constructor),
+            ParsedProperties, AS, nameof(QuickMarkupParsedTag.Properties),
+            Terminal.QMOpenTagClose,
+            QMChildren, AS, nameof(QuickMarkupParsedTag.Children),
+            Terminal.QMCloseTagOpen,
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedTag.EndTagName),
+            Terminal.QMCloseTagClose,
+            WITHPARAM, nameof(QuickMarkupParsedTag.IsSelfClosing), false,
+            typeof(QuickMarkupParsedTag)
+        )]
+        ParsedTag,
+        [Type<QuickMarkupParsedTag>]
+        [Rule(
+            Terminal.Identifier, AS, "name",
+            Terminal.Equal,
+            ParsedTag, AS, "tag",
+            nameof(AttachName)
+        )]
+        NamedTag,
+        // CONSTRUCTOR
+        [Type<QuickMarkupConstructor>]
+        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TagName), typeof(QuickMarkupConstructor))]
+        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TagName), Terminal.OpenBracket, QMConstructorParameters, AS, nameof(QuickMarkupConstructor.Parameters), Terminal.CloseBracket, typeof(QuickMarkupConstructor))]
+        QMConstructor,
+        [Type<ListAST<QuickMarkupValue>>]
         [Rule(EMPTYLIST)]
-        [Rule(RefsDecl, AS, LIST, RefDecl, AS, VALUE, APPENDLIST)]
-        RefsDecl,
-        [Type<QuickMarkupQMs>]
-        [Rule(QMChildren, AS, nameof(QuickMarkupQMs.Value), typeof(QuickMarkupQMs))]
-        QMsWithoutFragment,
-        [Type<QuickMarkupEnum>]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupEnum.EnumMember), typeof(QuickMarkupEnum))]
-        QMEnum,
-        [Type<QuickMarkupForeign>]
+        [Rule(QMConstructorParametersInside, AS, VALUE, IDENTITY)]
+        QMConstructorParameters,
+        [Type<ListAST<QuickMarkupValue>>]
+        [Rule(QMValue, AS, VALUE, SINGLELIST)]
+        [Rule(QMConstructorParametersInside, AS, LIST, Terminal.Comma, QMValue, AS, VALUE, APPENDLIST)]
+        QMConstructorParametersInside,
+        // PROPERTIES
+        [Type<ParsedPropertyOperator>]
+        [Rule(Terminal.Equal, WITHPARAM, VALUE, ParsedPropertyOperator.Assign, IDENTITY)]
+        [Rule(Terminal.EqualArrowRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindBack, IDENTITY)]
+        [Rule(Terminal.AddEqual, WITHPARAM, VALUE, ParsedPropertyOperator.AddAssign, IDENTITY)]
+        PropertyOperator,
+        [Type<QuickMarkupParsedProperty>]
+        [Rule(
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            PropertyOperator, AS, nameof(QuickMarkupParsedProperty.Operator),
+            QMValue, AS, nameof(QuickMarkupParsedProperty.Value),
+            typeof(QuickMarkupParsedProperty)
+        )]
+        [Rule(
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.None,
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Value), null,
+            typeof(QuickMarkupParsedProperty)
+        )]
+        [Rule(
+            Terminal.Not,
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.Assign,
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Value), false,
+            typeof(QuickMarkupParsedProperty)
+        )]
+        ParsedProperty,
+        [Type<ListAST<QuickMarkupParsedProperty>>]
+        [Rule(EMPTYLIST)]
+        [Rule(ParsedProperties, AS, LIST, ParsedProperty, AS, VALUE, APPENDLIST)]
+        ParsedProperties,
+        [Type<ListAST<IQMNodeChild>>]
+        [Rule(EMPTYLIST)]
+        [Rule(QMChildren, AS, LIST, QMChild, AS, VALUE, APPENDLIST)]
+        QMChildren,
+        [Type<IQMNodeChild>]
+        [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
+        [Rule(QMValue, AS, VALUE, IDENTITY)]
+        QMChild,
+        [Type<QuickMarkupParsedForNode>]
+        [Rule(
+            Terminal.For,
+            Terminal.OpenBracket,
+            OptionalTypeDecl, AS, nameof(QuickMarkupParsedForNode.VarType),
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
+            Terminal.In,
+            QMValue, AS, nameof(QuickMarkupParsedForNode.Iterable),
+            Terminal.CloseBracket,
+            Terminal.OpenCuryBracket,
+            QMChildren, AS, nameof(QuickMarkupParsedForNode.Body),
+            Terminal.CloseCuryBracket,
+            typeof(QuickMarkupParsedForNode)
+        )]
+        ParsedForNode,
+        [Type<QuickMarkupValue>]
+        [Rule(Terminal.Integer, AS, nameof(QuickMarkupInt32.Value), typeof(QuickMarkupInt32))]
+        [Rule(Terminal.Double, AS, nameof(QuickMarkupDouble.Value), typeof(QuickMarkupDouble))]
+        [Rule(Terminal.String, AS, nameof(QuickMarkupString.Value), typeof(QuickMarkupString))]
+        [Rule(Terminal.Boolean, AS, nameof(QuickMarkupBoolean.Value), typeof(QuickMarkupBoolean))]
         [Rule(Terminal.Foreign, AS, nameof(QuickMarkupForeign.Code), typeof(QuickMarkupForeign))]
-        QMForeign,
-        [Type<QuickMarkupBoolean>]
-        [Rule(Terminal.Not, WITHPARAM, nameof(QuickMarkupBoolean.Value), false, typeof(QuickMarkupBoolean))]
-        QMNotAsFalse
+        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupIdentifier.Identifier), typeof(QuickMarkupIdentifier))]
+        [Rule(ParsedTag, AS, VALUE, IDENTITY)]
+        [Rule(NamedTag, AS, VALUE, IDENTITY)]
+        [Rule(Terminal.QMOpenTagOpen, Terminal.QMOpenTagClose,
+            QMChildren, AS, nameof(QuickMarkupQMs.Value),
+            Terminal.QMCloseTagOpen, Terminal.QMCloseTagClose,
+            typeof(QuickMarkupQMs)
+        )]
+        QMValue,
+        // TYPES
+        [Type<TypeDeclaration>]
+        [Rule(Terminal.Foreign, AS, nameof(TypeDeclaration.Type), typeof(TypeDeclaration))]
+        [Rule(Terminal.Identifier, AS, nameof(TypeDeclaration.Type), typeof(TypeDeclaration))]
+        [Rule(Terminal.Identifier, AS, nameof(TypeDeclaration.Type),
+            Terminal.QuestionMark, WITHPARAM, nameof(TypeDeclaration.IsTypeNullable), true,
+            typeof(TypeDeclaration))]
+        TypeDecl,
+        [Type<TypeDeclaration>]
+        [Rule(TypeDecl, AS, VALUE, IDENTITY)]
+        [Rule(Terminal.Var, WITHPARAM, VALUE, null, IDENTITY)]
+        OptionalTypeDecl,
     }
-    static QuickMarkupQMNode AddName(QuickMarkupQMNode node, string name)
-    {
-        return node with { AssignToVarName = name };
-    }
-    static QuickMarkupQMNode BuildWithChildren(QuickMarkupQMNode node, ListAST<IQMNodeChild> children, string endTagName)
-    {
-        if (node.Constructor.TypeName != endTagName)
-        {
-            throw new InvalidOperationException($"Name of opening tag <{node.Constructor}> and end tag </{endTagName}> does not match");
-        }
-        node.Add(children);
-        return node;
-    }
-    static QuickMarkupQMPropertyKeyValue BuildWithValue(string key, QuickMarkupValue value, string endTagName)
-    {
-        if (key != endTagName)
-        {
-            throw new InvalidOperationException($"Name of opening tag <{key}> and end tag </{endTagName}> does not match");
-        }
-        if (value is QuickMarkupQMs qms && qms.Value.Count is 1)
-        {
-            value = new QuickMarkupQM((QuickMarkupQMNode)qms.Value[0]);
-        }
-        return new(key, value);
-    }
-    string CombineUsings(string A, string B)
+    static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
+        => tag with { Name = name };
+    static string CombineUsings(string A, string B)
     {
         return $"""
             {A}

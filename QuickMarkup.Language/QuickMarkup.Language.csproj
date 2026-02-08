@@ -7,7 +7,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Folder Include="Symbols\" />
 		<ProjectReference Include="..\Parser\Get.LangSupport\Get.LangSupport.csproj" />
 		<ProjectReference Include="..\Parser\Get.Lexer.SourceGenerator\Get.Lexer.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 		<ProjectReference Include="..\Parser\Get.Lexer\Get.Lexer.csproj" />

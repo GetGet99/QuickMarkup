@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using QuickMarkup.Language.Symbols;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
@@ -43,8 +44,14 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
             .Type as INamedTypeSymbol;
     }
 
-    public bool TryGetContentProperty(ITypeSymbol symbol, [MaybeNullWhen(false)] out IPropertySymbol propertySymbol, out bool isMultipleNode)
+    public bool TryGetContentProperty(ITypeSymbol? symbol, [MaybeNullWhen(false)] out IPropertySymbol propertySymbol, out ChildrenModes childrenMode)
     {
+        if (symbol is null)
+        {
+            propertySymbol = null;
+            childrenMode = ChildrenModes.None;
+            return false;
+        }
         if (FindContentAttirbute(symbol) is { } result)
         {
             IPropertySymbol? property = null;
@@ -53,22 +60,22 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
             else if (result.NamedArguments.Length > 0)
                 property = FindProperty(symbol, result.NamedArguments[0].Value.Value?.ToString() ?? "");
             propertySymbol = property;
-            isMultipleNode = FindMethod(propertySymbol?.Type, "Add") is not null;
+            childrenMode = FindMethod(propertySymbol?.Type, "Add") is not null ? ChildrenModes.Add : ChildrenModes.Assignment;
             return propertySymbol is not null;
         }
-        isMultipleNode = true;
+        childrenMode = ChildrenModes.Add;
         var content = symbol.GetMembers("Children");
         if (content.Length is 0)
             content = symbol.GetMembers("Items");
         if (content.Length is 0)
         {
             content = symbol.GetMembers("Child");
-            isMultipleNode = false;
+            childrenMode = ChildrenModes.Assignment;
         }
         if (content.Length is 0)
         {
             content = symbol.GetMembers("Content");
-            isMultipleNode = false;
+            childrenMode = ChildrenModes.Assignment;
         }
         if (content.Length is not 1)
         {

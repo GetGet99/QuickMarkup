@@ -7,6 +7,10 @@
     "Profile 1": {
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\..\\PhotoToysV2\\PhotoToysV2.csproj"
+    },
+    "Profile 2": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\..\\ShortyMath\\ShortyMath.csproj"
     }
   }
 }

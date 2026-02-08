@@ -85,10 +85,6 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
             """, nameof(StringUnescape), State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateStringQuotedScope(StringQuotedType.Double, Priority = (int)TextmateOrder.StringChar)]
         String,
-        [Regex(@"root", State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [Regex(@"root", State = (int)LexerStates.InsideQMCloseTag, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
-        RootKeyword,
         [Regex(@"private", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         Private,
@@ -154,7 +150,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         QMCloseTagOpen,
         [Regex(@">", nameof(QMCloseTagCloseHandler), State = (int)LexerStates.InsideQMCloseTag)]
         QMCloseTagClose,
-        [Regex(@"for", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"var", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        Var,
         [Regex(@"foreach", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         For,
         [Regex(@"if", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]

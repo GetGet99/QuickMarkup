@@ -5,6 +5,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
+using QuickMarkup.SourceGen.Analyzers;
+using QuickMarkup.SourceGen.CodeGen;
 using System.Text;
 
 namespace QuickMarkup.SourceGen;
@@ -37,13 +39,16 @@ partial class QuickMarkupGenerator : AttributeBaseGenerator<QuickMarkupAttribute
         args.CancellationToken.ThrowIfCancellationRequested();
         if (sfc.Template is not null)
         {
+            var resolver = new CodeGenTypeResolver(args.GenContext.SemanticModel.Compilation, ns);
+            var analyzer = new QMSourceGenBinders(resolver);
+            var output = analyzer.Bind(sfc.Template, args.Symbol);
             var cgen = new CodeGenContext(
                 new(args.GenContext.SemanticModel.Compilation, ns),
                 generatedProperties,
                 codeBuilder,
                 isConstructorMode
             );
-            cgen.CGenWrite(sfc.Template, new(args.Symbol, "this"));
+            cgen.CGenWrite(output, "this");
             args.CancellationToken.ThrowIfCancellationRequested();
         }
         string generatedMethod;
