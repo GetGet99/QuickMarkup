@@ -154,13 +154,14 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             case ParsedPropertyOperator.AddAssign:
                 // event
                 // <QM Click+=`(_, _) => ShowDialog("Clicked")` />
-
-                // TODO: type hint
-                // cannot use PropertyTypeHint, as it is events, not property
+                var isShorthand = property.Key.StartsWith("@");
+                var eventName = isShorthand ? property.Key[1..] : property.Key;
+                var eventSymbol = CodeGenTypeResolver.FindEvent(tagInfo.TagType, eventName);
                 targetCollection.Add(new QMAddEventMember<ITypeSymbol>(
-                    null, // type hint to null
-                    property.Key,
-                    Bind(property.Value ?? throw new NotImplementedException(), null, tagInfo)
+                    eventSymbol?.Type, // type hint to null
+                    eventName,
+                    Bind(property.Value ?? throw new NotImplementedException(), null, tagInfo),
+                    isShorthand
                 ));
                 break;
             case ParsedPropertyOperator.Assign:

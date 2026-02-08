@@ -44,11 +44,9 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMOpenTag)]
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.InsideQMCloseTag)]
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = (int)LexerStates.BeforeRoot)]
+        [Regex<string>(@"@[a-zA-Z_][a-zA-Z0-9]*", nameof(Identity), State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateOtherVariableScope(VariableType.Other, Priority = (int)TextmateOrder.Identifier)]
         Identifier,
-        [Regex(@"@[a-zA-Z_][a-zA-Z0-9]*", State = (int)LexerStates.InsideQMOpenTag)]
-        [TextmateOtherVariableScope(VariableType.Other, Priority = (int)TextmateOrder.Identifier)]
-        EventIdentifier,
         [Regex(@"=", State = (int)LexerStates.Props)]
         [Regex(@"=", State = (int)LexerStates.InsideQMOpenTag)]
         [Regex(@"=", State = (int)LexerStates.BeforeRoot)]

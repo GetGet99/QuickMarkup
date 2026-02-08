@@ -125,6 +125,23 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
         return null;
     }
 
+    public static IEventSymbol? FindEvent(ITypeSymbol? type, string property)
+    {
+        for (ITypeSymbol? current = type;
+             current != null;
+             current = current.BaseType)
+        {
+            foreach (var prop in current.GetMembers(property))
+            {
+                if (prop is IEventSymbol sym)
+                {
+                    return sym;
+                }
+            }
+        }
+        return null;
+    }
+
     public bool ShouldAutoNew(ITypeSymbol? value, ITypeSymbol target)
     {
         if (CanAssign(value, target))

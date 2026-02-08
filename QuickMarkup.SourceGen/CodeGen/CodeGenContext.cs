@@ -144,7 +144,19 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                     }
                     break;
                 case QMAddEventMember<ITypeSymbol> addEvent:
-                    codeBuilder.AddEventAssign($"{target}.{addEvent.EventName}", CGen(addEvent.Value));
+                    var rhs = CGen(addEvent.Value);
+                    if (addEvent.IsShorthand)
+                    {
+                        if ((addEvent.MemberType as INamedTypeSymbol)?.DelegateInvokeMethod?.ReturnsVoid ?? true)
+                            rhs = $$"""
+                                delegate { {{rhs}}; }
+                                """;
+                        else
+                            rhs = $$"""
+                                delegate { return {{rhs}}; }
+                                """;
+                    }
+                    codeBuilder.AddEventAssign($"{target}.{addEvent.EventName}", rhs);
                     break;
                 case QMExtensionMember extension:
                     codeBuilder.AddMethodCall($"{target}.{extension.Method}");

@@ -36,7 +36,7 @@ public record class QMForNodeSymbol<T>(T? VarType, string VarName, IQMValueSymbo
 public record class QMAssignChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
 public record class QMAddChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
 public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode) : IQMMemberSymbol;
-public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value) : IQMMemberSymbol;
+public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand) : IQMMemberSymbol;
 public record class QMExtensionMember(string Method) : IQMMemberSymbol;
 public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMemberSymbol;
 
