@@ -109,38 +109,42 @@ class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
                             );
                             break;
                         case BindingModes.SourceToTarget:
-                            codeBuilder.AddPropertyBindOneWay(
-                                addProp.PropertyType,
-                                property,
-                                CGen(addProp.Value),
-                                tempVarOutputName: "x"
-                            );
+                            AddSourceToTarget();
                             break;
                         case BindingModes.TargetToSource:
-                            codeBuilder.AddPropertyBindOneWay(
-                                addProp.PropertyType,
-                                CGen(addProp.Value),
-                                property,
-                                tempVarOutputName: "x"
-                            );
+                            AddTargetToSource();
                             break;
                         case BindingModes.TwoWay:
                             // two way is basically:
                             // 1. source to target first
                             // 2. then target to source
-                            codeBuilder.AddPropertyBindOneWay(
-                                addProp.PropertyType,
-                                property,
-                                CGen(addProp.Value),
-                                tempVarOutputName: "x"
-                            );
-                            codeBuilder.AddPropertyBindOneWay(
-                                addProp.PropertyType,
-                                property,
-                                CGen(addProp.Value),
-                                tempVarOutputName: "x"
-                            );
+                            AddSourceToTarget();
+                            AddTargetToSource();
                             break;
+                    }
+                    void AddSourceToTarget()
+                    {
+                        codeBuilder.AddPropertyBindOneWay(
+                            addProp.PropertyType,
+                            property,
+                            CGen(addProp.Value)
+                        );
+                    }
+                    void AddTargetToSource()
+                    {
+                        if (addProp.IsDependencyProperty)
+                            codeBuilder.AddDependencyPropertyBindBack(
+                                property,
+                                target,
+                                addProp.DependencyPropertyName,
+                                CGen(addProp.Value)
+                            );
+                        else
+                            codeBuilder.AddPropertyBindOneWay(
+                                addProp.PropertyType,
+                                property,
+                                CGen(addProp.Value)
+                            );
                     }
                     break;
                 case QMAddEventMember<ITypeSymbol> addEvent:

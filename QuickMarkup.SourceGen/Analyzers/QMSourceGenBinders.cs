@@ -207,13 +207,30 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                     target = identifier.Identifier;
                 else
                     throw new InvalidOperationException($"Bind back to {property.Value?.GetType().Name ?? "<null>"} is not supported");
+                bool isDependencyProp;
+                string depName = "";
+                {
+                    var deProp = CodeGenTypeResolver.FindProperty(tagInfo.TagType, $"{property.Key}Property");
+                    if (deProp is null)
+                        isDependencyProp = false;
+                    else if (!deProp.IsStatic)
+                        isDependencyProp = false;
+                    else
+                    {
+                        isDependencyProp = deProp.Type.Name is "DependencyProperty";
+                        depName = $"{deProp.ContainingType.FullNameWithoutAnnotation()}.{deProp.Name}";
+                    }
+                }
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
                     property.Key,
                     Value(CodeGenTypeResolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
                     property.Operator is ParsedPropertyOperator.BindBack ?
                         BindingModes.TargetToSource :
-                        BindingModes.TwoWay
+                        BindingModes.TwoWay,
+                    isDependencyProp,
+                    depName,
+                    property.Key
                 ));
                 break;
             case ParsedPropertyOperator.None:
@@ -225,9 +242,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                         targetType,
                         property.Key,
                         Value(propSymbol.Type, "true"),
-                        property.Operator is ParsedPropertyOperator.BindBack ?
-                            BindingModes.SourceToTarget :
-                            BindingModes.TwoWay
+                        BindingModes.OneTime
                     ));
                 }
                 else

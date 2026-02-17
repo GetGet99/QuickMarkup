@@ -90,5 +90,18 @@ static class CodeSnippetsExtension
             }));
             """);
         }
+
+        public void AddDependencyPropertyBindBack(string target, string targetDependencyObject, string dependencyPropertyName, string valueExpression)
+        {
+            codeBuilder.AppendLine($$"""
+                {{valueExpression}} = {{target}};
+                {{targetDependencyObject}}.RegisterPropertyChangedCallback(
+                    {{dependencyPropertyName}},
+                    (_, _) => {
+                        {{valueExpression}} = {{target}};
+                    }
+                );
+                """);
+        }
     }
 }

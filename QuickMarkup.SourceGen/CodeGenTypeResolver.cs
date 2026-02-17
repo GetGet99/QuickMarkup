@@ -206,6 +206,17 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
                 }
             }
         }
+        if (type is not null)
+            foreach (ITypeSymbol? current in type.AllInterfaces)
+            {
+                foreach (var prop in current.GetMembers(method))
+                {
+                    if (prop is IMethodSymbol sym)
+                    {
+                        return sym;
+                    }
+                }
+            }
         return null;
     }
 }
