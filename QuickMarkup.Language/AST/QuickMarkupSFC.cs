@@ -1,5 +1,3 @@
-﻿using QuickMarkup.Language.Symbols;
-
 namespace QuickMarkup.AST;
 
 public record class AST;
@@ -16,8 +14,6 @@ public record class QuickMarkupSFC(string Usings, ListAST<RefDeclaration> Refs) 
                 Scirpt = scirpt;
                 break;
             case QuickMarkupParsedTag template:
-                if ((template.TagStart as QuickMarkupConstructor)?.TagName is not "root")
-                    throw new NotImplementedException();
                 Template = template;
                 break;
             default:

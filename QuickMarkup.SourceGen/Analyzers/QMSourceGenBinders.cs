@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -17,6 +17,8 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
     {
         if (tag.HasMismatchedEndTag)
             throw new InvalidOperationException($"Mismatched Ending tag: <{tag.TagStart.TagName}>...</{tag.EndTagName}>");
+        if (rootType is not null && tag.Name is not "root")
+            throw new InvalidOperationException($"Expected start tag to be: <root />, got <{tag.TagStart.TagName} />");
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
             throw new InvalidOperationException($"Unable to resolve type {type}");

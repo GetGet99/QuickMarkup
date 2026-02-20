@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\QuickMarkup.CodeGen\QuickMarkup.CodeGen.csproj" />
+    <ProjectReference Include="..\QuickMarkup.Syntax.Test\QuickMarkup.Syntax.Test.csproj" />
+  </ItemGroup>
+
 </Project>

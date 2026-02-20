@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Get.Lexer;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
@@ -7,14 +7,13 @@ using QuickMarkup.AST;
 using QuickMarkup.Parser;
 using QuickMarkup.SourceGen.Analyzers;
 using QuickMarkup.SourceGen.CodeGen;
-using System.Diagnostics;
 using System.Text;
 
 namespace QuickMarkup.SourceGen;
 
 [Generator]
 [AddAttributeConverter(typeof(QuickMarkupAttribute), ParametersAsString = "\"\"")]
-partial class QuickMarkupGenerator : AttributeBaseGenerator<QuickMarkupAttribute, QuickMarkupGenerator.QuickMarkupAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
+partial class QuickMarkupClassGenerator : AttributeBaseGenerator<QuickMarkupAttribute, QuickMarkupClassGenerator.QuickMarkupAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
 {
     protected override string? OnPointVisit(OnPointVisitArguments args)
     {
