@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -99,7 +99,7 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
         {
             foreach (var attr in current.GetAttributes())
             {
-                if (attr.AttributeClass?.FullName() is "global::Windows.UI.Xaml.Markup.ContentPropertyAttribute")
+                if (attr.AttributeClass?.FullName() is "global::Windows.UI.Xaml.Markup.ContentPropertyAttribute" or "global::Microsoft.UI.Xaml.Markup.ContentPropertyAttribute")
                 {
                     return attr;
                 }

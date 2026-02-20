@@ -17,7 +17,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
     {
         if (tag.HasMismatchedEndTag)
             throw new InvalidOperationException($"Mismatched Ending tag: <{tag.TagStart.TagName}>...</{tag.EndTagName}>");
-        if (rootType is not null && tag.Name is not "root")
+        if (rootType is not null && tag.TagStart.TagName is not "root")
             throw new InvalidOperationException($"Expected start tag to be: <root />, got <{tag.TagStart.TagName} />");
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
@@ -287,7 +287,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                 return Value(type, x.Code);
             case QuickMarkupIdentifier x:
                 if (type is null)
-                    throw new NotImplementedException("Cannot infer type for the enum member");
+                    throw new NotImplementedException($"Cannot infer type for the enum member {x.Identifier}");
                 return Value(type, $"{type.FullName()}.{x.Identifier}");
             case QuickMarkupQMs x:
                 return new QMNestedValuesSymbol<ITypeSymbol>(type, Bind(x.Value, tagInfo));

@@ -1,28 +1,27 @@
-﻿namespace QuickMarkup.Infra;
+namespace QuickMarkup.Infra;
 
 public class Reference<T>(T defaultValue, string name = "") : IReference
 {
-    T _value = defaultValue;
     public T Value
     {
         get
         {
             ReferenceTracker.NotifyRefernceRead(this);
             DebugPrintCalleeRead();
-            return _value;
+            return field;
         }
         set
         {
-            if (!EqualityComparer<T>.Default.Equals(_value, value))
+            if (!EqualityComparer<T>.Default.Equals(field, value))
             {
                 DebugPrintCalleeWrite();
-                var oldValue = _value;
-                _value = value;
+                var oldValue = field;
+                field = value;
                 ValueChanged?.Invoke(oldValue, value);
                 ValueChangedBase?.Invoke();
             }
         }
-    }
+    } = defaultValue;
     internal event Action<T, T>? ValueChanged;
     event Action? ValueChangedBase;
     event Action IReference.ValueChanged
