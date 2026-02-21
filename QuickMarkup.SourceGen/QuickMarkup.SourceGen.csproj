@@ -25,7 +25,7 @@
 		<Compile Include="..\Parser\Get.Lexer\**\*.cs" Link="Dependencies\Get.Lexer\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.Lexer\obj\**\*" />
 		<Compile Include="..\Parser\Get.LangSupport\**\*.cs" Link="Dependencies\Get.LangSupport\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.LangSupport\obj\**\*" />
 		<Compile Include="..\Parser\Get.PLShared\**\*.cs" Link="Dependencies\Get.PLShared\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.PLShared\obj\**\*" />
-		<Compile Include="..\QuickMarkup.Language\**\*.cs" Link="Dependencies\QuickMarkup.Language\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\QuickMarkup.Language\obj\**\*" />
+		<Compile Include="..\QuickMarkup.Language\**\*.cs" Link="Language\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\QuickMarkup.Language\obj\**\*" />
 		<Compile Include="..\QuickMarkup.Infra\**\*.cs" Link="Dependencies\QuickMarkup.Infra\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\QuickMarkup.Infra\obj\**\*" />
 	</ItemGroup>
 	<Import Project="..\Parser\Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems" Label="Shared" />

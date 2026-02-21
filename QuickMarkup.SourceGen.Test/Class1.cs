@@ -1,13 +1,14 @@
-﻿namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
-    <script>
+    <setup>
     Console.WriteLine("Test");
-    </script>
-    <template>
+    </setup>
+    <root>
         <Class1 A=/-A + 1-/ />
-    </template>
+        <Class1   />
+    </root>
     """)]
 public partial class Class1
 {

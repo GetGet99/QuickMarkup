@@ -1,7 +1,6 @@
-﻿using Get.Lexer;
+using Get.Lexer;
 using Get.PLShared;
 using QuickMarkup.AST;
-using QuickMarkup.CodeGen;
 using QuickMarkup.Parser;
 using System.Text;
 
@@ -138,7 +137,7 @@ namespace QuickMarkup.IntegrationTest
         }
         QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
         {
-            return new QuickMarkupParser().Parse(tokens);
+            return new QuickMarkupParser().Parse(tokens, out _);
         }
         QuickMarkupSFC Parse(string code)
         {

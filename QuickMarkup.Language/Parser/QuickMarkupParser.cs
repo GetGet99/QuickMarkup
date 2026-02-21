@@ -1,4 +1,4 @@
-﻿using Get.Parser;
+using Get.Parser;
 using Get.PLShared;
 using QuickMarkup.AST;
 using System.Data.Common;
@@ -39,6 +39,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ListAST<RefDeclaration>>]
         [Rule(EMPTYLIST)]
         [Rule(RefsDecl, AS, LIST, RefDecl, AS, VALUE, APPENDLIST)]
+        [Rule(RefsDecl, AS, VALUE, ERROR, IDENTITY)]
         RefsDecl,
         [Type<RefDeclaration>]
         [Rule(
@@ -114,6 +115,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ListAST<QuickMarkupValue>>]
         [Rule(QMValue, AS, VALUE, SINGLELIST)]
         [Rule(QMConstructorParametersInside, AS, LIST, Terminal.Comma, QMValue, AS, VALUE, APPENDLIST)]
+        [Rule(QMConstructorParametersInside, AS, VALUE, ERROR, IDENTITY)]
         QMConstructorParametersInside,
         // TAGSTART/TAGEND HELPER
         [Type<ITagStart>]
@@ -163,6 +165,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ListAST<QuickMarkupInlineMember>>]
         [Rule(InlineMember, AS, VALUE, SINGLELIST)]
         [Rule(InlineMembersInner, AS, LIST, InlineMember, AS, VALUE, APPENDLIST)]
+        [Rule(InlineMembersInner, AS, VALUE, ERROR, IDENTITY)]
         InlineMembersInner,
         [Type<ListAST<QuickMarkupInlineMember>>]
         [Rule(EMPTYLIST)]
@@ -171,6 +174,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ListAST<IQMNodeChild>>]
         [Rule(EMPTYLIST)]
         [Rule(QMChildren, AS, LIST, QMChild, AS, VALUE, APPENDLIST)]
+        [Rule(QMChildren, AS, VALUE, ERROR, IDENTITY)]
         QMChildren,
         [Type<ListAST<IQMNodeChild>>]
         [Rule(QMChild, AS, VALUE, SINGLELIST)]
@@ -262,25 +266,26 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             {B}
             """;
     }
-    public QuickMarkupSFC Parse(IEnumerable<IToken<Terminal>> inputTerminals)
+    public QuickMarkupSFC Parse(IEnumerable<IToken<Terminal>> inputTerminals, out List<ErrorTerminalValue> handledErrors)
     {
+        handledErrors = [];
         IEnumerable<ITerminalValue> TerminalValues()
         {
             foreach (var inputTerminal in inputTerminals)
             {
                 Console.WriteLine($"Reading Terminal: {inputTerminal.TokenType} ({inputTerminal.Start} - {inputTerminal.End})");
                 if (inputTerminal is IToken<Terminal, int> intTok)
-                    yield return CreateValue(inputTerminal.TokenType, intTok.Data);
+                    yield return CreateValue(inputTerminal.TokenType, intTok.Data, inputTerminal.Start, inputTerminal.End);
                 else if (inputTerminal is IToken<Terminal, double> doubleTok)
-                    yield return CreateValue(inputTerminal.TokenType, doubleTok.Data);
+                    yield return CreateValue(inputTerminal.TokenType, doubleTok.Data, inputTerminal.Start, inputTerminal.End);
                 else if (inputTerminal is IToken<Terminal, bool> boolTok)
-                    yield return CreateValue(inputTerminal.TokenType, boolTok.Data);
+                    yield return CreateValue(inputTerminal.TokenType, boolTok.Data, inputTerminal.Start, inputTerminal.End);
                 else if (inputTerminal is IToken<Terminal, string> strTok)
-                    yield return CreateValue(inputTerminal.TokenType, strTok.Data);
+                    yield return CreateValue(inputTerminal.TokenType, strTok.Data, inputTerminal.Start, inputTerminal.End);
                 else
-                    yield return CreateValue(inputTerminal.TokenType);
+                    yield return CreateValue(inputTerminal.TokenType, inputTerminal.Start, inputTerminal.End);
             }
         }
-        return Parse(TerminalValues(), debug: Debugger.IsAttached);
+        return Parse(TerminalValues(), debug: Debugger.IsAttached, handledErrors: handledErrors);
     }
 }

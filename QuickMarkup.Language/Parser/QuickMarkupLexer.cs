@@ -1,4 +1,4 @@
-﻿using Get.LangSupport;
+using Get.LangSupport;
 using Get.Lexer;
 using Get.PLShared;
 using Get.RegexMachine;
@@ -199,8 +199,13 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"[\*/]", ShouldReturnToken = false, State = (int)LexerStates.InsideBlockComment)]
         [Regex(@"\*/", nameof(HandleBlockCommentEnd), ShouldReturnToken = false, State = (int)LexerStates.InsideBlockComment)]
         Comment,
-        [Regex<string>(@"[^]+", nameof(Identity), State = (int)LexerStates.CatchAll, Order = (int)Order.CatchAll)]
-        CatchAll,
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.BeforeRoot, Order = (int)Order.CatchAll)]
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.CatchAll)]
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.InsideQMCloseTag, Order = (int)Order.CatchAll)]
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.InsideBlockComment, Order = (int)Order.CatchAll)]
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.InsideForeign, Order = (int)Order.CatchAll)]
+        [Regex<string>(@"[^]", nameof(Identity), State = (int)LexerStates.InsideLineComment, Order = (int)Order.CatchAll)]
+        UnexpectedCharacter,
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.BeforeRoot, Order = (int)Order.CatchAll)]
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.CatchAll)]
         [Regex(@"", nameof(CatchAllHandler), ShouldReturnToken = false, State = (int)LexerStates.InsideQMCloseTag, Order = (int)Order.CatchAll)]

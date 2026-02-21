@@ -4,6 +4,6 @@
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ActiveDebugProfile>Source Gen: United Sets</ActiveDebugProfile>
+    <ActiveDebugProfile>Source Gen - QuickMarkup.SourceGen.Test</ActiveDebugProfile>
   </PropertyGroup>
 </Project>

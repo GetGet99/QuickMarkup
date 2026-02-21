@@ -46,7 +46,7 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
     });
     QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
     {
-        return ParserPerThread.Value.Parse(tokens);
+        return ParserPerThread.Value.Parse(tokens, out _);
     }
     QuickMarkupSFC Parse(string code)
     {
