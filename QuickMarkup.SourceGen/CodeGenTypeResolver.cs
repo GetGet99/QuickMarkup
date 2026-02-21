@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace QuickMarkup.SourceGen;
 
-class CodeGenTypeResolver(Compilation compilation, string usings)
+class CodeGenTypeResolver(Compilation compilation, string usings, string @namespace)
 {
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName);
     public ITypeSymbol? String => field ??= Type<string>();
@@ -24,6 +24,7 @@ class CodeGenTypeResolver(Compilation compilation, string usings)
 
         var source = $$"""
             {{usings}}
+            namespace {{@namespace}}.QUICKMARKUP_TEMP_NAMESPACE;
 
             class QUICKMARKUP__TypeResolutionDummy2
             {

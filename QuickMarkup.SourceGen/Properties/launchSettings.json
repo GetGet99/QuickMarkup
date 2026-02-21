@@ -4,14 +4,6 @@
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\QuickMarkup.SourceGen.Test\\QuickMarkup.SourceGen.Test.csproj"
     },
-    "Profile 1": {
-      "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\..\\PhotoToysV2\\PhotoToysV2.csproj"
-    },
-    "Profile 2": {
-      "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\..\\ShortyMath\\ShortyMath.csproj"
-    },
     "Source Gen: United Sets": {
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\..\\UnitedSets\\UnitedSets.csproj"

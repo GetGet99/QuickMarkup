@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Lines;
+using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Lines;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,33 +9,33 @@ interface IType : IMember
 {
 
 }
-record struct FullType(string TypeWithNamespace, bool Nullable = false) : ISyntax {
+readonly record struct FullType(string TypeWithNamespace, bool Nullable = false) : ISyntax {
     static FullType Void = new("void");
     public FullType(ITypeSymbol typeSymbol) : this(typeSymbol.FullName()) { }
 
     public string StringRepresentaion => ToString();
 
     public override string ToString() => TypeWithNamespace;
-    public static FullType Of<T>(bool Nullable = false)
+    public static FullType Of<T>(bool Nullable = false, bool global = true)
     {
-        return new FullType(Type2String(typeof(T)), Nullable);
+        return new FullType(Type2String(typeof(T), global), Nullable);
     }
-    static string Type2String(System.Type type)
+    static string Type2String(System.Type type, bool global)
     {
 
         if (type.IsGenericType)
         {
-            var name = $"global::{type.FullName}";
+            var name = global ? $"global::{type.FullName}" : type.FullName;
             int typeIndex = name.IndexOf('`');
             string baseType = name[..typeIndex];
             var typeArguments = type.GetGenericArguments();
 
-            string arguments = string.Join(", ", typeArguments.Select(Type2String));
+            string arguments = string.Join(", ", typeArguments.Select(x => Type2String(x, global)));
             return $"{baseType}<{arguments}>";
         }
         else
         {
-            return $"global::{type.FullName}";
+            return global ? $"global::{type.FullName}" : type.FullName;
         }
     }
 }

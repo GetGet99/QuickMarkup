@@ -1,20 +1,20 @@
-﻿using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
-using System.Diagnostics;
 using System.Text;
-using System.Xml.Linq;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
 class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder, string nameHint)
 {
-    public void CGenWrite(IList<RefDeclaration> refs)
+    public void CGenWrite(IList<RefDeclaration> refs, CancellationToken tok)
     {
         foreach (var @ref in refs)
+        {
             CGenWrite(@ref);
+            tok.ThrowIfCancellationRequested();
+        }
     }
 
     public void CGenWrite(RefDeclaration refDeclaration)
