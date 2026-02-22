@@ -72,7 +72,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         ParseErrorUnexpectedInput,
         ParseErrorUnexpectedEnding,
         BindErrorGeneral,
-        BindErrorChildrenTooMany
+        BindErrorChildrenTooMany,
+        TagCloseMismatchedError
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -102,6 +103,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "QM1004",
         "QuickMarkup typing error too many children",
         "Too many children were provided, <{0}> expects {1}",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor TagCloseMismatchedError = new(
+        "QM1005",
+        "QuickMarkup close tag mismatched",
+        "Tag open and close mismatched: <{0}>...</{1}>",
         "QuickMarkup",
         DiagnosticSeverity.Error,
         true
@@ -157,6 +166,24 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     ParseErrorUnexpectedEnding,
                     locationProvider.Fallback,
                     $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                ));
+                goto exit;
+            }
+            catch (QuickMarkupTagMismatchException e)
+            {
+                var startTagName = e.FaultedTag.TagStart.TagName;
+                var endTagName = e.FaultedTag.EndTagName;
+                genContext.ReportDiagnostic(Diagnostic.Create(
+                    TagCloseMismatchedError,
+                    locationProvider.GetLocation(e.FaultedTag.TagStart.TagIdentifierAST),
+                    startTagName,
+                    endTagName
+                ));
+                genContext.ReportDiagnostic(Diagnostic.Create(
+                    TagCloseMismatchedError,
+                    locationProvider.GetLocation(e.FaultedTag.EndTagName),
+                    startTagName,
+                    endTagName
                 ));
                 goto exit;
             }
@@ -284,6 +311,8 @@ exit:
             var endPos = textLines.GetPosition(new LinePosition(startLine + end.Line, startIndent + end.Char + 1));
             return Location.Create(syntaxTree!, new TextSpan(startPos, endPos - startPos));
         }
+        public Location GetLocation(AST.AST? ast)
+            => ast is null ? Fallback : GetLocation(ast.Start, ast.End);
     }
     readonly record struct SourceGenContext(
         string Namespace,

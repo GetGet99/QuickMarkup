@@ -83,18 +83,20 @@ public record class QuickMarkupParsedIfNode(
     ListAST<IQMNodeChild>? BodyWhenFalse
 ) : AST, IQMNodeChild;
 
-public record class QuickMarkupConstructor(string TagName, ListAST<QuickMarkupValue> Parameters) : AST, ITagStart
+public record class QuickMarkupConstructor(PositionedIdentifier TagIdentifier, ListAST<QuickMarkupValue> Parameters) : AST, ITagStart
 {
-    public QuickMarkupConstructor(string TagName) : this(TagName, []) { }
-
+    public QuickMarkupConstructor(PositionedIdentifier TagIdentifier) : this(TagIdentifier, []) { }
+    public string TagName => TagIdentifier.Name;
+    public AST TagIdentifierAST => TagIdentifier;
     public bool DoesMatch(string EndTag)
     {
-        return EndTag == TagName;
+        return EndTag == TagIdentifier.Name;
     }
 }
 
 public record class QuickMarkupPropertyTagStart(string TagName) : AST, ITagStart
 {
+    public AST TagIdentifierAST => this;
     public bool DoesMatch(string EndTag)
     {
         return EndTag == $".{TagName}";
@@ -107,6 +109,7 @@ public record class QuickMarkupScript(string RawScript) : AST, ISFCTag;
 public interface IQMNodeChild;
 public interface ITagStart
 {
+    public AST TagIdentifierAST { get; }
     public string TagName { get; }
     bool DoesMatch(string EndTag);
 }

@@ -1,7 +1,6 @@
 using Get.Parser;
 using Get.PLShared;
 using QuickMarkup.AST;
-using System.Data.Common;
 using System.Diagnostics;
 using static QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
 using NonTerminal = QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
@@ -94,6 +93,9 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             WITHPARAM, nameof(QuickMarkupParsedTag.IsSelfClosing), false,
             typeof(QuickMarkupParsedTag)
         )]
+        ParsedTagBeforeValidate,
+        [Type<QuickMarkupParsedTag>]
+        [Rule(ParsedTagBeforeValidate, AS, "tag", nameof(ValidateTag))]
         ParsedTag,
         [Type<QuickMarkupParsedTag>]
         [Rule(
@@ -105,8 +107,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         NamedTag,
         // CONSTRUCTOR
         [Type<QuickMarkupConstructor>]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TagName), typeof(QuickMarkupConstructor))]
-        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupConstructor.TagName), Terminal.OpenBracket, QMConstructorParameters, AS, nameof(QuickMarkupConstructor.Parameters), Terminal.CloseBracket, typeof(QuickMarkupConstructor))]
+        [Rule(QMPositionedIdentifier, AS, nameof(QuickMarkupConstructor.TagIdentifier), typeof(QuickMarkupConstructor))]
+        [Rule(QMPositionedIdentifier, AS, nameof(QuickMarkupConstructor.TagIdentifier), Terminal.OpenBracket, QMConstructorParameters, AS, nameof(QuickMarkupConstructor.Parameters), Terminal.CloseBracket, typeof(QuickMarkupConstructor))]
         QMConstructor,
         [Type<ListAST<QuickMarkupValue>>]
         [Rule(EMPTYLIST)]
@@ -262,6 +264,14 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         => tag with { Name = name };
     static PositionedIdentifier AddDot(string name)
         => new($".{name}");
+    static QuickMarkupParsedTag ValidateTag(QuickMarkupParsedTag tag)
+    {
+        if (tag.HasMismatchedEndTag)
+        {
+            throw new QuickMarkupTagMismatchException(tag);
+        }
+        return tag;
+    }
     static string CombineUsings(string A, string B)
     {
         return $"""
@@ -291,4 +301,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         }
         return Parse(TerminalValues(), debug: Debugger.IsAttached, handledErrors: handledErrors);
     }
+}
+class QuickMarkupTagMismatchException(QuickMarkupParsedTag tag) : Exception
+{
+    public QuickMarkupParsedTag FaultedTag { get; } = tag;
 }

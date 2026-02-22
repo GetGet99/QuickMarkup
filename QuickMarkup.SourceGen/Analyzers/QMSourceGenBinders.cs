@@ -52,7 +52,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
                 tagInfo
             ));
         }
-        return new(constructor.TagName, parameters, tagInfo.TagType is not null);
+        return new(constructor.TagIdentifier.Name, parameters, tagInfo.TagType is not null);
     }
     List<IQMMemberSymbol> Bind(ListAST<IQMNodeChild>? children, QMBinderTagInfo tagInfo)
     {

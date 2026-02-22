@@ -7,6 +7,10 @@ namespace QuickMarkup.SourceGen.Test;
     </setup>
     <root>
         <Class1 A=`A + 1` />
+        //<Class1>
+        //    <Class2>
+        //    <Class3></Class4>
+        //</Class1>
     </root>
     """)]
 public partial class Class1
