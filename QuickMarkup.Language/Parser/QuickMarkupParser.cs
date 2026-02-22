@@ -122,8 +122,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Dot, Terminal.Identifier, AS, nameof(QuickMarkupPropertyTagStart.TagName), typeof(QuickMarkupPropertyTagStart))]
         [Rule(QMConstructor, AS, VALUE, IDENTITY)]
         ParsedTagStart,
-        [Type<string>]
-        [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
+        [Type<PositionedIdentifier>]
+        [Rule(QMPositionedIdentifier, AS, VALUE, IDENTITY)]
         [Rule(Terminal.Dot, Terminal.Identifier, AS, "name", nameof(AddDot))]
         ParsedTagEnd,
         // PROPERTIES
@@ -210,6 +210,9 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         ParsedForNode,
         ParsedIfNode,
+        [Type<PositionedIdentifier>]
+        [Rule(Terminal.Identifier, AS, nameof(PositionedIdentifier.Name), typeof(PositionedIdentifier))]
+        QMPositionedIdentifier,
         [Type<QuickMarkupValue>]
         [Rule(Terminal.Integer, AS, nameof(QuickMarkupInt32.Value), typeof(QuickMarkupInt32))]
         [Rule(Terminal.Double, AS, nameof(QuickMarkupDouble.Value), typeof(QuickMarkupDouble))]
@@ -233,13 +236,13 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(QMRange, AS, VALUE, IDENTITY)]
         QMIterable,
         [Type<QuickMarkupRange>]
-        [Rule(Terminal.Integer, AS, nameof(QuickMarkupRange.Start),
+        [Rule(Terminal.Integer, AS, nameof(QuickMarkupRange.RangeStart),
               Terminal.Range,
-              Terminal.Integer, AS, nameof(QuickMarkupRange.End),
+              Terminal.Integer, AS, nameof(QuickMarkupRange.RangeEnd),
               typeof(QuickMarkupRange))]
         [Rule(Terminal.Range,
-              Terminal.Integer, AS, nameof(QuickMarkupRange.End),
-              WITHPARAM, nameof(QuickMarkupRange.Start), 0,
+              Terminal.Integer, AS, nameof(QuickMarkupRange.RangeEnd),
+              WITHPARAM, nameof(QuickMarkupRange.RangeStart), 0,
               typeof(QuickMarkupRange))]
         QMRange,
         // TYPES
@@ -257,8 +260,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
     }
     static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
         => tag with { Name = name };
-    static string AddDot(string name)
-        => $".{name}";
+    static PositionedIdentifier AddDot(string name)
+        => new($".{name}");
     static string CombineUsings(string A, string B)
     {
         return $"""

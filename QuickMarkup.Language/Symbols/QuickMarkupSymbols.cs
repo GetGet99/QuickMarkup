@@ -1,4 +1,4 @@
-﻿namespace QuickMarkup.Language.Symbols;
+namespace QuickMarkup.Language.Symbols;
 
 public interface IQMMemberSymbol;
 public interface IQMNodeChildSymbol;

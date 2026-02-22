@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
+using QuickMarkup.SourceGen.Analyzers;
 
 namespace QuickMarkup.SourceGen;
 
@@ -69,11 +70,13 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         ParseErrorUnexpectedInput,
-        ParseErrorUnexpectedEnding
+        ParseErrorUnexpectedEnding,
+        BindErrorGeneral,
+        BindErrorChildrenTooMany
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
-        "QuickMakrup parse error due to unexpected token",
+        "QuickMarkup parse error due to unexpected token",
         "Unexpected {0}",
         "QuickMarkup",
         DiagnosticSeverity.Error,
@@ -81,8 +84,24 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedEnding = new(
         "QM1002",
-        "QuickMakrup parse error due to unexpected ending",
+        "QuickMarkup parse error due to unexpected ending",
         "Expect {0} after the last parameter",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorGeneral = new(
+        "QM1003",
+        "QuickMarkup general typing error",
+        "{0}",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorChildrenTooMany = new(
+        "QM1004",
+        "QuickMarkup typing error too many children",
+        "Too many children were provided, <{0}> expects {1}",
         "QuickMarkup",
         DiagnosticSeverity.Error,
         true
@@ -158,6 +177,49 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
                     ));
             }
+            if (qm.Template is not null)
+            {
+                var binder = new QMSourceGenBinders(
+                    new(
+                        compilation,
+                        qm.Usings,
+                        typeSym.ContainingNamespace.ToString()
+                    ),
+                    failFast: false
+                );
+                try
+                {
+                    binder.Bind(qm.Template, typeSym);
+                }
+                catch (Exception e)
+                {
+                    genContext.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorGeneral,
+                        locationProvider.Fallback,
+                        e.Message
+                    ));
+                }
+                foreach (var error in binder.Errors)
+                {
+                    if (error is QMBinderChildrenTooMany childrenTooMany)
+                    {
+                        genContext.ReportDiagnostic(Diagnostic.Create(
+                            BindErrorChildrenTooMany,
+                            locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                            childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
+                            childrenTooMany.Expecting
+                        ));
+                    }
+                    else
+                    {
+                        genContext.ReportDiagnostic(Diagnostic.Create(
+                            BindErrorGeneral,
+                            locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                            error.ToString()
+                        ));
+                    }
+                }
+            }
 exit:
             ;
         }, SyntaxKind.ClassDeclaration);
@@ -219,7 +281,7 @@ exit:
             if (!ok)
                 return fallback;
             var startPos = textLines.GetPosition(new LinePosition(startLine + start.Line, startIndent + start.Char));
-            var endPos = textLines.GetPosition(new LinePosition(startLine + end.Line, startIndent + end.Char));
+            var endPos = textLines.GetPosition(new LinePosition(startLine + end.Line, startIndent + end.Char + 1));
             return Location.Create(syntaxTree!, new TextSpan(startPos, endPos - startPos));
         }
     }

@@ -41,8 +41,14 @@ class CodeGenTypeResolver(Compilation compilation, string usings, string @namesp
             .OfType<FieldDeclarationSyntax>()
             .Single();
 
-        return Cache[typeName] = model.GetTypeInfo(field.Declaration.Type)
+        var result = model.GetTypeInfo(field.Declaration.Type)
             .Type as INamedTypeSymbol;
+        if (result is IErrorTypeSymbol)
+        {
+            result = null;
+        }
+        Cache[typeName] = result;
+        return result;
     }
 
     public bool TryGetContentProperty(ITypeSymbol? symbol, [MaybeNullWhen(false)] out IPropertySymbol propertySymbol, out ChildrenModes childrenMode)

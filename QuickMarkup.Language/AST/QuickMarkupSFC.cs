@@ -1,7 +1,13 @@
+using Get.Parser;
+using Get.PLShared;
+
 namespace QuickMarkup.AST;
 
-public record class AST;
-
+public record class AST : ISpanSetter
+{
+    public Position Start { get; set; }
+    public Position End { get; set; }
+}
 public record class QuickMarkupSFC(string Usings, ListAST<RefDeclaration> Refs) : AST
 {
     public QuickMarkupScript? Scirpt { get; set; } = null;
@@ -26,14 +32,18 @@ public record class QuickMarkupParsedTag(
     ITagStart TagStart,
     ListAST<QuickMarkupInlineMember> InlineMembers,
     ListAST<IQMNodeChild>? Children,
-    string? EndTagName,
+    PositionedIdentifier? EndTagName,
     bool IsSelfClosing,
     string? Name = null
 ) : QuickMarkupValue, ISFCTag
 {
-    public bool HasMismatchedEndTag => !(IsSelfClosing || (EndTagName is not null && TagStart.DoesMatch(EndTagName)));
+    public bool HasMismatchedEndTag => !(IsSelfClosing || (EndTagName is not null && TagStart.DoesMatch(EndTagName.Name)));
 }
 
+public record class PositionedIdentifier(string Name) : AST
+{
+    public override string ToString() => Name;
+}
 public record class QuickMarkupInlineMember : AST;
 public record class QuickMarkupParsedProperty(
     string Key,
@@ -73,7 +83,7 @@ public record class QuickMarkupParsedIfNode(
     ListAST<IQMNodeChild>? BodyWhenFalse
 ) : AST, IQMNodeChild;
 
-public record class QuickMarkupConstructor(string TagName, ListAST<QuickMarkupValue> Parameters) : ITagStart
+public record class QuickMarkupConstructor(string TagName, ListAST<QuickMarkupValue> Parameters) : AST, ITagStart
 {
     public QuickMarkupConstructor(string TagName) : this(TagName, []) { }
 
@@ -83,7 +93,7 @@ public record class QuickMarkupConstructor(string TagName, ListAST<QuickMarkupVa
     }
 }
 
-public record class QuickMarkupPropertyTagStart(string TagName) : ITagStart
+public record class QuickMarkupPropertyTagStart(string TagName) : AST, ITagStart
 {
     public bool DoesMatch(string EndTag)
     {
@@ -102,14 +112,14 @@ public interface ITagStart
 }
 
 
-public abstract record class QuickMarkupForNodeListExpression;
-public record class QuickMarkupForNodeListRangeExpression(int Start, int End) : QuickMarkupForNodeListExpression;
+public abstract record class QuickMarkupForNodeListExpression : AST;
+public record class QuickMarkupForNodeListRangeExpression(int RangeStart, int RangeEnd) : QuickMarkupForNodeListExpression;
 public record class QuickMarkupForNodeListForeignExpression(string ForeignAsString) : QuickMarkupForNodeListExpression;
 public record class TypeDeclaration(string Type, bool IsTypeNullable = false);
 public record class RefDeclaration(TypeDeclaration Type, string Name, QuickMarkupValue? DefaultValue, bool IsPrivate, bool IsComputedDeclaration);
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
-public record class QuickMarkupRange(int Start, int End) : QuickMarkupValue();
+public record class QuickMarkupRange(int RangeStart, int RangeEnd) : QuickMarkupValue();
 public record class QuickMarkupInt32(int Value) : QuickMarkupValue();
 public record class QuickMarkupDouble(double Value) : QuickMarkupValue();
 public record class QuickMarkupBoolean(bool Value) : QuickMarkupValue();

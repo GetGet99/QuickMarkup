@@ -6,8 +6,7 @@ namespace QuickMarkup.SourceGen.Test;
     Console.WriteLine("Test");
     </setup>
     <root>
-        <Class1 A=/-A + 1-/ />
-        <Class1   />
+        <Class1 A=`A + 1` />
     </root>
     """)]
 public partial class Class1

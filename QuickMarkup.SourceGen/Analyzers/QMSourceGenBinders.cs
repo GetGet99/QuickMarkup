@@ -8,22 +8,22 @@ using System.Xml.Linq;
 
 namespace QuickMarkup.SourceGen.Analyzers;
 
-class QMSourceGenBinders(CodeGenTypeResolver resolver)
+record class QMBinderTagInfo(ITypeSymbol? TagType, string TagName, string? ChildrenProperty, ITypeSymbol? ChildrenType, ChildrenModes ChildrenMode);
+partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = true)
 {
-    record class TagInfo(ITypeSymbol? TagType, string? ChildrenProperty, ITypeSymbol? ChildrenType, ChildrenModes ChildrenMode);
-    public QMNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedTag tag, ITypeSymbol rootType) => BindPrivate(tag, rootType);
-    QMNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedTag tag) => BindPrivate(tag, null);
-    QMNodeSymbol<ITypeSymbol> BindPrivate(QuickMarkupParsedTag tag, ITypeSymbol? rootType)
+    public QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag, ITypeSymbol rootType) => BindPrivate(tag, rootType);
+    QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag) => BindPrivate(tag, null);
+    QMNodeSymbol<ITypeSymbol?> BindPrivate(QuickMarkupParsedTag tag, ITypeSymbol? rootType)
     {
         if (tag.HasMismatchedEndTag)
-            throw new InvalidOperationException($"Mismatched Ending tag: <{tag.TagStart.TagName}>...</{tag.EndTagName}>");
+            ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
         if (rootType is not null && tag.TagStart.TagName is not "root")
-            throw new InvalidOperationException($"Expected start tag to be: <root />, got <{tag.TagStart.TagName} />");
+            ErrorTagUnexpected(tag.TagStart, "root");
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
-            throw new InvalidOperationException($"Unable to resolve type {type}");
+            ErrorUnknownType(tag.TagStart);
         resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
-        var tagInfo = new TagInfo(type, propSymbol?.Name, propSymbol?.Type, childrenMode);
+        var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, propSymbol?.Type, childrenMode);
 
 
         var members = new List<IQMMemberSymbol>();
@@ -38,7 +38,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             tag.Name
         );
     }
-    QMConstructor Bind(QuickMarkupConstructor constructor, TagInfo tagInfo)
+    QMConstructor Bind(QuickMarkupConstructor constructor, QMBinderTagInfo tagInfo)
     {
         var parameters = new List<IQMValueSymbol>(capacity: constructor.Parameters.Count);
         var objectConstructor = (tagInfo.TagType as INamedTypeSymbol)?.Constructors.FirstOrDefault(
@@ -54,13 +54,13 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
         }
         return new(constructor.TagName, parameters, tagInfo.TagType is not null);
     }
-    List<IQMMemberSymbol> Bind(ListAST<IQMNodeChild>? children, TagInfo tagInfo)
+    List<IQMMemberSymbol> Bind(ListAST<IQMNodeChild>? children, QMBinderTagInfo tagInfo)
     {
         List<IQMMemberSymbol> members = [];
         Bind(children, tagInfo, members);
         return members;
     }
-    void Bind(ListAST<IQMNodeChild>? children, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    void Bind(ListAST<IQMNodeChild>? children, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         var childrenMode = tagInfo.ChildrenMode;
         if (children is null) return;
@@ -72,7 +72,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                     if (tag.TagStart is QuickMarkupPropertyTagStart tagStart)
                     {
                         if (tag.HasMismatchedEndTag)
-                            throw new InvalidOperationException($"Mismatched Ending tag: <.{tag.TagStart.TagName}>...</{tag.EndTagName}>");
+                            ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
                         if (tag.InlineMembers.Count > 0)
                             throw new NotImplementedException("Not supported now");
                         if (tag.Children is { } tagChildren)
@@ -84,9 +84,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                         break;
                     }
                     if (childrenMode is ChildrenModes.None)
-                    {
-                        throw new InvalidOperationException($"Node <{tagInfo.TagType}> contains too many children");
-                    }
+                        ErrorChildrenTooMany(tag, tagInfo);
                     if (childrenMode is ChildrenModes.Assignment)
                     {
                         targetCollection.Add(new QMAssignChildMember(tagInfo.ChildrenProperty!, Bind(tag)));
@@ -99,9 +97,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                     break;
                 case QuickMarkupValue val:
                     if (childrenMode is ChildrenModes.None)
-                    {
-                        throw new InvalidOperationException($"Node <{tagInfo.TagType}> contains too many children");
-                    }
+                        ErrorChildrenTooMany(val, tagInfo);
                     if (childrenMode is ChildrenModes.Assignment)
                     {
                         targetCollection.Add(new QMAssignChildMember(tagInfo.ChildrenProperty!, Bind(val, tagInfo.ChildrenType, tagInfo)));
@@ -114,16 +110,14 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                     break;
                 case QuickMarkupParsedForNode forNode:
                     if (childrenMode is ChildrenModes.None or ChildrenModes.Assignment)
-                    {
-                        throw new InvalidOperationException($"Node <{tagInfo.TagType}> contains too many children");
-                    }
+                        ErrorChildrenTooMany(forNode, tagInfo);
                     targetCollection.Add(new QMAddChildMember($"{tagInfo.ChildrenProperty!}.Add", Bind(forNode, tagInfo)));
                     break;
             }
         }
     }
 
-    QMForNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedForNode forNode, TagInfo tagInfo)
+    QMForNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedForNode forNode, QMBinderTagInfo tagInfo)
     {
         var type = forNode.VarType is null ? null : resolver.GetTypeSymbol(forNode.VarType.Type);
         return new(type?.WithNullableAnnotation(
@@ -132,7 +126,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                 NullableAnnotation.NotAnnotated
             ), forNode.VarName, Bind(forNode.Iterable, type, tagInfo), Bind(forNode.Body, tagInfo));
     }
-    void Bind(ListAST<QuickMarkupInlineMember> properties, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    void Bind(ListAST<QuickMarkupInlineMember> properties, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         if (properties is null) return;
         foreach (var property in properties)
@@ -140,7 +134,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             Bind(property, tagInfo, targetCollection);
         }
     }
-    void Bind(QuickMarkupInlineMember inlineMember, TagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    void Bind(QuickMarkupInlineMember inlineMember, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         if (inlineMember is QuickMarkupCallback cb)
         {
@@ -179,6 +173,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                         throw new InvalidOperationException("Name is null");
                     Bind(listAssign.Value, new(
                         targetType,
+                        name,
                         name,
                         null, // element type
                         ChildrenModes.Add
@@ -257,7 +252,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
                 throw new NotImplementedException();
         }
     }
-    IQMValueSymbol Bind(QuickMarkupValue? value, ITypeSymbol? type, TagInfo tagInfo)
+    IQMValueSymbol Bind(QuickMarkupValue? value, ITypeSymbol? type, QMBinderTagInfo tagInfo)
     {
         switch (value)
         {
@@ -294,7 +289,7 @@ class QMSourceGenBinders(CodeGenTypeResolver resolver)
             case QuickMarkupParsedTag x:
                 return Bind(x);
             case QuickMarkupRange x:
-                return new QMRangeSymbol(x.Start, x.End);
+                return new QMRangeSymbol(x.RangeStart, x.RangeEnd);
             default:
                 throw new NotImplementedException();
         }
