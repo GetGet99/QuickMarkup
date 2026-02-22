@@ -15,7 +15,7 @@ namespace QuickMarkup.SourceGen;
 
 [AddAttributeConverter(typeof(QuickMarkupAttribute), ParametersAsString = "\"\"")]
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-partial class QuickMarkupAnalyzers : DiagnosticAnalyzer
+partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
 {
     IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
     {
@@ -56,7 +56,7 @@ partial class QuickMarkupAnalyzers : DiagnosticAnalyzer
     }
 
     static readonly string FullAttributeName;
-    static QuickMarkupAnalyzers()
+    static QuickMarkupAnalyzer()
     {
         FullAttributeName = typeof(QuickMarkupAttribute).FullName;
     }
