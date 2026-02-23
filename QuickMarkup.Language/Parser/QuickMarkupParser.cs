@@ -299,7 +299,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
                     yield return CreateValue(inputTerminal.TokenType, inputTerminal.Start, inputTerminal.End);
             }
         }
-        return Parse(TerminalValues(), debug: Debugger.IsAttached, handledErrors: handledErrors);
+        return Parse(TerminalValues(), debug: Debugger.IsAttached, handledErrors: handledErrors, skipErrorHandling: false);
     }
 }
 class QuickMarkupTagMismatchException(QuickMarkupParsedTag tag) : Exception

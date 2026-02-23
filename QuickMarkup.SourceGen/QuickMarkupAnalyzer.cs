@@ -266,9 +266,11 @@ exit:
             fallback = syn is null ? typeSym.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span);
             if (syn is null) return;
             if (syntaxTree is null) return;
-            var attrSyntax = syn?.GetSyntax(ct) as AttributeSyntax;
+            if (syn.GetSyntax(ct) is not AttributeSyntax attrSyntax) return;
+            // move fallback to just the attribute name
+            fallback = Location.Create(syn.SyntaxTree, attrSyntax.Name.Span);
             // TO USE
-            if (attrSyntax?.ArgumentList?.Arguments[0].Expression is not Microsoft.CodeAnalysis.CSharp.Syntax.LiteralExpressionSyntax strLitSyntax) return;
+            if (attrSyntax.ArgumentList?.Arguments[0].Expression is not Microsoft.CodeAnalysis.CSharp.Syntax.LiteralExpressionSyntax strLitSyntax) return;
             var strLitSpan = strLitSyntax.Span;
             var text = syn!.SyntaxTree.GetText(ct);
             textLines = text.Lines;

@@ -1,10 +1,13 @@
 using System.Text;
 using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Attributes;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
 using QuickMarkup.SourceGen.Analyzers;
@@ -16,6 +19,22 @@ namespace QuickMarkup.SourceGen;
 [Generator]
 partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
 {
+    static readonly DiagnosticDescriptor compileError = new(
+        "QMC001",
+        "Compilation error in generated code",
+        "One more errors occured on the generated source file\n{0}",
+        "QuickMarkupSourceCompiler",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+    static readonly DiagnosticDescriptor compileWarning = new(
+        "QMC002",
+        "Compilation warning in generated code",
+        "One more warnings occured on the generated source file\n{0}",
+        "QuickMarkupSourceCompiler",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
     IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
     {
         // retry as it is flaky
@@ -73,13 +92,26 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
             FullAttributeName,
             static (syntaxNode, cancelationToken)
                 => syntaxNode is TypeDeclarationSyntax,
-            static (ctx, cancel) =>
+            static (ctx, ct) =>
             {
                 var type = (ITypeSymbol)ctx.TargetSymbol;
                 var name = type.ToDisplayString(withoutNamespace);
+                var syn = ctx.Attributes[0].ApplicationSyntaxReference;
+                var syntaxTree = syn?.SyntaxTree ?? type.Locations[0].SourceTree;
+                var attributeLocation = syn is null ? type.Locations[0].SourceSpan : syn.Span;
+                if (syn?.GetSyntax(ct) is AttributeSyntax attrSyntax)
+                {
+                    // move fallback to just the attribute name
+                    attributeLocation = attrSyntax.Name.Span;
+                }
+                var linespan = syn?.SyntaxTree.GetLineSpan(attributeLocation, ct) ?? default;
+
                 return (ctx: new SourceGenContext(
                     type.ContainingNamespace.ToString(),
-                    name
+                    name,
+                    syntaxTree?.FilePath,
+                    attributeLocation,
+                    new(linespan.StartLinePosition, linespan.EndLinePosition)
                 ), type: new FullType(type).TypeWithNamespace, markup: ctx.Attributes[0].ConstructorArguments[0].Value as string);
             }
         );
@@ -178,7 +210,8 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
                             cgen.CGenWrite(output, "this");
                             ct.ThrowIfCancellationRequested();
                         }
-                    } catch (OperationCanceledException)
+                    }
+                    catch (OperationCanceledException)
                     {
                         throw;
                     }
@@ -245,6 +278,70 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
                 
                 """);
             });
+            /*
+            // ERRORS from source file:
+            var compilationErrors = sources.Combine(context.CompilationProvider).Select((value, ct) =>
+            {
+                var ((ctx, usings, code, _), compilation) = value;
+                var parseOptions = (CSharpParseOptions)compilation.SyntaxTrees.First().Options;
+                var tree = CSharpSyntaxTree.ParseText($$"""
+                #nullable enable
+                {{usings}}
+
+                namespace {{ctx.Namespace}};
+                
+                partial class {{ctx.TypeNameWithoutNamespace}} {
+                    {{code}}
+                }
+                
+                """, parseOptions);
+                var newCompilation = compilation.AddSyntaxTrees(tree);
+                var model = newCompilation.GetSemanticModel(tree);
+                var diagnostics = model.GetDiagnostics(cancellationToken: ct);
+                string error = "";
+                string warning = "";
+                foreach (var diagnostic in diagnostics)
+                {
+                    if (diagnostic.IsSuppressed) continue;
+                    if (diagnostic.Severity is not (DiagnosticSeverity.Error or DiagnosticSeverity.Warning))
+                        continue;
+                    var source = GetExpandedLineText(diagnostic.Location)?.Trim();
+                    if (diagnostic.Severity is DiagnosticSeverity.Error)
+                    {
+                        if (source is not null)
+                            error += $"\n{source}";
+                        error += $"\nError {diagnostic.Id}: {diagnostic.GetMessage()}";
+                    }
+                    if (!diagnostic.IsSuppressed && diagnostic.Severity is DiagnosticSeverity.Warning)
+                    {
+                        if (source is not null)
+                            warning += $"\n{source}";
+                        warning += $"\nWarning {diagnostic.Id}: {diagnostic.GetMessage()}";
+                    }
+                }
+                return (ctx, error, warning);
+            });
+
+            context.RegisterSourceOutput(compilationErrors, (sourceProductionContext, value) =>
+            {
+                var (ctx, error, warning) = value;
+
+                if (ctx.FileName is null) return;
+
+                if (!string.IsNullOrWhiteSpace(error))
+                    sourceProductionContext.ReportDiagnostic(Diagnostic.Create(
+                        compileError,
+                        Location.Create(ctx.FileName, ctx.AttributeLocation, ctx.AttributeLineSpan),
+                        error
+                    ));
+                if (!string.IsNullOrWhiteSpace(warning))
+                    sourceProductionContext.ReportDiagnostic(Diagnostic.Create(
+                        compileWarning,
+                        Location.Create(ctx.FileName, ctx.AttributeLocation, ctx.AttributeLineSpan),
+                        warning
+                    ));
+            });
+            */
         }
 
         // REFS
@@ -316,6 +413,34 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
     }
     readonly record struct SourceGenContext(
         string Namespace,
-        string TypeNameWithoutNamespace
+        string TypeNameWithoutNamespace,
+        string? FileName,
+        TextSpan AttributeLocation,
+        LinePositionSpan AttributeLineSpan
     );
+    public static string? GetExpandedLineText(Location location)
+    {
+        if (location == null)
+            throw new ArgumentNullException(nameof(location));
+
+        if (!location.IsInSource)
+            return null; // or throw, depending on your use case
+
+        var sourceTree = location.SourceTree;
+        var sourceText = sourceTree.GetText();
+
+        var span = location.SourceSpan;
+
+        // Get line numbers
+        var startLine = sourceText.Lines.GetLineFromPosition(span.Start);
+        var endLine = sourceText.Lines.GetLineFromPosition(span.End);
+
+        // Expand to full lines (including line breaks)
+        var expandedStart = startLine.Start;
+        var expandedEnd = endLine.EndIncludingLineBreak;
+
+        var expandedSpan = TextSpan.FromBounds(expandedStart, expandedEnd);
+
+        return sourceText.ToString(expandedSpan);
+    }
 }
