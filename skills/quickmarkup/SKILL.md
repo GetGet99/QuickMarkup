@@ -172,6 +172,7 @@ foreach (var item in items) { <TextBlock Text=/-item-/ /> }
 The entry page must initialize the reactive scheduler so changes propagate automatically:
 
 ```csharp
+// UWP Example
 ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 {
     _ = Dispatcher.TryRunAsync(CoreDispatcherPriority.High, ReactiveScheduler.Tick);
