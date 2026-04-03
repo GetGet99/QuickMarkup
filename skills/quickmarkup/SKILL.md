@@ -68,8 +68,9 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 |------|--------|---------|
 | Integer | literal | `Width=100` |
 | Double | literal | `FontSize=14.5` |
-| Boolean true | property name alone | `IsEnabled` |
-| Boolean false | `!` prefix | `!IsHitTestVisible` |
+| Boolean | literal | `IsChecked=true` |
+| Boolean true shorthand | property name alone | `IsEnabled` |
+| Boolean false shorthand | `!` prefix | `!IsHitTestVisible` |
 | String | double quotes | `Text="Hello"` |
 | Enum member | name alone | `HorizontalAlignment=Center` |
 | null/default | keyword | `Tag=null` |
