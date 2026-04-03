@@ -74,7 +74,7 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 | Enum member | name alone | `HorizontalAlignment=Center` |
 | null/default | keyword | `Tag=null` |
 | C# expression | backticks | `` Text=`$"Count: {Counter}"` `` |
-| Alternate C# literal | `/-...-/` | `Source=/-new Uri("ms-appx:///icon.png")-/` |
+| Alternate C# literal (backward compatability legacy syntax of above) | `/-...-/` | `Source=/-new Uri("ms-appx:///icon.png")-/` |
 
 ### C# Expressions (backtick syntax)
 
