@@ -32,6 +32,10 @@ record class QMBinderChildrenTooMany(AST Node, QMBinderTagInfo ParentTagInfo) : 
     };
     public override string ToString() => $"{Node.Start}:{Node.End} Too many children were provided. <{ParentTagInfo.TagType?.FullNameWithoutAnnotation() ?? ParentTagInfo.TagName}> expects {Expecting}.";
 }
+record class QMBinderRefBindError(AST Node, string Message) : QMBinderError(Node)
+{
+    public override string ToString() => $"{Node.Start}-{Node.End} Ref/props binding: {Message}";
+}
 
 partial class QMSourceGenBinders
 {

@@ -360,11 +360,11 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
                 var ((ctx, type, usings, refs), compilation) = x;
                 var resolver = new CodeGenTypeResolver(compilation, usings, ctx.Namespace);
                 var containingType = TryResolveTypeMetadataName(compilation, type);
-                var binder = new QMSourceGenBinders(resolver);
-                _ = binder.BindRefDeclarations(refs, containingType);
+                var binder = new QMSourceGenBinders(resolver, failFast: true);
+                var boundRefs = binder.BindRefDeclarations(refs, containingType);
                 StringBuilder sb = new();
-                var rgen = new RefsGenContext(resolver, sb, type);
-                rgen.CGenWrite(refs, tok);
+                var rgen = new RefsGenContext(sb, type);
+                rgen.CGenWrite(boundRefs, tok);
                 return (ctx, usings, sb.ToString());
             });
 

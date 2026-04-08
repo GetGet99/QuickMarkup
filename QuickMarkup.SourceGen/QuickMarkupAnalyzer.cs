@@ -241,11 +241,12 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
             }
             foreach (var error in binder.Errors)
             {
+                var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
                 if (error is QMBinderChildrenTooMany childrenTooMany)
                 {
                     genContext.ReportDiagnostic(Diagnostic.Create(
                         BindErrorChildrenTooMany,
-                        locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                        loc,
                         childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
                         childrenTooMany.Expecting
                     ));
@@ -254,7 +255,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                 {
                     genContext.ReportDiagnostic(Diagnostic.Create(
                         BindErrorGeneral,
-                        locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                        loc,
                         error.ToString()
                     ));
                 }

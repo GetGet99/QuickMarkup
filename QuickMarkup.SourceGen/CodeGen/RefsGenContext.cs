@@ -1,14 +1,13 @@
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using QuickMarkup.AST;
+using QuickMarkup.Language.Symbols;
 using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder, string nameHint)
+class RefsGenContext(StringBuilder membersBuilder, string nameHint)
 {
-    public void CGenWrite(IList<RefDeclaration> refs, CancellationToken tok)
+    public void CGenWrite(IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> refs, CancellationToken tok)
     {
         foreach (var @ref in refs)
         {
@@ -17,87 +16,61 @@ class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
         }
     }
 
-    public void CGenWrite(RefDeclaration refDeclaration)
+    public void CGenWrite(QMRefDeclarationSymbol<ITypeSymbol?> bound)
     {
-        // Phase 1: RefDeclaration.Attributes (compile-time QM attributes) are intentionally not emitted here.
-        var typeDecl = refDeclaration.Type;
-        var type = resolver.GetTypeSymbol(typeDecl.Type);
-        var typeName =
-            (type is null ? refDeclaration.Name : new FullType(type).TypeWithNamespace)
-            + (typeDecl.IsTypeNullable ? "?" : "");
-        var (defaultValue, _) = refDeclaration.DefaultValue is null ? ("default", null) : CGen(refDeclaration.DefaultValue,
-            new(type, refDeclaration.Name));
-        var accessibility = refDeclaration.IsPrivate ? "private" : "public";
-        if (refDeclaration.IsComputedDeclaration)
+        // Phase 1: compile-time attributes on the bound symbol are intentionally not emitted here.
+        var typeName = RefTypeDisplayName(bound.RefType, bound.Name);
+        var defaultValue = bound.DefaultValue is null
+            ? "default"
+            : ValueSymbolToInitExpression(bound.DefaultValue);
+        var accessibility = bound.IsPrivate ? "private" : "public";
+        if (bound.IsComputedDeclaration)
         {
             var computedType = $"global::QuickMarkup.Infra.Computed<{typeName}>";
             membersBuilder.AppendLine($$"""
-                {{accessibility}} {{computedType}} {{refDeclaration.Name}}Comp => field ??= new {{computedType}}(() => {{defaultValue}}, "{{nameHint}}.{{refDeclaration.Name}}");
-                {{accessibility}} {{typeName}} {{refDeclaration.Name}} {
+                {{accessibility}} {{computedType}} {{bound.Name}}Comp => field ??= new {{computedType}}(() => {{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
+                {{accessibility}} {{typeName}} {{bound.Name}} {
                     get {
-                        return this.{{refDeclaration.Name}}Comp.Value;
+                        return this.{{bound.Name}}Comp.Value;
                     }
                 }
                 """);
-        } else
+        }
+        else
         {
             var refType = $"global::QuickMarkup.Infra.Reference<{typeName}>";
             membersBuilder.AppendLine($$"""
-                {{accessibility}} {{refType}} {{refDeclaration.Name}}Prop => field ??= new {{refType}}({{defaultValue}}, "{{nameHint}}.{{refDeclaration.Name}}");
-                {{accessibility}} {{typeName}} {{refDeclaration.Name}} {
+                {{accessibility}} {{refType}} {{bound.Name}}Prop => field ??= new {{refType}}({{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
+                {{accessibility}} {{typeName}} {{bound.Name}} {
                     get {
-                        return this.{{refDeclaration.Name}}Prop.Value;
+                        return this.{{bound.Name}}Prop.Value;
                     }
                     set {
-                        this.{{refDeclaration.Name}}Prop.Value = value;
+                        this.{{bound.Name}}Prop.Value = value;
                     }
                 }
                 """);
         }
     }
 
-    (string code, ITypeSymbol? type) CGen(QuickMarkupValue value, TargetField? refPropertyForEnum)
+    static string RefTypeDisplayName(ITypeSymbol? type, string fallbackName)
     {
-        switch (value)
-        {
-            case QuickMarkupForeign foreign:
-                // we don't know the real type of foreign
-                // but we can approximate with the field type
-                return (foreign.Code, refPropertyForEnum?.Type);
-            case QuickMarkupString str:
-                return ($"\"{SymbolDisplay.FormatLiteral(str.Value, false)}\"", resolver.String);
-            case QuickMarkupBoolean boolean:
-                return (boolean.Value ? "true" : "false", resolver.Boolean);
-            case QuickMarkupInt32 int32:
-                return (int32.Value.ToString(), resolver.Int32);
-            case QuickMarkupDouble @double:
-                return (@double.Value.ToString(), resolver.Double);
-            case QuickMarkupIdentifier @enum:
-                if (refPropertyForEnum is null) goto default;
-                if (refPropertyForEnum.Type is null)
-                    // use property name as fallback
-                    return ($"{refPropertyForEnum}.{@enum.Identifier}", null);
-                return ($"{new FullType(refPropertyForEnum.Type)}.{@enum.Identifier}", refPropertyForEnum.Type);
-            case QuickMarkupDefault @default:
-                if (@default.IsExplicitlyNull)
-                {
-                    if (refPropertyForEnum?.Type is { } type)
-                    {
-                        // cast null to type first
-                        return ($"(({new FullType(type)}?)null)", type);
-                    }
-                    return ("null", null);
-                } else
-                {
-                    if (refPropertyForEnum?.Type is { } type)
-                    {
-                        return ($"(default({new FullType(type)}))", type);
-                    }
-                    return ("default", null);
-                }
-                    default:
-                throw new NotImplementedException();
-        }
+        if (type is null)
+            return fallbackName;
+        var s = new FullType(type).TypeWithNamespace;
+        if (type is { IsValueType: true, NullableAnnotation: NullableAnnotation.Annotated }
+            && !s.EndsWith("?", StringComparison.Ordinal))
+            return s + "?";
+        return s;
     }
 
+    static string ValueSymbolToInitExpression(IQMValueSymbol sym) => sym switch
+    {
+        QMValueSymbol<ITypeSymbol?> v => v.ValueInFinalCode,
+        QMRangeSymbol => throw new NotSupportedException("Range values are not supported as a ref default initializer."),
+        QMNestedValuesSymbol<ITypeSymbol?> => throw new NotSupportedException("Nested markup is not supported as a ref default initializer."),
+        QMNodeSymbol<ITypeSymbol?> => throw new NotSupportedException("Tag values are not supported as a ref default initializer."),
+        QMForNodeSymbol<ITypeSymbol> => throw new NotSupportedException("For-loop values are not supported as a ref default initializer."),
+        _ => throw new NotSupportedException($"Unsupported value symbol for ref codegen: {sym.GetType().Name}"),
+    };
 }
