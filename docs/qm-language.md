@@ -204,6 +204,22 @@ string[] options = ["Apple", "Orange", "Banana"];
 </root>
 ```
 
+#### Automatic `new` for one-parameter constructors
+
+For **non-string** literals (`int`, `double`, `bool`, and similar), the binder does not always paste the raw token into the assignment. If the **property type** does not accept the literal directly, but that type has a **constructor with exactly one parameter** whose type **does** accept the literal (according to the generator’s `CanAssign` rules), the emitter wraps the value as `new FullTypeName(literal)`. This is implemented as `QMSourceGenBinders.ValueOrAutoNew` plus `CodeGenTypeResolver.ShouldAutoNew`.
+
+Typical WinUI / UWP examples:
+
+- `CornerRadius=16` on `Border` → emitted like `new global::Windows.UI.Xaml.CornerRadius(16)` (uniform radius from a numeric literal).
+- `BorderThickness=1` → emitted like `new global::Windows.UI.Xaml.Thickness(1)` when the single “uniform length” constructor applies.
+
+**Limits:**
+
+- Only **one-parameter** constructors are considered. For `Thickness` padding/margin with **four** components, literals like `"0,12,0,0"` are strings in XAML but are **not** the same in QuickMarkup; use a **backtick C# expression** instead, e.g. `` Padding=`new(0,12,0,0)` `` or `` Padding=`new Thickness(0, 12, 0, 0)` ``.
+- `CanAssign` does **not** model every implicit conversion; if something does not compile, use an explicit `` `expression` ``.
+
+When a plain number is enough for the property (as with uniform `CornerRadius`), you can **omit** `` `new CornerRadius(16)` `` and write `CornerRadius=16`.
+
 #### C# literals
 
 Using `` PropertyName=`csharp expression` `` syntax, the expression will be rerun whenever any QuickMarkup reactive dependencies used are updated.

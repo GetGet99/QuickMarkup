@@ -19,6 +19,7 @@ class RefsGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder,
 
     public void CGenWrite(RefDeclaration refDeclaration)
     {
+        // Phase 1: RefDeclaration.Attributes (compile-time QM attributes) are intentionally not emitted here.
         var typeDecl = refDeclaration.Type;
         var type = resolver.GetTypeSymbol(typeDecl.Type);
         var typeName =

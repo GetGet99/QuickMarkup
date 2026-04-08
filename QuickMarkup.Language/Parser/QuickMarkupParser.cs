@@ -40,8 +40,63 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(RefsDecl, AS, LIST, RefDecl, AS, VALUE, APPENDLIST)]
         [Rule(RefsDecl, AS, VALUE, ERROR, IDENTITY)]
         RefsDecl,
+        // Ref compile-time attributes (stacked [...][...] blocks before each declaration)
+        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Rule(EMPTYLIST)]
+        [Rule(NonEmptyRefAttributes, AS, VALUE, IDENTITY)]
+        RefAttributes,
+        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Rule(Terminal.OpenSquareBracket, RefAttrAppsInner, AS, VALUE, Terminal.CloseSquareBracket, IDENTITY)]
+        [Rule(NonEmptyRefAttributes, AS, "prev", Terminal.OpenSquareBracket, RefAttrAppsInner, AS, "more", Terminal.CloseSquareBracket, nameof(AppendRefAttributeSections))]
+        NonEmptyRefAttributes,
+        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Rule(RefAttrApp, AS, VALUE, SINGLELIST)]
+        [Rule(RefAttrAppsInner, AS, LIST, Terminal.Comma, RefAttrApp, AS, VALUE, APPENDLIST)]
+        [Rule(RefAttrAppsInner, AS, VALUE, ERROR, IDENTITY)]
+        RefAttrAppsInner,
+        [Type<QMCompileTimeAttribute>]
+        [Rule(QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.TargetSpecifier),
+            Terminal.Colon,
+            QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.AttributeName),
+            RefAttrOptArgs, AS, nameof(QMCompileTimeAttribute.Arguments),
+            typeof(QMCompileTimeAttribute))]
+        [Rule(QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.AttributeName),
+            RefAttrOptArgs, AS, nameof(QMCompileTimeAttribute.Arguments),
+            typeof(QMCompileTimeAttribute))]
+        RefAttrApp,
+        [Type<QMCompileTimeAttributeArguments>]
+        [Rule(Terminal.OpenBracket, RefAttrArgsInner, AS, VALUE, Terminal.CloseBracket, IDENTITY)]
+        [Rule(Terminal.OpenBracket, Terminal.CloseBracket, typeof(QMCompileTimeAttributeArguments))]
+        [Rule(typeof(QMCompileTimeAttributeArguments))]
+        RefAttrOptArgs,
+        [Type<QMCompileTimeAttributeArguments>]
+        [Rule(RefAttrNamedListInner, AS, nameof(QMCompileTimeAttributeArguments.Named), typeof(QMCompileTimeAttributeArguments))]
+        [Rule(RefAttrPositionalListInner, AS, nameof(QMCompileTimeAttributeArguments.Positionals),
+            RefAttrNamedTailOpt, AS, nameof(QMCompileTimeAttributeArguments.Named),
+            typeof(QMCompileTimeAttributeArguments))]
+        RefAttrArgsInner,
+        [Type<ListAST<QuickMarkupValue>>]
+        [Rule(QMValueWithoutNamedTag, AS, VALUE, SINGLELIST)]
+        [Rule(RefAttrPositionalListInner, AS, LIST, Terminal.Comma, QMValueWithoutNamedTag, AS, VALUE, APPENDLIST)]
+        [Rule(RefAttrPositionalListInner, AS, VALUE, ERROR, IDENTITY)]
+        RefAttrPositionalListInner,
+        [Type<ListAST<QMAttributeNamedArgument>>]
+        [Rule(EMPTYLIST)]
+        [Rule(Terminal.Comma, RefAttrNamedListInner, AS, VALUE, IDENTITY)]
+        RefAttrNamedTailOpt,
+        [Type<ListAST<QMAttributeNamedArgument>>]
+        [Rule(RefAttrNamedArg, AS, VALUE, SINGLELIST)]
+        [Rule(RefAttrNamedListInner, AS, LIST, Terminal.Comma, RefAttrNamedArg, AS, VALUE, APPENDLIST)]
+        RefAttrNamedListInner,
+        [Type<QMAttributeNamedArgument>]
+        [Rule(QMPositionedIdentifier, AS, nameof(QMAttributeNamedArgument.Name),
+            Terminal.Equal,
+            QMValueWithoutNamedTag, AS, nameof(QMAttributeNamedArgument.Value),
+            typeof(QMAttributeNamedArgument))]
+        RefAttrNamedArg,
         [Type<RefDeclaration>]
         [Rule(
+            RefAttributes, AS, nameof(RefDeclaration.Attributes),
             RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
             TypeDecl, AS, nameof(RefDeclaration.Type),
             Terminal.Identifier, AS, nameof(RefDeclaration.Name),
@@ -51,6 +106,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(RefDeclaration)
         )]
         [Rule(
+            RefAttributes, AS, nameof(RefDeclaration.Attributes),
             RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
             TypeDecl, AS, nameof(RefDeclaration.Type),
             Terminal.Identifier, AS, nameof(RefDeclaration.Name),
@@ -225,12 +281,14 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Null, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), true, typeof(QuickMarkupDefault))]
         [Rule(Terminal.Default, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
         [Rule(ParsedTag, AS, VALUE, IDENTITY)]
-        [Rule(NamedTag, AS, VALUE, IDENTITY)]
         [Rule(Terminal.QMOpenTagOpen, Terminal.QMOpenTagClose,
             QMChildren, AS, nameof(QuickMarkupQMs.Value),
             Terminal.QMCloseTagOpen, Terminal.QMCloseTagClose,
-            typeof(QuickMarkupQMs)
-        )]
+            typeof(QuickMarkupQMs))]
+        QMValueWithoutNamedTag,
+        [Type<QuickMarkupValue>]
+        [Rule(QMValueWithoutNamedTag, AS, VALUE, IDENTITY)]
+        [Rule(NamedTag, AS, VALUE, IDENTITY)]
         QMValue,
         // only for foreach loop due to ambiguity
         [Type<QuickMarkupValue>]
@@ -278,6 +336,12 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             {A}
             {B}
             """;
+    }
+    static ListAST<QMCompileTimeAttribute> AppendRefAttributeSections(ListAST<QMCompileTimeAttribute> prev, ListAST<QMCompileTimeAttribute> more)
+    {
+        foreach (var x in more)
+            prev.Add(x);
+        return prev;
     }
     public QuickMarkupSFC Parse(IEnumerable<IToken<Terminal>> inputTerminals, out List<ErrorTerminalValue> handledErrors)
     {

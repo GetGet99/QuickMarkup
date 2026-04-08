@@ -204,16 +204,16 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
                     ));
             }
+            var binder = new QMSourceGenBinders(
+                new CodeGenTypeResolver(
+                    compilation,
+                    qm.Usings,
+                    typeSym.ContainingNamespace.ToString()
+                ),
+                failFast: false
+            );
             if (qm.Template is not null)
             {
-                var binder = new QMSourceGenBinders(
-                    new(
-                        compilation,
-                        qm.Usings,
-                        typeSym.ContainingNamespace.ToString()
-                    ),
-                    failFast: false
-                );
                 try
                 {
                     binder.Bind(qm.Template, typeSym);
@@ -226,25 +226,37 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         e.Message
                     ));
                 }
-                foreach (var error in binder.Errors)
+            }
+            try
+            {
+                _ = binder.BindRefDeclarations(qm.Refs, typeSym);
+            }
+            catch (Exception e)
+            {
+                genContext.ReportDiagnostic(Diagnostic.Create(
+                    BindErrorGeneral,
+                    locationProvider.Fallback,
+                    e.Message
+                ));
+            }
+            foreach (var error in binder.Errors)
+            {
+                if (error is QMBinderChildrenTooMany childrenTooMany)
                 {
-                    if (error is QMBinderChildrenTooMany childrenTooMany)
-                    {
-                        genContext.ReportDiagnostic(Diagnostic.Create(
-                            BindErrorChildrenTooMany,
-                            locationProvider.GetLocation(error.Node.Start, error.Node.End),
-                            childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
-                            childrenTooMany.Expecting
-                        ));
-                    }
-                    else
-                    {
-                        genContext.ReportDiagnostic(Diagnostic.Create(
-                            BindErrorGeneral,
-                            locationProvider.GetLocation(error.Node.Start, error.Node.End),
-                            error.ToString()
-                        ));
-                    }
+                    genContext.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorChildrenTooMany,
+                        locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                        childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
+                        childrenTooMany.Expecting
+                    ));
+                }
+                else
+                {
+                    genContext.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorGeneral,
+                        locationProvider.GetLocation(error.Node.Start, error.Node.End),
+                        error.ToString()
+                    ));
                 }
             }
 exit:

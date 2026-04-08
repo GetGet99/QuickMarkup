@@ -77,6 +77,14 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 | C# expression | backticks | `` Text=`$"Count: {Counter}"` `` |
 | Alternate C# literal (backward compatability legacy syntax of above) | `/-...-/` | `Source=/-new Uri("ms-appx:///icon.png")-/` |
 
+### Automatic `new` (single-argument constructors)
+
+When you assign a **numeric or bool** literal to a property, the source generator may emit **`new PropertyType(literal)`** instead of the raw literal. That happens when the property type does not take the literal directly but exposes a **constructor with exactly one parameter** that does (`CodeGenTypeResolver.ShouldAutoNew`, `QMSourceGenBinders.ValueOrAutoNew`).
+
+**Examples:** `CornerRadius=16` → `new CornerRadius(16)`; `BorderThickness=1` → `new Thickness(1)` when the uniform constructor applies.
+
+**Not covered:** multi-value `Thickness` / `CornerRadius` corners — use a backtick C# expression, e.g. `` Margin=`new(0,12,0,0)` ``. If assignment fails, use an explicit `` `new Thickness(...)` ``.
+
 ### C# Expressions (backtick syntax)
 
 `` Property=`expression` `` — the expression re-evaluates automatically whenever any referenced reactive variable changes.

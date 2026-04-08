@@ -69,9 +69,19 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"\.", State = (int)LexerStates.InsideQMCloseTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Dot,
+        [Regex(@",", State = (int)LexerStates.Props)]
         [Regex(@",", State = (int)LexerStates.InsideQMOpenTag)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Comma,
+        [Regex(@"\[", State = (int)LexerStates.Props)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        OpenSquareBracket,
+        [Regex(@"\]", State = (int)LexerStates.Props)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        CloseSquareBracket,
+        [Regex(@":", State = (int)LexerStates.Props)]
+        [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        Colon,
         [Regex(@"\?", State = (int)LexerStates.Props)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QuestionMark,
@@ -163,9 +173,11 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         In,
         [Regex(@"\.\.", State = (int)LexerStates.BeforeRoot)]
         Range,
+        [Regex(@"\(", State = (int)LexerStates.Props)]
         [Regex(@"\(", State = (int)LexerStates.BeforeRoot)]
         [Regex(@"\(", State = (int)LexerStates.InsideQMOpenTag)]
         OpenBracket,
+        [Regex(@"\)", State = (int)LexerStates.Props)]
         [Regex(@"\)", State = (int)LexerStates.BeforeRoot)]
         [Regex(@"\)", State = (int)LexerStates.InsideQMOpenTag)]
         CloseBracket,

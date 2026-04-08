@@ -43,3 +43,22 @@ public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMe
 public record class QMValueSymbol<T>(T? Type, string ValueInFinalCode) : IQMValueSymbol;
 public record class QMRangeSymbol(int Start, int End) : IQMValueSymbol;
 public record class QMNestedValuesSymbol<T>(T? Type, IReadOnlyList<IQMMemberSymbol> Values) : IQMValueSymbol;
+
+/// <summary>Named argument inside a compile-time ref attribute's argument list (phase 1: binding only).</summary>
+public record class QMAttributeNamedArgumentSymbol(string Name, IQMValueSymbol Value);
+
+/// <summary>One compile-time attribute application on a ref/computed declaration.</summary>
+public record class QMCompileTimeAttributeSymbol(
+    string? TargetSpecifier,
+    string AttributeName,
+    IReadOnlyList<IQMValueSymbol> PositionalArguments,
+    IReadOnlyList<QMAttributeNamedArgumentSymbol> NamedArguments);
+
+/// <summary>Bound ref/computed prop line, including compile-time attributes (phase 1: not emitted to C# refs). Use <see cref="RefType"/> nullable annotation when <c>T</c> is <c>ITypeSymbol</c>.</summary>
+public record class QMRefDeclarationSymbol<T>(
+    T? RefType,
+    string Name,
+    IQMValueSymbol? DefaultValue,
+    bool IsPrivate,
+    bool IsComputedDeclaration,
+    IReadOnlyList<QMCompileTimeAttributeSymbol> CompileTimeAttributes);

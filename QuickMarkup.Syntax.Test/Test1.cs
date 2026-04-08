@@ -1,4 +1,5 @@
-﻿using Get.Lexer;
+using Get.Lexer;
+using Get.Parser;
 using Get.PLShared;
 using Get.RegexMachine;
 using Mono.Cecil.Cil;
@@ -96,6 +97,60 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void PropsLexer_RefAttributePunctuation()
+        {
+            var output = Lex("""
+                [target: A(1, x = true)]
+                int X;
+                """, QuickMarkupLexer.LexerStates.Props).ToArray();
+            var types = output.Select(t => t.TokenType).ToArray();
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.OpenSquareBracket);
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.CloseSquareBracket);
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.Colon);
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.OpenBracket);
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.CloseBracket);
+            CollectionAssert.Contains(types, QuickMarkupLexer.Tokens.Comma);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_WithCompileTimeAttributes()
+        {
+            var sfc = Parse("""
+                using System;
+
+                [A][B(1), target: C(true, name = "x")]
+                int Foo;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Foo", r.Name);
+            Assert.HasCount(3, r.Attributes);
+            Assert.AreEqual("A", r.Attributes[0].AttributeName.Name);
+            Assert.AreEqual(null, r.Attributes[0].TargetSpecifier?.Name);
+            Assert.AreEqual("B", r.Attributes[1].AttributeName.Name);
+            Assert.AreEqual(1, r.Attributes[1].Arguments.Positionals.Count);
+            Assert.AreEqual("C", r.Attributes[2].AttributeName.Name);
+            Assert.AreEqual("target", r.Attributes[2].TargetSpecifier?.Name);
+            Assert.AreEqual(1, r.Attributes[2].Arguments.Positionals.Count);
+            Assert.HasCount(1, r.Attributes[2].Arguments.Named);
+            Assert.AreEqual("name", r.Attributes[2].Arguments.Named[0].Name.Name);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_NamedBeforePositional_YieldsErrors()
+        {
+            _ = new QuickMarkupParser().Parse(
+                Lex("""
+                    using System;
+
+                    [A(b = 1, 2)]
+                    int X;
+                    """),
+                out var errors);
+            Assert.IsTrue(errors.Count > 0, "named-then-positional in attribute args should not parse cleanly");
+        }
+
+        [TestMethod]
         public void Usings()
         {
             var output = Lex("""
@@ -114,7 +169,7 @@ namespace QuickMarkup.Syntax.Test
         }
         QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
         {
-            return new QuickMarkupParser().Parse(tokens);
+            return new QuickMarkupParser().Parse(tokens, out _);
         }
         QuickMarkupSFC Parse(string code)
         {

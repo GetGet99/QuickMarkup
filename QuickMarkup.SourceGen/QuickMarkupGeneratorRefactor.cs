@@ -355,15 +355,15 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
 
             var withCompilation = refs.Combine(context.CompilationProvider);
 
-            var lines = withCompilation.Select(static (x, tok) =>
+            var lines = withCompilation.Select((x, tok) =>
             {
                 var ((ctx, type, usings, refs), compilation) = x;
+                var resolver = new CodeGenTypeResolver(compilation, usings, ctx.Namespace);
+                var containingType = TryResolveTypeMetadataName(compilation, type);
+                var binder = new QMSourceGenBinders(resolver);
+                _ = binder.BindRefDeclarations(refs, containingType);
                 StringBuilder sb = new();
-                var rgen = new RefsGenContext(
-                    new(compilation, usings, ctx.Namespace),
-                    sb,
-                    type
-                );
+                var rgen = new RefsGenContext(resolver, sb, type);
                 rgen.CGenWrite(refs, tok);
                 return (ctx, usings, sb.ToString());
             });
@@ -442,5 +442,16 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
         var expandedSpan = TextSpan.FromBounds(expandedStart, expandedEnd);
 
         return sourceText.ToString(expandedSpan);
+    }
+
+    static INamedTypeSymbol? TryResolveTypeMetadataName(Compilation compilation, string typeDisplayString)
+    {
+        var searchTypeName = typeDisplayString.StartsWith("global::", StringComparison.Ordinal)
+            ? typeDisplayString["global::".Length..]
+            : typeDisplayString;
+        var idx = searchTypeName.IndexOf('<');
+        if (idx >= 0)
+            searchTypeName = searchTypeName[..idx];
+        return compilation.GetTypeByMetadataName(searchTypeName);
     }
 }

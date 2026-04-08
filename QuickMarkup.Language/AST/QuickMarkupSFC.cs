@@ -119,7 +119,30 @@ public abstract record class QuickMarkupForNodeListExpression : AST;
 public record class QuickMarkupForNodeListRangeExpression(int RangeStart, int RangeEnd) : QuickMarkupForNodeListExpression;
 public record class QuickMarkupForNodeListForeignExpression(string ForeignAsString) : QuickMarkupForNodeListExpression;
 public record class TypeDeclaration(string Type, bool IsTypeNullable = false);
-public record class RefDeclaration(TypeDeclaration Type, string Name, QuickMarkupValue? DefaultValue, bool IsPrivate, bool IsComputedDeclaration);
+public record class QMAttributeNamedArgument(PositionedIdentifier Name, QuickMarkupValue Value);
+public record class QMCompileTimeAttributeArguments(
+    ListAST<QuickMarkupValue> Positionals,
+    ListAST<QMAttributeNamedArgument> Named) : AST
+{
+    public QMCompileTimeAttributeArguments() : this(new(), new()) {}
+    public QMCompileTimeAttributeArguments(ListAST<QMAttributeNamedArgument> Named) : this(new(), Named) {}
+    public void Add(QuickMarkupValue value) => Positionals.Add(value);
+}
+public record class QMCompileTimeAttribute(
+    PositionedIdentifier? TargetSpecifier,
+    PositionedIdentifier AttributeName,
+    QMCompileTimeAttributeArguments Arguments)
+{
+    public QMCompileTimeAttribute(PositionedIdentifier AttributeName, QMCompileTimeAttributeArguments Arguments)
+        : this(null, AttributeName, Arguments) { }
+}
+public record class RefDeclaration(
+    TypeDeclaration Type,
+    string Name,
+    QuickMarkupValue? DefaultValue,
+    bool IsPrivate,
+    bool IsComputedDeclaration,
+    ListAST<QMCompileTimeAttribute> Attributes);
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
 public record class QuickMarkupRange(int RangeStart, int RangeEnd) : QuickMarkupValue();
