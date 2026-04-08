@@ -9,7 +9,6 @@ using QuickMarkup.CodeAnalysis.Helpers;
 
 namespace QuickMarkup.SourceGen;
 
-[AddAttributeConverter(typeof(QuickMarkupAttribute), ParametersAsString = "\"\"")]
 [Generator]
 partial class QuickMarkupGenerator : IIncrementalGenerator
 {
@@ -277,13 +276,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             });
         }
     }
-    readonly record struct SourceGenContext(
-        string Namespace,
-        string TypeNameWithoutNamespace,
-        string? FileName,
-        TextSpan AttributeLocation,
-        LinePositionSpan AttributeLineSpan
-    );
     public static string? GetExpandedLineText(Location location)
     {
         if (location == null)
