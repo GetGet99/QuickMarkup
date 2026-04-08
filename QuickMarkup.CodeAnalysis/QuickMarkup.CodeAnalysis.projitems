@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>12bde1fb-1605-4f38-896f-5a1e40abe3b8</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>QuickMarkup.CodeAnalysis</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.Errors.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.Refs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AddAttributeConverterAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AttributeBaseGenerator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AttributeHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\Extension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\GeneratorBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Attributes\Attribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Expression\Expressions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Extension.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\File.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\InterfacesAndInfos.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Lines\Interfaces.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Lines\SimpleLines.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\IMember.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\MethodAndProperty.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\Types.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Polyfills\UnreachableException.cs" />
+  </ItemGroup>
+</Project>
