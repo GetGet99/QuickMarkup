@@ -27,7 +27,6 @@ partial class Binder(CodeTypeResolver resolver, bool failFast = true)
         var members = new List<IQMMemberSymbol>();
         Bind(tag.InlineMembers, tagInfo, members);
 
-        var propertiesCount = members.Count;
         Bind(tag.Children, tagInfo, members);
         return new(
             type,

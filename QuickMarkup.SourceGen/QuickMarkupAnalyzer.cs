@@ -23,8 +23,11 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         QuickMarkupLexer? lexer = null;
         for (int i = 0; i < 10; i++)
         {
-            lexer = new QuickMarkupLexer(new StringTextSeeker(code));
-            break;
+            try
+            {
+                lexer = new QuickMarkupLexer(new StringTextSeeker(code));
+                break;
+            } catch { }
         }
         lexer ??= new QuickMarkupLexer(new StringTextSeeker(code));
         return lexer.GetTokens();

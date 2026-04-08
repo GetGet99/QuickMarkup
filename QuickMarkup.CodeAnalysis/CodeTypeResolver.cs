@@ -175,9 +175,9 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
         }
         else if (target.TypeKind is TypeKind.Interface)
         {
-            foreach (var i in value.AllInterfaces)
+            foreach (var @interface in value.AllInterfaces)
             {
-                if (value.Equals(target, SymbolEqualityComparer.Default))
+                if (target.Equals(@interface, SymbolEqualityComparer.Default))
                 {
                     return true;
                 }
