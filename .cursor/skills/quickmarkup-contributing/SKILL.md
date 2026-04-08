@@ -19,12 +19,12 @@ Grammar and lexer use **Get.Parser** / **Get.Lexer** (usually under `Parser/` su
 
 - **Source-gen binders** (how QM binds to C#): `QuickMarkup.SourceGen/Analyzers/`
 - **Shared symbols / language model hooks**: `QuickMarkup.Language/Symbols/`
-- **Type resolution for codegen**: `QuickMarkup.SourceGen/CodeGenTypeResolver.cs` (shared with codegen; change here when binding or typing rules affect both)
+- **Type resolution for codegen**: `QuickMarkup.SourceGen/CodeTypeResolver.cs` (shared with codegen; change here when binding or typing rules affect both)
 
 ## Code generation (emitted C#)
 
 - **Generators and snippets**: `QuickMarkup.SourceGen/CodeGen/`
-- **Resolving types for generated code**: `QuickMarkup.SourceGen/CodeGenTypeResolver.cs`
+- **Resolving types for generated code**: `QuickMarkup.SourceGen/CodeTypeResolver.cs`
 
 ## Source generator entry points
 

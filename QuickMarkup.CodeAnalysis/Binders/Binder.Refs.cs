@@ -1,11 +1,10 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
-partial class QMSourceGenBinders
+partial class Binder
 {
     static readonly QMBinderTagInfo LooseRefValueTagInfo = new(null, "", null, null, ChildrenModes.None);
 

@@ -9,9 +9,10 @@
     <Import_RootNamespace>QuickMarkup.CodeAnalysis</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.Errors.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Analyzers\QMSourceGenBinders.Refs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Binders\Binder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Binders\Binder.Errors.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Binders\Binder.Refs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CodeTypeResolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AddAttributeConverterAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AttributeBaseGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AttributeHelper.cs" />
@@ -28,5 +29,11 @@
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\MethodAndProperty.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\Types.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Polyfills\UnreachableException.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)helpers\QuickMarkupAttributeInString.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.Shared.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.Analyzer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.SourceGen.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)helpers\QuickMarkupProviderExtension.Parsing.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupTargetContext.cs" />
   </ItemGroup>
 </Project>

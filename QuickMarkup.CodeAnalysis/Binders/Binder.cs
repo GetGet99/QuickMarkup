@@ -1,15 +1,13 @@
 using Get.EasyCSharp.GeneratorTools;
-using Get.EasyCSharp.GeneratorTools.SyntaxCreator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
-using System.Xml.Linq;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
 record class QMBinderTagInfo(ITypeSymbol? TagType, string TagName, string? ChildrenProperty, ITypeSymbol? ChildrenType, ChildrenModes ChildrenMode);
-partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = true)
+partial class Binder(CodeTypeResolver resolver, bool failFast = true)
 {
     public QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag, ITypeSymbol rootType) => BindPrivate(tag, rootType);
     QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag) => BindPrivate(tag, null);
@@ -143,7 +141,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
         }
         if (inlineMember is not QuickMarkupParsedProperty property)
             throw new NotImplementedException();
-        var targetPropSymbol = CodeGenTypeResolver.FindProperty(tagInfo.TagType, property.Key);
+        var targetPropSymbol = CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key);
         var targetType = targetPropSymbol?.Type;
         switch (property.Operator)
         {
@@ -152,7 +150,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
                 // <QM Click+=`(_, _) => ShowDialog("Clicked")` />
                 var isShorthand = property.Key.StartsWith("@");
                 var eventName = isShorthand ? property.Key[1..] : property.Key;
-                var eventSymbol = CodeGenTypeResolver.FindEvent(tagInfo.TagType, eventName);
+                var eventSymbol = CodeTypeResolver.FindEvent(tagInfo.TagType, eventName);
                 targetCollection.Add(new QMAddEventMember<ITypeSymbol>(
                     eventSymbol?.Type, // type hint to null
                     eventName,
@@ -207,7 +205,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
                 bool isDependencyProp;
                 string depName = "";
                 {
-                    var deProp = CodeGenTypeResolver.FindProperty(tagInfo.TagType, $"{property.Key}Property");
+                    var deProp = CodeTypeResolver.FindProperty(tagInfo.TagType, $"{property.Key}Property");
                     if (deProp is null)
                         isDependencyProp = false;
                     else if (!deProp.IsStatic)
@@ -221,7 +219,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
                     property.Key,
-                    Value(CodeGenTypeResolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
+                    Value(CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
                     property.Operator is ParsedPropertyOperator.BindBack ?
                         BindingModes.TargetToSource :
                         BindingModes.TwoWay,
@@ -232,7 +230,7 @@ partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = t
                 break;
             case ParsedPropertyOperator.None:
                 // extension or boolean value
-                if (CodeGenTypeResolver.FindProperty(tagInfo.TagType, property.Key) is { } propSymbol)
+                if (CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key) is { } propSymbol)
                 {
                     // <QM IsEnabled />
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(

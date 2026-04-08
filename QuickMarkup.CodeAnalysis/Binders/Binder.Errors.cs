@@ -37,7 +37,7 @@ record class QMBinderRefBindError(AST Node, string Message) : QMBinderError(Node
     public override string ToString() => $"{Node.Start}-{Node.End} Ref/props binding: {Message}";
 }
 
-partial class QMSourceGenBinders
+partial class Binder
 {
     public List<QMBinderError> Errors { get; } = [];
     void Error(QMBinderError error)

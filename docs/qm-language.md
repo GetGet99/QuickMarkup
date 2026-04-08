@@ -206,7 +206,7 @@ string[] options = ["Apple", "Orange", "Banana"];
 
 #### Automatic `new` for one-parameter constructors
 
-For **non-string** literals (`int`, `double`, `bool`, and similar), the binder does not always paste the raw token into the assignment. If the **property type** does not accept the literal directly, but that type has a **constructor with exactly one parameter** whose type **does** accept the literal (according to the generator’s `CanAssign` rules), the emitter wraps the value as `new FullTypeName(literal)`. This is implemented as `QMSourceGenBinders.ValueOrAutoNew` plus `CodeGenTypeResolver.ShouldAutoNew`.
+For **non-string** literals (`int`, `double`, `bool`, and similar), the binder does not always paste the raw token into the assignment. If the **property type** does not accept the literal directly, but that type has a **constructor with exactly one parameter** whose type **does** accept the literal (according to the generator’s `CanAssign` rules), the emitter wraps the value as `new FullTypeName(literal)`. This is implemented as `Binder.ValueOrAutoNew` plus `CodeTypeResolver.ShouldAutoNew`.
 
 Typical WinUI / UWP examples:
 

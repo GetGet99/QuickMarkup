@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace QuickMarkup.CodeAnalysis;
 
-class CodeGenTypeResolver(Compilation compilation, string usings, string @namespace)
+class CodeTypeResolver(Compilation compilation, string usings, string @namespace)
 {
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName);
     public ITypeSymbol? String => field ??= Type<string>();

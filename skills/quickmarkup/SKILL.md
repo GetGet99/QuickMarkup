@@ -79,7 +79,7 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 
 ### Automatic `new` (single-argument constructors)
 
-When you assign a **numeric or bool** literal to a property, the source generator may emit **`new PropertyType(literal)`** instead of the raw literal. That happens when the property type does not take the literal directly but exposes a **constructor with exactly one parameter** that does (`CodeGenTypeResolver.ShouldAutoNew`, `QMSourceGenBinders.ValueOrAutoNew`).
+When you assign a **numeric or bool** literal to a property, the source generator may emit **`new PropertyType(literal)`** instead of the raw literal. That happens when the property type does not take the literal directly but exposes a **constructor with exactly one parameter** that does (`CodeTypeResolver.ShouldAutoNew`, `Binder.ValueOrAutoNew`).
 
 **Examples:** `CornerRadius=16` → `new CornerRadius(16)`; `BorderThickness=1` → `new Thickness(1)` when the uniform constructor applies.
 

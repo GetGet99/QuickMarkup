@@ -1,16 +1,11 @@
 using System.Text;
 using Get.EasyCSharp.GeneratorTools;
-using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
-using Get.Lexer;
-using Get.PLShared;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using QuickMarkup.AST;
-using QuickMarkup.Parser;
-using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.SourceGen.CodeGen;
 using QuickMarkup.CodeAnalysis;
+using QuickMarkup.CodeAnalysis.Binders;
+using QuickMarkup.CodeAnalysis.Helpers;
 
 namespace QuickMarkup.SourceGen;
 
@@ -34,170 +29,49 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
     //    DiagnosticSeverity.Warning,
     //    isEnabledByDefault: true
     //);
-    IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
-    {
-        // retry as it is flaky
-        QuickMarkupLexer? lexer = null;
-        for (int i = 0; i < 10; i++)
-        {
-            lexer = new QuickMarkupLexer(new StringTextSeeker(code));
-            break;
-        }
-        lexer ??= new QuickMarkupLexer(new StringTextSeeker(code));
-        return lexer.GetTokens();
-    }
-    ThreadLocal<QuickMarkupParser> ParserPerThread { get; } = new(static () =>
-    {
-        // retry as it is flaky
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                return new QuickMarkupParser();
-            }
-            catch
-            {
-
-            }
-        }
-        return new QuickMarkupParser();
-    });
-    QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
-    {
-        return ParserPerThread.Value.Parse(tokens, out _);
-    }
-    QuickMarkupSFC Parse(string code)
-    {
-        return Parse(Lex(code));
-    }
-
-    static readonly string FullAttributeName;
-    static QuickMarkupGenerator()
-    {
-        FullAttributeName = typeof(QuickMarkupAttribute).FullName;
-    }
-    static readonly SymbolDisplayFormat withoutNamespace = new(
-        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
-        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
-    );
     protected void OnInitialize(IncrementalGeneratorPostInitializationContext context) { }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(OnInitialize);
-        var markupStrings = context.SyntaxProvider.ForAttributeWithMetadataName(
-            FullAttributeName,
-            static (syntaxNode, cancelationToken)
-                => syntaxNode is TypeDeclarationSyntax,
-            static (ctx, ct) =>
-            {
-                var type = (ITypeSymbol)ctx.TargetSymbol;
-                var name = type.ToDisplayString(withoutNamespace);
-                var syn = ctx.Attributes[0].ApplicationSyntaxReference;
-                var syntaxTree = syn?.SyntaxTree ?? type.Locations[0].SourceTree;
-                var attributeLocation = syn is null ? type.Locations[0].SourceSpan : syn.Span;
-                if (syn?.GetSyntax(ct) is AttributeSyntax attrSyntax)
-                {
-                    // move fallback to just the attribute name
-                    attributeLocation = attrSyntax.Name.Span;
-                }
-                var linespan = syn?.SyntaxTree.GetLineSpan(attributeLocation, ct) ?? default;
-
-                return (ctx: new SourceGenContext(
-                    type.ContainingNamespace.ToString(),
-                    name,
-                    syntaxTree?.FilePath,
-                    attributeLocation,
-                    new(linespan.StartLinePosition, linespan.EndLinePosition)
-                ), type: new FullType(type).TypeWithNamespace, markup: ctx.Attributes[0].ConstructorArguments[0].Value as string);
-            }
-        );
-        var markups = markupStrings.Where(static ctx => ctx.markup is not null).Select(
-            (x, _) =>
-            {
-                QuickMarkupSFC? markup = null;
-                string? error = null;
-                try
-                {
-                    markup = Parse(x.markup!);
-                }
-                catch (Exception e)
-                {
-                    error = $"""
-                        Exception Occured during Parsing: {e.GetType().FullName} {e.Message}
-                        Messsage: {e.Message}
-                        Stack Trace:
-                            {e.StackTrace.IndentWOF(1)}
-                        """;
-                }
-                return (x.ctx, x.type, markup, error);
-            }
-        );
-
-        var nonErrorMarkups = markups.Where(static ctx => ctx.markup is not null).Select(
-            (x, _) =>
-            {
-                return (x.ctx, x.type, usings: x.markup!.Usings, markup: x.markup!);
-            }
-        );
-
+        var (nonErrorMarkups, errorMarkups) = context.SyntaxProvider.ForAllParsedQuickMarkup();
+        
         // INIT (SETUP + MARKUP)
         {
             var sfcs = nonErrorMarkups.Select(
                 (x, _) =>
                 {
-                    return (x.ctx, x.type, x.usings, x.markup.Scirpt, x.markup.Template);
+                    return (x.Target, x.AST.Usings, x.AST.Scirpt, x.AST.Template);
                 }
             );
 
             var sources = sfcs.Combine(context.CompilationProvider).Select(
                 (x, ct) =>
                 {
-                    var ((ctx, type, usings, script, template), compilation) = x;
+                    var ((target, usings, script, template), compilation) = x;
+
+                    if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
+                    {
+                        var error = $"""
+                            Exception Occured during type resolving: {failureReason.GetType().FullName} {failureReason.Message}
+                            Messsage: {failureReason.Message}
+                            Stack Trace:
+                                {failureReason.StackTrace.IndentWOF(1)}
+                            """;
+                        return (target, usings, code: "", error);
+                    }
+                    
                     StringBuilder generatedProperties = new();
                     StringBuilder codeBuilder = new();
                     generatedProperties.AppendLine("global::System.Collections.Generic.List<global::QuickMarkup.Infra.RefEffect> QUICKMARKUP_EFFECTS { get; } = [];");
-                    INamedTypeSymbol? typeSymbol;
-                    try
-                    {
-                        string searchTypeName;
-                        if (type.StartsWith("global::"))
-                        {
-                            searchTypeName = type["global::".Length..];
-                        }
-                        else
-                        {
-                            searchTypeName = type;
-                        }
-                        var idx = searchTypeName.IndexOf('<');
-                        if (idx >= 0)
-                        {
-                            searchTypeName = searchTypeName[..idx];
-                        }
-                        typeSymbol = compilation.GetTypeByMetadataName(searchTypeName);
-                        if (typeSymbol is null)
-                            return (ctx, usings, code: "", error: $"Error: compilation.GetTypeByMetadataName(\"{searchTypeName}\") returns null");
-                    }
-                    catch (Exception e)
-                    {
-                        var error = $"""
-                            Exception Occured during type resolving: {e.GetType().FullName} {e.Message}
-                            Messsage: {e.Message}
-                            Stack Trace:
-                                {e.StackTrace.IndentWOF(1)}
-                            """;
-                        return (ctx, usings, code: "", error);
-                    }
                     var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
                     ct.ThrowIfCancellationRequested();
                     try
                     {
                         if (template is not null)
                         {
-                            var resolver = new CodeGenTypeResolver(compilation, usings, ctx.Namespace);
-                            var analyzer = new QMSourceGenBinders(resolver);
+                            var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
+                            var analyzer = new Binder(resolver);
                             var output = analyzer.Bind(template, typeSymbol);
                             ct.ThrowIfCancellationRequested();
                             var cgen = new CodeGenContext(
@@ -222,7 +96,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                             Stack Trace:
                                 {e.StackTrace.IndentWOF(1)}
                             """;
-                        return (ctx, usings, code: "", error);
+                        return (target, usings, code: "", error);
                     }
                     string generatedMethod;
                     if (isConstructorMode)
@@ -246,7 +120,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                             {{codeBuilder.ToString().IndentWOF()}}
                         }
                         """;
-                    return (ctx, usings, code: $"""
+                    return (target, usings, code: $"""
                                 {generatedProperties}
                                 {generatedMethod}
                                 """, error: default(string));
@@ -265,13 +139,13 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     {code}
                     """;
                 }
-                sourceProductionContext.AddSource($"{ctx.TypeNameWithoutNamespace.Replace('<', '[').Replace('>', ']')}.INIT.g.cs", $$"""
+                sourceProductionContext.AddSource($"{ctx.FullTypeName.Replace('<', '[').Replace('>', ']')}.INIT.g.cs", $$"""
                 #nullable enable
                 {{usings}}
 
                 namespace {{ctx.Namespace}};
                 
-                partial class {{ctx.TypeNameWithoutNamespace}} {
+                partial class {{ctx.TypeName}} {
                     {{code}}
                 }
                 
@@ -348,7 +222,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var refs = nonErrorMarkups.Select(
                 (x, _) =>
                 {
-                    return (x.ctx, x.type, x.usings, x.markup.Refs);
+                    return (x.Target, x.AST.Usings, x.AST.Refs);
                 }
             );
 
@@ -356,27 +230,27 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
             var lines = withCompilation.Select((x, tok) =>
             {
-                var ((ctx, type, usings, refs), compilation) = x;
-                var resolver = new CodeGenTypeResolver(compilation, usings, ctx.Namespace);
-                var containingType = TryResolveTypeMetadataName(compilation, type);
-                var binder = new QMSourceGenBinders(resolver, failFast: true);
+                var ((target, usings, refs), compilation) = x;
+                var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
+                var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
+                var binder = new Binder(resolver, failFast: true);
                 var boundRefs = binder.BindRefDeclarations(refs, containingType);
                 StringBuilder sb = new();
-                var rgen = new RefsGenContext(sb, type);
+                var rgen = new RefsGenContext(sb, target.FullTypeName);
                 rgen.CGenWrite(boundRefs, tok);
-                return (ctx, usings, sb.ToString());
+                return (target, usings, sb.ToString());
             });
 
             context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
             {
                 var (ctx, usings, refsCode) = value;
-                sourceProductionContext.AddSource($"{ctx.TypeNameWithoutNamespace.Replace('<', '[').Replace('>', ']')}.REFS.g.cs", $$"""
+                sourceProductionContext.AddSource($"{ctx.FullTypeName.Replace('<', '[').Replace('>', ']')}.REFS.g.cs", $$"""
                 #nullable enable
                 {{usings}}
 
                 namespace {{ctx.Namespace}};
                 
-                partial class {{ctx.TypeNameWithoutNamespace}} {
+                partial class {{ctx.TypeName}} {
                     {{refsCode}}
                 }
                 
@@ -386,21 +260,14 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         // ERRORS
         {
-            var errors = markups.Where(static ctx => ctx.error is not null).Select(
-                (x, _) =>
-                {
-                    return (x.ctx, x.error!);
-                }
-            );
-
-            context.RegisterSourceOutput(errors, (sourceProductionContext, value) =>
+            context.RegisterSourceOutput(errorMarkups, (sourceProductionContext, value) =>
             {
-                var (ctx, errors) = value;
-                sourceProductionContext.AddSource($"{ctx.TypeNameWithoutNamespace.Replace('<', '[').Replace('>', ']')}.ERROR.g.cs", $$"""
+                var (target, errors) = value;
+                sourceProductionContext.AddSource($"{target.FullTypeName.Replace('<', '[').Replace('>', ']')}.ERROR.g.cs", $$"""
                 #nullable enable
-                namespace {{ctx.Namespace}};
+                namespace {{target.Namespace}};
                 
-                partial class {{ctx.TypeNameWithoutNamespace}} {
+                partial class {{target.TypeName}} {
                     /*
                         {{errors.Replace("*/", "*_/")}}
                     */

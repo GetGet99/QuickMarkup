@@ -6,7 +6,7 @@ using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class CodeGenContext(CodeGenTypeResolver resolver, StringBuilder membersBuilder, StringBuilder codeBuilder, bool isConstuctorMode)
+class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, StringBuilder codeBuilder, bool isConstuctorMode)
 {
     // counter
     int counterRef = 0;
