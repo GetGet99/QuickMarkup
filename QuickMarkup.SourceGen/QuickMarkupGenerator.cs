@@ -74,7 +74,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                             var output = analyzer.Bind(template, typeSymbol);
                             ct.ThrowIfCancellationRequested();
                             var cgen = new CodeGenContext(
-                                resolver,
                                 generatedProperties,
                                 codeBuilder,
                                 isConstructorMode

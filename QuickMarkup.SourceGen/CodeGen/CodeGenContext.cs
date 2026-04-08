@@ -6,7 +6,7 @@ using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, StringBuilder codeBuilder, bool isConstuctorMode)
+class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bool isConstuctorMode)
 {
     // counter
     int counterRef = 0;
@@ -19,12 +19,12 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
     /// Generate codes to write members stored in the name "target."
     /// Constructor is NOT called and a new instance is not created.
     /// </summary>
-    public void CGenWrite(QMNodeSymbol<ITypeSymbol> node, string target)
+    public void CGenWrite(QMNodeSymbol<ITypeSymbol?> node, string target)
     {
         CGenWrite(node.Members, target);
     }
 
-    string CGen(QMNodeSymbol<ITypeSymbol> node)
+    string CGen(QMNodeSymbol<ITypeSymbol?> node)
     {
         List<string> parameters = [];
         var constructor = CGen(node.Constructor);
@@ -33,15 +33,16 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
         if (string.IsNullOrWhiteSpace(node.Name))
         {
             varName = NewVariable();
-            codeBuilder.AppendLine($"{node.Type.FullName()} {varName} = {constructor};");
+            codeBuilder.AppendLine($"{node.Type?.FullName() ?? "QM_UnknownType"} {varName} = {constructor};");
         }
         else
         {
             varName = node.Name!;
+            var type = node.Type?.FullName() ?? "QM_UnknownType";
             if (isConstuctorMode)
-                membersBuilder.AppendLine($"private readonly {node.Type.FullName()} {varName};");
+                membersBuilder.AppendLine($"private readonly {type} {varName};");
             else
-                membersBuilder.AppendLine($"private {node.Type.FullName()} {varName} = null!;");
+                membersBuilder.AppendLine($"private {type} {varName} = null!;");
             codeBuilder.AppendLine($"{varName} = {constructor};");
         }
 
@@ -70,13 +71,13 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
                 case QMAddChildMember addChild:
                     switch (addChild.Child)
                     {
-                        case QMNodeSymbol<ITypeSymbol> nodeChild:
+                        case QMNodeSymbol<ITypeSymbol?> nodeChild:
                             codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
                             break;
-                        case QMValueSymbol<ITypeSymbol> nodeChild:
+                        case QMValueSymbol<ITypeSymbol?> nodeChild:
                             codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
                             break;
-                        case QMForNodeSymbol<ITypeSymbol> forChild:
+                        case QMForNodeSymbol<ITypeSymbol?> forChild:
                             if (forChild.Iterable is QMRangeSymbol range)
                                 codeBuilder.AddForEachStart(forChild.VarType, forChild.VarName, range);
                             else
@@ -91,14 +92,14 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
                 case QMAssignChildMember assignChild:
                     switch (assignChild.Child)
                     {
-                        case QMNodeSymbol<ITypeSymbol> nodeChild:
+                        case QMNodeSymbol<ITypeSymbol?> nodeChild:
                             codeBuilder.AddPropertyAssign($"{target}.{assignChild.ChildPropertyPath}", CGen(nodeChild));
                             break;
                         default:
                             throw new NotImplementedException();
                     }
                     break;
-                case QMAddPropertyMember<ITypeSymbol> addProp:
+                case QMAddPropertyMember<ITypeSymbol?> addProp:
                     var property = $"{target}.{addProp.PropertyName}";
                     switch (addProp.BindingMode)
                     {
@@ -147,7 +148,7 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
                             );
                     }
                     break;
-                case QMAddEventMember<ITypeSymbol> addEvent:
+                case QMAddEventMember<ITypeSymbol?> addEvent:
                     var rhs = CGen(addEvent.Value);
                     if (addEvent.IsShorthand)
                     {
@@ -165,7 +166,7 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
                 case QMExtensionMember extension:
                     codeBuilder.AddMethodCall($"{target}.{extension.Method}");
                     break;
-                case QMCallbackMember<ITypeSymbol> callback:
+                case QMCallbackMember<ITypeSymbol?> callback:
                     codeBuilder.AddClosure(callback.Type, target, callback.RawDelegateCode);
                     break;
                 default:
@@ -178,10 +179,10 @@ class CodeGenContext(CodeTypeResolver resolver, StringBuilder membersBuilder, St
     {
         return valueSymbol switch
         {
-            QMNodeSymbol<ITypeSymbol> node => CGen(node),
-            QMValueSymbol<ITypeSymbol> value => value.ValueInFinalCode,
+            QMNodeSymbol<ITypeSymbol?> node => CGen(node),
+            QMValueSymbol<ITypeSymbol?> value => value.ValueInFinalCode,
             // TODO, fail for now
-            QMNestedValuesSymbol<ITypeSymbol> => throw new NotImplementedException(),
+            QMNestedValuesSymbol<ITypeSymbol?> => throw new NotImplementedException(),
             _ => throw new NotImplementedException(),
         };
     }
