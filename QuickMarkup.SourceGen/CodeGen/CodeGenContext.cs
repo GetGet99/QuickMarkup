@@ -1,6 +1,5 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
-using QuickMarkup.CodeAnalysis;
 using QuickMarkup.Language.Symbols;
 using System.Text;
 
@@ -26,7 +25,6 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     string CGen(QMNodeSymbol<ITypeSymbol?> node)
     {
-        List<string> parameters = [];
         var constructor = CGen(node.Constructor);
 
         string varName;
