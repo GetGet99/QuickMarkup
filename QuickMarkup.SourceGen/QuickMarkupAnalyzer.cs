@@ -4,10 +4,7 @@ using Get.Lexer;
 using Get.Parser;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
 using QuickMarkup.CodeAnalysis.Binders;
@@ -58,17 +55,6 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         return Parse(Lex(code), out errors);
     }
 
-    static readonly string FullAttributeName;
-    static QuickMarkupAnalyzer()
-    {
-        FullAttributeName = typeof(QuickMarkupAttribute).FullName;
-    }
-    static readonly SymbolDisplayFormat withoutNamespace = new(
-        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
-        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
-    );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         ParseErrorUnexpectedInput,
@@ -254,8 +240,4 @@ exit:
             ;
         });
     }
-    readonly record struct SourceGenContext(
-        string Namespace,
-        string TypeNameWithoutNamespace
-    );
 }
