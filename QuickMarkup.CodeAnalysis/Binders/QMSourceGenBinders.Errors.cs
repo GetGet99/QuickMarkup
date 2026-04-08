@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
 
-namespace QuickMarkup.SourceGen.Analyzers;
+namespace QuickMarkup.CodeAnalysis.Binders;
 
 using AST = AST.AST;
 record class QMBinderError(AST Node);

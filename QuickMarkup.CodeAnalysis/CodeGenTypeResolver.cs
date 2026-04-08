@@ -4,9 +4,8 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QuickMarkup.Language.Symbols;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
-namespace QuickMarkup.SourceGen;
+namespace QuickMarkup.CodeAnalysis;
 
 class CodeGenTypeResolver(Compilation compilation, string usings, string @namespace)
 {

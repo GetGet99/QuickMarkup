@@ -6,7 +6,7 @@ using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
 using System.Xml.Linq;
 
-namespace QuickMarkup.SourceGen.Analyzers;
+namespace QuickMarkup.CodeAnalysis.Binders;
 
 record class QMBinderTagInfo(ITypeSymbol? TagType, string TagName, string? ChildrenProperty, ITypeSymbol? ChildrenType, ChildrenModes ChildrenMode);
 partial class QMSourceGenBinders(CodeGenTypeResolver resolver, bool failFast = true)

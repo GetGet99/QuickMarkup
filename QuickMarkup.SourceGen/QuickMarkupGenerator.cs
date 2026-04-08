@@ -1,17 +1,16 @@
 using System.Text;
 using Get.EasyCSharp.GeneratorTools;
-using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Attributes;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
-using QuickMarkup.SourceGen.Analyzers;
+using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.SourceGen.CodeGen;
+using QuickMarkup.CodeAnalysis;
 
 namespace QuickMarkup.SourceGen;
 
@@ -19,22 +18,22 @@ namespace QuickMarkup.SourceGen;
 [Generator]
 partial class QuickMarkupGenerator : IIncrementalGenerator
 {
-    static readonly DiagnosticDescriptor compileError = new(
-        "QMC001",
-        "Compilation error in generated code",
-        "One more errors occured on the generated source file\n{0}",
-        "QuickMarkupSourceCompiler",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
-    static readonly DiagnosticDescriptor compileWarning = new(
-        "QMC002",
-        "Compilation warning in generated code",
-        "One more warnings occured on the generated source file\n{0}",
-        "QuickMarkupSourceCompiler",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true
-    );
+    //static readonly DiagnosticDescriptor compileError = new(
+    //    "QMC001",
+    //    "Compilation error in generated code",
+    //    "One more errors occured on the generated source file\n{0}",
+    //    "QuickMarkupSourceCompiler",
+    //    DiagnosticSeverity.Error,
+    //    isEnabledByDefault: true
+    //);
+    //static readonly DiagnosticDescriptor compileWarning = new(
+    //    "QMC002",
+    //    "Compilation warning in generated code",
+    //    "One more warnings occured on the generated source file\n{0}",
+    //    "QuickMarkupSourceCompiler",
+    //    DiagnosticSeverity.Warning,
+    //    isEnabledByDefault: true
+    //);
     IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
     {
         // retry as it is flaky

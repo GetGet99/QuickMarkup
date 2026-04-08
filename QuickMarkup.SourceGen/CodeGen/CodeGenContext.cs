@@ -1,6 +1,6 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
-using QuickMarkup.AST;
+using QuickMarkup.CodeAnalysis;
 using QuickMarkup.Language.Symbols;
 using System.Text;
 

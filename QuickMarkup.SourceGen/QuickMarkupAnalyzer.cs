@@ -10,7 +10,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
-using QuickMarkup.SourceGen.Analyzers;
+using QuickMarkup.CodeAnalysis.Binders;
+using QuickMarkup.CodeAnalysis;
 
 namespace QuickMarkup.SourceGen;
 
