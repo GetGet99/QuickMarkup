@@ -17,7 +17,7 @@ namespace QuickMarkup.SourceGen;
 
 [AddAttributeConverter(typeof(QuickMarkupAttribute), ParametersAsString = "\"\"")]
 [Generator]
-partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
+partial class QuickMarkupGenerator : IIncrementalGenerator
 {
     static readonly DiagnosticDescriptor compileError = new(
         "QMC001",
@@ -73,7 +73,7 @@ partial class QuickMarkupGeneratorRefactor : IIncrementalGenerator
     }
 
     static readonly string FullAttributeName;
-    static QuickMarkupGeneratorRefactor()
+    static QuickMarkupGenerator()
     {
         FullAttributeName = typeof(QuickMarkupAttribute).FullName;
     }
