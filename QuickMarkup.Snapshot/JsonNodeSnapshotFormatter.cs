@@ -3,8 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace QuickMarkup.Snapshot;
 
-// sample impl
-class JsonNodeSnapshotFormatter : ISnapshotFormatter<JsonNode>
+public class JsonNodeSnapshotFormatter : ISnapshotFormatter<JsonNode>
 {
     public void AppendKey<T>(JsonNode keyValueNode, string key, T value)
     {

@@ -15,6 +15,7 @@ class SnapshotBinder(CodeTypeResolver resolver, bool failFast = false) : Binder(
         {
             bool? shouldInclude = null;
             string? jsonName = null;
+            bool hasExplicitName = false;
             foreach (var attribute in declaration.Attributes)
             {
                 if (attribute.AttributeName.Name is "SnapshotIgnore")
@@ -37,32 +38,37 @@ class SnapshotBinder(CodeTypeResolver resolver, bool failFast = false) : Binder(
                     {
                         if (attribute.Arguments.Positionals[0] is QuickMarkupString str)
                         {
-                            jsonName = str.Value;
+                            if (string.IsNullOrWhiteSpace(str.Value))
+                            {
+                                Error(attribute.AttributeName, "[SnapshotInclude(\"...\")] requires a non-empty, non-whitespace key.");
+                            }
+                            else
+                            {
+                                jsonName = str.Value;
+                                hasExplicitName = true;
+                            }
                         }
                     }
                 }
             }
-            if (configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.Public))
+            var isIncluded = shouldInclude ?? (configuration.SnapshotMode.HasFlag(SnapshotStateMode.IncludesPublic) && !declaration.IsPrivate);
+            if (isIncluded && declaration.IsComputedDeclaration)
             {
-                if (shouldInclude is null)
-                    Warn(
-                        declaration.Name,
-                        $"This public field may unintentionally {(configuration.SnapshotMode.HasFlag(SnapshotStateMode.IncludesPublic) ? "" : "not ")}be serialized. Please include [SnapshotIgnore] or [SnaspshotInclude] attribute explicitly."
-                    );
+                Error(declaration.Name, "Derived/computed value should not be saved.");
+                continue;
             }
-            if (configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.NoName))
+            if (isIncluded && configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.NoName) && !hasExplicitName)
             {
-                if (shouldInclude is null)
-                    Warn(
-                        declaration.Name,
-                        $"This key may unintentionally be changed after renaming field. Please include the key explicitly with [SnapshotInclude(\"{declaration.Name.Name}\")]."
-                    );
+                Warn(
+                    declaration.Name,
+                    $"This key may unintentionally be changed after renaming field. Please include the key explicitly with [SnapshotInclude(\"{declaration.Name.Name}\")]."
+                );
             }
-            if (shouldInclude ?? (configuration.SnapshotMode.HasFlag(SnapshotStateMode.IncludesPublic) && !declaration.IsPrivate))
+            if (isIncluded)
                 included.Add(new(declaration.Name.Name, jsonName ?? declaration.Name.Name, resolver.GetTypeSymbol(declaration.Type.Type)));
         }
         return included;
     }
 }
 
-internal record struct SnapshotField(string fieldName, string jsonName, INamedTypeSymbol? fieldType);
+internal record struct SnapshotField(string FieldName, string JsonName, INamedTypeSymbol? FieldType);
