@@ -2,7 +2,7 @@
 
 namespace QuickMarkup.Snapshot;
 
-enum SnapshotPresetMode
+public enum SnapshotPresetMode
 {
     // Use recommended recommendation and setup presets for persistence-ready snapshot
     // default: SnapshotStateMode.AllExplicit, DiagnosticMode = Public | NoName
@@ -13,7 +13,7 @@ enum SnapshotPresetMode
 }
 
 [Flags]
-enum SnapshotStateMode
+public enum SnapshotStateMode
 {
     // User must explicitly include states. Recommended if snapshotting for persistence to avoid state changes
     AllExplicit = 0,
@@ -22,7 +22,7 @@ enum SnapshotStateMode
 }
 
 [Flags]
-enum SnapshotDiagnosticMode
+public enum SnapshotDiagnosticMode
 {
     None = 0,
     // Error if the snapshotting state does not have explicit state name, useful to ensure against rename tolerance
@@ -31,20 +31,15 @@ enum SnapshotDiagnosticMode
     Public = 0b10,
 }
 [AttributeUsage(AttributeTargets.Interface)]
-class SnapshotComponentAttribute(Type formatterType, string typeKey, SnapshotPresetMode preset) : Attribute
+public class SnapshotComponentAttribute(Type formatterType, string typeKey, SnapshotPresetMode preset) : Attribute
 {
     // overridable configuration
     public SnapshotStateMode? SnapshotMode { get; set; }
     public SnapshotDiagnosticMode? DiagnosticMode { get; set; }
 }
 
-interface IQuickMarkupSnapshotable<T>
-{
-    void LoadState(T data);
-    T SaveState();
-}
-
-class SnapshotIncludeAttribute(string key = "") : System.Attribute;
-class SnapshotIgnoreAttribute() : System.Attribute;
+public class SnapshotIncludeAttribute(string key = "") : System.Attribute;
+public class SnapshotIgnoreAttribute() : System.Attribute;
+public class SnapshotManualAttribute(string key = "") : SnapshotIncludeAttribute(key);
 
 record SnasphostConfiguration(SnapshotStateMode SnapshotMode, SnapshotDiagnosticMode DiagnosticMode);

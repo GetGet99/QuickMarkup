@@ -12,7 +12,7 @@
 	<Import Project="..\QuickMarkup.CodeAnalysis.props" />
 
 	<ItemGroup>
-	  <Compile Include="..\QuickMarkup.CodeAnalysis\Binders\QMBinderError.cs" Link="QMBinderError.cs" />
+		<Compile Include="..\QuickMarkup.Snapshot\Attributes.cs" Link="Attributes.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

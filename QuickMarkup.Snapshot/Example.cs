@@ -30,6 +30,7 @@ class QuickMarkupAttribute(string markup) : Attribute;
 
 // generated code mockup
 
+/*
 partial interface IMySnapshotComponent
     // source generator should add this typed generic inteface
     : ISnapshotComponent<JsonNodeSnapshotFormatter, JsonNode>
@@ -85,4 +86,4 @@ partial class GHI
         return kv;
     }
 }
-
+*/
