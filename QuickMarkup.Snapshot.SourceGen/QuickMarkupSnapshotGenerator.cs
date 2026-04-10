@@ -16,6 +16,8 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
 {
     const string SnapshotComponentAttributeMetadataName = "QuickMarkup.Snapshot.SnapshotComponentAttribute";
     const string SnapshotIncludeAttributeMetadataName = "QuickMarkup.Snapshot.SnapshotIncludeAttribute";
+    const string SnapshotIgnoreAttributeMetadataName = "QuickMarkup.Snapshot.SnapshotIgnoreAttribute";
+    const string SnapshotManualAttributeMetadataName = "QuickMarkup.Snapshot.SnapshotManualAttribute";
     const string SnapshotFormatterMetadataName = "QuickMarkup.Snapshot.ISnapshotFormatter`1";
     const string SnapshotMarkerInterfaceMetadataName = "QuickMarkup.Snapshot.ISnapshotComponent";
 
@@ -104,7 +106,7 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
 
         foreach (var implementer in implementers)
         {
-            if (implementer.HasFatalError)
+            if (implementer.HasFatalError || !implementer.ShouldGenerateMembers)
                 continue;
             EmitSnapshotClass(context, implementer, snapshotInterfaceList);
         }
@@ -236,6 +238,14 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
             }
 
             var snapshotInterface = matches[0];
+            var implementerMode = GetImplementerMode(typeSymbol);
+            if (implementerMode.Error is not null)
+            {
+                ReportError(context, markup.Target, implementerMode.Error);
+                continue;
+            }
+            if (implementerMode.Mode is SnapshotImplementerMode.Ignored)
+                continue;
 
             if (typeSymbol.IsAbstract)
             {
@@ -249,36 +259,34 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
                 continue;
             }
 
-            var (discriminator, hasExplicitDiscriminator, discriminatorError) = GetDiscriminator(typeSymbol);
-            if (discriminatorError is not null)
-            {
-                ReportError(context, markup.Target, discriminatorError);
-                continue;
-            }
-
-            if (snapshotInterface.Configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.NoName) && !hasExplicitDiscriminator)
+            if (snapshotInterface.Configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.NoName)
+                && !implementerMode.HasExplicitDiscriminator)
             {
                 ReportWarning(
                     context,
                     markup.Target,
-                    $"This snapshot discriminator may unintentionally change after renaming the class. Please include [SnapshotInclude(\"{typeSymbol.Name}\")]."
+                    $"This snapshot discriminator may unintentionally change after renaming the class. Please include [{implementerMode.AttributeName}(\"{typeSymbol.Name}\")]."
                 );
             }
 
-            var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, markup.Target.Namespace);
-            var binder = new SnapshotBinder(resolver);
-            var fields = binder.Bind(markup.AST.Refs, snapshotInterface.Configuration);
             var hasFatalError = false;
-            foreach (var diagnostic in binder.Diagnostics)
+            IReadOnlyList<SnapshotField> fields = [];
+            if (implementerMode.Mode is SnapshotImplementerMode.Generated)
             {
-                if (diagnostic is QMBinderError)
+                var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, markup.Target.Namespace);
+                var binder = new SnapshotBinder(resolver);
+                fields = binder.Bind(markup.AST.Refs, snapshotInterface.Configuration);
+                foreach (var diagnostic in binder.Diagnostics)
                 {
-                    hasFatalError = true;
-                    ReportError(context, markup.Target, diagnostic.Message);
-                }
-                else
-                {
-                    ReportWarning(context, markup.Target, diagnostic.Message);
+                    if (diagnostic is QMBinderError)
+                    {
+                        hasFatalError = true;
+                        ReportError(context, markup.Target, diagnostic.Message);
+                    }
+                    else
+                    {
+                        ReportWarning(context, markup.Target, diagnostic.Message);
+                    }
                 }
             }
 
@@ -286,14 +294,15 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
                 markup.Target,
                 typeSymbol,
                 snapshotInterface,
-                discriminator,
+                implementerMode.Discriminator,
                 fields,
-                hasFatalError
+                hasFatalError,
+                shouldGenerateMembers: implementerMode.Mode is SnapshotImplementerMode.Generated
             );
 
             implementers.Add(implementer);
 
-            var key = (snapshotInterface.Symbol, discriminator);
+            var key = (snapshotInterface.Symbol, implementerMode.Discriminator);
             if (!byInterfaceAndDiscriminator.TryGetValue(key, out var list))
             {
                 list = [];
@@ -449,26 +458,55 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
         return new(match, null);
     }
 
-    static (string Discriminator, bool HasExplicitDiscriminator, string? Error) GetDiscriminator(INamedTypeSymbol typeSymbol)
+    static SnapshotImplementerModeResult GetImplementerMode(INamedTypeSymbol typeSymbol)
     {
-        var matches = typeSymbol.GetAttributes()
-            .Where(x => x.AttributeClass?.ToDisplayString() == SnapshotIncludeAttributeMetadataName)
-            .ToArray();
+        var attributes = typeSymbol.GetAttributes();
+        var includeMatches = attributes.Where(x => MatchesAttribute(x, SnapshotIncludeAttributeMetadataName) && !MatchesAttribute(x, SnapshotManualAttributeMetadataName)).ToArray();
+        var manualMatches = attributes.Where(x => MatchesAttribute(x, SnapshotManualAttributeMetadataName)).ToArray();
+        var ignoreMatches = attributes.Where(x => MatchesAttribute(x, SnapshotIgnoreAttributeMetadataName)).ToArray();
 
-        if (matches.Length > 1)
-            return ("", false, $"Only one [SnapshotInclude] may be applied to {typeSymbol.ToDisplayString()}.");
+        if (ignoreMatches.Length > 0)
+            return new(SnapshotImplementerMode.Ignored, "", false, nameof(SnapshotIgnoreAttribute), null);
 
-        if (matches.Length == 0)
-            return (typeSymbol.Name, false, null);
+        if (manualMatches.Length > 1)
+            return new(SnapshotImplementerMode.Generated, "", false, nameof(SnapshotManualAttribute), $"Only one [SnapshotManual] may be applied to {typeSymbol.ToDisplayString()}.");
+        if (includeMatches.Length > 1)
+            return new(SnapshotImplementerMode.Generated, "", false, nameof(SnapshotIncludeAttribute), $"Only one [SnapshotInclude] may be applied to {typeSymbol.ToDisplayString()}.");
+        if (manualMatches.Length > 0 && includeMatches.Length > 0)
+            return new(SnapshotImplementerMode.Generated, "", false, nameof(SnapshotManualAttribute), $"[{nameof(SnapshotManualAttribute)}] and [SnapshotInclude] cannot both be applied to {typeSymbol.ToDisplayString()}.");
 
-        var value = matches[0].ConstructorArguments.Length > 0
-            ? matches[0].ConstructorArguments[0].Value as string
+        if (manualMatches.Length > 0)
+            return CreateImplementerModeResult(typeSymbol, manualMatches[0], SnapshotImplementerMode.Manual, nameof(SnapshotManualAttribute));
+        if (includeMatches.Length > 0)
+            return CreateImplementerModeResult(typeSymbol, includeMatches[0], SnapshotImplementerMode.Generated, nameof(SnapshotIncludeAttribute));
+
+        return new(SnapshotImplementerMode.Generated, typeSymbol.Name, false, nameof(SnapshotIncludeAttribute), null);
+    }
+
+    static SnapshotImplementerModeResult CreateImplementerModeResult(
+        INamedTypeSymbol typeSymbol,
+        AttributeData attribute,
+        SnapshotImplementerMode mode,
+        string attributeName)
+    {
+        var value = attribute.ConstructorArguments.Length > 0
+            ? attribute.ConstructorArguments[0].Value as string
             : null;
 
         if (string.IsNullOrWhiteSpace(value))
-            return (typeSymbol.Name, false, null);
+            return new(mode, typeSymbol.Name, false, attributeName, null);
 
-        return (value!, true, null);
+        return new(mode, value!, true, attributeName, null);
+    }
+
+    static bool MatchesAttribute(AttributeData attribute, string metadataName)
+    {
+        for (var current = attribute.AttributeClass; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString() == metadataName)
+                return true;
+        }
+        return false;
     }
 
     static SnasphostConfiguration BuildConfiguration(AttributeData attribute, SnapshotPresetMode preset)
@@ -602,7 +640,8 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
             SnapshotInterfaceBinding snapshotInterface,
             string discriminator,
             IReadOnlyList<SnapshotField> fields,
-            bool hasFatalError)
+            bool hasFatalError,
+            bool shouldGenerateMembers)
         {
             Target = target;
             Symbol = symbol;
@@ -610,6 +649,7 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
             Discriminator = discriminator;
             Fields = fields;
             HasFatalError = hasFatalError;
+            ShouldGenerateMembers = shouldGenerateMembers;
         }
 
         public QuickMarkupTargetContext Target { get; }
@@ -618,9 +658,25 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
         public string Discriminator { get; }
         public IReadOnlyList<SnapshotField> Fields { get; }
         public bool HasFatalError { get; set; }
+        public bool ShouldGenerateMembers { get; }
     }
 
     readonly record struct NestedSnapshotResolution(SnapshotInterfaceBinding? Interface, string? Error);
+
+    enum SnapshotImplementerMode
+    {
+        Generated,
+        Manual,
+        Ignored,
+    }
+
+    readonly record struct SnapshotImplementerModeResult(
+        SnapshotImplementerMode Mode,
+        string Discriminator,
+        bool HasExplicitDiscriminator,
+        string AttributeName,
+        string? Error
+    );
 
     sealed class SnapshotDiscriminatorComparer : IEqualityComparer<(INamedTypeSymbol Interface, string Discriminator)>
     {

@@ -40,5 +40,6 @@ public class SnapshotComponentAttribute(Type formatterType, string typeKey, Snap
 
 public class SnapshotIncludeAttribute(string key = "") : System.Attribute;
 public class SnapshotIgnoreAttribute() : System.Attribute;
+public class SnapshotManualAttribute(string key = "") : SnapshotIncludeAttribute(key);
 
 record SnasphostConfiguration(SnapshotStateMode SnapshotMode, SnapshotDiagnosticMode DiagnosticMode);
