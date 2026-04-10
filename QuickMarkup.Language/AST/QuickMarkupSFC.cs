@@ -128,21 +128,21 @@ public record class QMCompileTimeAttributeArguments(
     public QMCompileTimeAttributeArguments(ListAST<QMAttributeNamedArgument> Named) : this(new(), Named) {}
     public void Add(QuickMarkupValue value) => Positionals.Add(value);
 }
-public record class QMCompileTimeAttribute(
+public record class QMAttribute(
     PositionedIdentifier? TargetSpecifier,
     PositionedIdentifier AttributeName,
     QMCompileTimeAttributeArguments Arguments)
 {
-    public QMCompileTimeAttribute(PositionedIdentifier AttributeName, QMCompileTimeAttributeArguments Arguments)
+    public QMAttribute(PositionedIdentifier AttributeName, QMCompileTimeAttributeArguments Arguments)
         : this(null, AttributeName, Arguments) { }
 }
 public record class RefDeclaration(
     TypeDeclaration Type,
-    string Name,
+    PositionedIdentifier Name,
     QuickMarkupValue? DefaultValue,
     bool IsPrivate,
     bool IsComputedDeclaration,
-    ListAST<QMCompileTimeAttribute> Attributes);
+    ListAST<QMAttribute> Attributes);
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
 public record class QuickMarkupRange(int RangeStart, int RangeEnd) : QuickMarkupValue();

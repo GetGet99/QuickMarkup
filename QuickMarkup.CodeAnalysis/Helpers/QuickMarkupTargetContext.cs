@@ -101,4 +101,17 @@ readonly record struct QuickMarkupTargetContext(
             return false;
         }
     }
+    public string TypeNameSourceGenOutputFriendlyFileName
+    {
+        get
+        {
+            var name = FullTypeName;
+            if (name.StartsWith("global::"))
+            {
+                name = name["global::".Length..];
+            }
+            name = name.Replace('<', '[').Replace('>', ']');
+            return name;
+        }
+    }
 }

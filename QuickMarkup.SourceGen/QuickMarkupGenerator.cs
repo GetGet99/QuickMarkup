@@ -137,17 +137,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     {code}
                     """;
                 }
-                sourceProductionContext.AddSource($"{ctx.FullTypeName.Replace('<', '[').Replace('>', ']')}.INIT.g.cs", $$"""
-                #nullable enable
-                {{usings}}
-
-                namespace {{ctx.Namespace}};
-                
-                partial class {{ctx.TypeName}} {
-                    {{code}}
-                }
-                
-                """);
+                sourceProductionContext.AddSource(ctx, "INIT", code, usings);
             });
             /*
             // ERRORS from source file:
@@ -242,17 +232,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
             {
                 var (ctx, usings, refsCode) = value;
-                sourceProductionContext.AddSource($"{ctx.FullTypeName.Replace('<', '[').Replace('>', ']')}.REFS.g.cs", $$"""
-                #nullable enable
-                {{usings}}
-
-                namespace {{ctx.Namespace}};
-                
-                partial class {{ctx.TypeName}} {
-                    {{refsCode}}
-                }
-                
-                """);
+                sourceProductionContext.AddSource(ctx, "REFS", refsCode);
             });
         }
 
@@ -261,16 +241,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             context.RegisterSourceOutput(errorMarkups, (sourceProductionContext, value) =>
             {
                 var (target, errors) = value;
-                sourceProductionContext.AddSource($"{target.FullTypeName.Replace('<', '[').Replace('>', ']')}.ERROR.g.cs", $$"""
-                #nullable enable
-                namespace {{target.Namespace}};
-                
-                partial class {{target.TypeName}} {
-                    /*
-                        {{errors.Replace("*/", "*_/")}}
-                    */
-                }
-                
+                sourceProductionContext.AddSource(target, "ERROR", $"""
+                /*
+                    {errors.Replace("*/", "*_/")}
+                */
                 """);
             });
         }

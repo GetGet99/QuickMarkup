@@ -41,28 +41,28 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(RefsDecl, AS, VALUE, ERROR, IDENTITY)]
         RefsDecl,
         // Ref compile-time attributes (stacked [...][...] blocks before each declaration)
-        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Type<ListAST<QMAttribute>>]
         [Rule(EMPTYLIST)]
         [Rule(NonEmptyRefAttributes, AS, VALUE, IDENTITY)]
         RefAttributes,
-        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Type<ListAST<QMAttribute>>]
         [Rule(Terminal.OpenSquareBracket, RefAttrAppsInner, AS, VALUE, Terminal.CloseSquareBracket, IDENTITY)]
         [Rule(NonEmptyRefAttributes, AS, "prev", Terminal.OpenSquareBracket, RefAttrAppsInner, AS, "more", Terminal.CloseSquareBracket, nameof(AppendRefAttributeSections))]
         NonEmptyRefAttributes,
-        [Type<ListAST<QMCompileTimeAttribute>>]
+        [Type<ListAST<QMAttribute>>]
         [Rule(RefAttrApp, AS, VALUE, SINGLELIST)]
         [Rule(RefAttrAppsInner, AS, LIST, Terminal.Comma, RefAttrApp, AS, VALUE, APPENDLIST)]
         [Rule(RefAttrAppsInner, AS, VALUE, ERROR, IDENTITY)]
         RefAttrAppsInner,
-        [Type<QMCompileTimeAttribute>]
-        [Rule(QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.TargetSpecifier),
+        [Type<QMAttribute>]
+        [Rule(QMPositionedIdentifier, AS, nameof(QMAttribute.TargetSpecifier),
             Terminal.Colon,
-            QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.AttributeName),
-            RefAttrOptArgs, AS, nameof(QMCompileTimeAttribute.Arguments),
-            typeof(QMCompileTimeAttribute))]
-        [Rule(QMPositionedIdentifier, AS, nameof(QMCompileTimeAttribute.AttributeName),
-            RefAttrOptArgs, AS, nameof(QMCompileTimeAttribute.Arguments),
-            typeof(QMCompileTimeAttribute))]
+            QMPositionedIdentifier, AS, nameof(QMAttribute.AttributeName),
+            RefAttrOptArgs, AS, nameof(QMAttribute.Arguments),
+            typeof(QMAttribute))]
+        [Rule(QMPositionedIdentifier, AS, nameof(QMAttribute.AttributeName),
+            RefAttrOptArgs, AS, nameof(QMAttribute.Arguments),
+            typeof(QMAttribute))]
         RefAttrApp,
         [Type<QMCompileTimeAttributeArguments>]
         [Rule(Terminal.OpenBracket, RefAttrArgsInner, AS, VALUE, Terminal.CloseBracket, IDENTITY)]
@@ -337,7 +337,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             {B}
             """;
     }
-    static ListAST<QMCompileTimeAttribute> AppendRefAttributeSections(ListAST<QMCompileTimeAttribute> prev, ListAST<QMCompileTimeAttribute> more)
+    static ListAST<QMAttribute> AppendRefAttributeSections(ListAST<QMAttribute> prev, ListAST<QMAttribute> more)
     {
         foreach (var x in more)
             prev.Add(x);

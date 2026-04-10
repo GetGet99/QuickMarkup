@@ -4,10 +4,8 @@ using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
-partial class Binder
+partial class QuickMarkupBinder
 {
-    static readonly QMBinderTagInfo LooseRefValueTagInfo = new(null, "", null, null, ChildrenModes.None);
-
     /// <summary>Binds ref/computed declarations for tooling and future plugins; phase 1 does not affect ref field codegen.</summary>
     public IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> BindRefDeclarations(
         IEnumerable<RefDeclaration> refs,
@@ -29,7 +27,7 @@ partial class Binder
         IQMValueSymbol? defaultSym = null;
         if (r.DefaultValue is { } dv)
         {
-            defaultSym = Bind(dv, typeSym, LooseRefValueTagInfo);
+            defaultSym = Bind(dv, typeSym, null);
         }
 
         var attrs = new List<QMCompileTimeAttributeSymbol>(r.Attributes.Count);
@@ -38,14 +36,14 @@ partial class Binder
 
         return new QMRefDeclarationSymbol<ITypeSymbol?>(
             typeSym,
-            r.Name,
+            r.Name.Name,
             defaultSym,
             r.IsPrivate,
             r.IsComputedDeclaration,
             attrs);
     }
 
-    QMCompileTimeAttributeSymbol BindCompileTimeAttribute(QMCompileTimeAttribute attr)
+    QMCompileTimeAttributeSymbol BindCompileTimeAttribute(QMAttribute attr)
     {
         var pos = new List<IQMValueSymbol>(attr.Arguments.Positionals.Count);
         foreach (var p in attr.Arguments.Positionals)
@@ -65,7 +63,7 @@ partial class Binder
     /// <summary>Attribute arguments may use bare identifiers (no enum type); otherwise reuse template value binding.</summary>
     IQMValueSymbol BindCompileTimeArgumentValue(QuickMarkupValue value) => value switch
     {
-        QuickMarkupIdentifier id => Value(null, id.Identifier),
-        _ => Bind(value, null, LooseRefValueTagInfo),
+        QuickMarkupIdentifier id => new QMValueSymbol<ITypeSymbol>(null, id.Identifier),
+        _ => utils.Bind(value, null),
     };
 }

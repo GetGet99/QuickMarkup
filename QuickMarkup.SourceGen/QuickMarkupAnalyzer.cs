@@ -218,7 +218,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     e.Message
                 ));
             }
-            foreach (var error in binder.Errors)
+            foreach (var error in binder.Diagnostics)
             {
                 var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
                 if (error is QMBinderChildrenTooMany childrenTooMany)

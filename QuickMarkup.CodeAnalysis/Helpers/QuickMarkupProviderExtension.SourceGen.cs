@@ -3,7 +3,6 @@ using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QuickMarkup.AST;
-using QuickMarkup.SourceGen;
 
 namespace QuickMarkup.CodeAnalysis.Helpers;
 
@@ -77,5 +76,17 @@ static partial class QuickMarkupProviderExtension
         {
             return new QuickMarkupParseError(x.Target, x.Error!);
         });
+    public static void AddSource(this SourceProductionContext sourceProductionContext, QuickMarkupTargetContext target, string hintNameSuffix, string code, string usings = "")
+    {
+        sourceProductionContext.AddSource($"{target.TypeNameSourceGenOutputFriendlyFileName}.{hintNameSuffix}.g.cs", $$"""
+            {{usings}}
+            #nullable enable
+            namespace {{target.Namespace}};
+            
+            partial class {{target.TypeName}} {
+                {{code.IndentWOF()}}
+            }
+            """);
+    }
 }
 

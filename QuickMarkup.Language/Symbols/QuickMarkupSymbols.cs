@@ -52,7 +52,8 @@ public record class QMCompileTimeAttributeSymbol(
     string? TargetSpecifier,
     string AttributeName,
     IReadOnlyList<IQMValueSymbol> PositionalArguments,
-    IReadOnlyList<QMAttributeNamedArgumentSymbol> NamedArguments);
+    IReadOnlyList<QMAttributeNamedArgumentSymbol> NamedArguments
+);
 
 /// <summary>Bound ref/computed prop line, including compile-time attributes (phase 1: not emitted to C# refs). Use <see cref="RefType"/> nullable annotation when <c>T</c> is <c>ITypeSymbol</c>.</summary>
 public record class QMRefDeclarationSymbol<T>(

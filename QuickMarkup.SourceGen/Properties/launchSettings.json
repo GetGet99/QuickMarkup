@@ -7,6 +7,10 @@
     "Source Gen: United Sets": {
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\..\\UnitedSets\\UnitedSets.csproj"
+    },
+    "Profile 1": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\..\\SparklingThoughts\\SparklingThoughts.csproj"
     }
   }
 }
