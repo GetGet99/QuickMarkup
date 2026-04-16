@@ -12,7 +12,6 @@
     <Project Path="Parser/Get.RegexMachine.Shared/Get.RegexMachine.Shared.shproj" />
     <Project Path="Parser/Get.RegexMachine/Get.RegexMachine.csproj" />
   </Folder>
-  <Project Path="QuickMarkup.CodeGen/QuickMarkup.CodeGen.csproj" Id="740b0d79-bb30-4066-b544-001b88f7ed60" />
   <Project Path="QuickMarkup.Infra.Test/QuickMarkup.Infra.Test.csproj" Id="8ce6f563-b4da-4552-956c-beb3e51648dd" />
   <Project Path="QuickMarkup.Infra/QuickMarkup.Infra.csproj" Id="141f36ca-c094-45e9-9559-315c38783ec9" />
   <Project Path="QuickMarkup.IntegrationTest/QuickMarkup.IntegrationTest.csproj" Id="78e4530c-69b2-4f1e-bb44-03ba441d462d" />

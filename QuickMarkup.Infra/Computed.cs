@@ -2,7 +2,7 @@
 
 namespace QuickMarkup.Infra;
 
-public class Computed<T> : IReference
+public class Computed<T> : IReference<T>
 {
     RefEffect effect;
 
