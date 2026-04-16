@@ -304,6 +304,235 @@ namespace QuickMarkup.Infra.Test
             }
         }
 
+        [TestMethod]
+        public void ScheduleCallbackRunsOnNextTick()
+        {
+            var runs = 0;
+
+            ReactiveScheduler.ScheduleCallback(() => runs++);
+
+            Assert.AreEqual(0, runs);
+
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(1, runs);
+        }
+
+        [TestMethod]
+        public void ReactiveScopeDisposesOwnedEffects()
+        {
+            Reference<int> value = new(0);
+            var runs = 0;
+            using ReactiveScope scope = new();
+
+            scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                () => value.Value,
+                _ => runs++));
+
+            Assert.AreEqual(1, runs);
+
+            scope.Dispose();
+            value.Value = 1;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(1, runs);
+        }
+
+        [TestMethod]
+        public void ConditionalBlockRecreatesBranchOnToggle()
+        {
+            Reference<bool> condition = new(false);
+            List<string> target = [];
+            UIBlockHost<string> host = new(new TargetUICollection<string>(target));
+            var trueCreated = 0;
+            var falseCreated = 0;
+
+            var block = new ConditionalBlock<string>(
+                new ReactiveScope(),
+                () => condition.Value,
+                () => new StaticBlock<string>(new ReactiveScope(), [$"true-{++trueCreated}"]),
+                () => new StaticBlock<string>(new ReactiveScope(), [$"false-{++falseCreated}"]));
+
+            host.AddBlock(block);
+
+            CollectionAssert.AreEqual(new[] { "false-1" }, target);
+
+            condition.Value = true;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { "true-1" }, target);
+
+            condition.Value = false;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { "false-2" }, target);
+        }
+
+        [TestMethod]
+        public void ConditionalBlockWithoutFalseBranchClearsCurrentBranch()
+        {
+            Reference<bool> condition = new(true);
+            List<string> target = [];
+            UIBlockHost<string> host = new(new TargetUICollection<string>(target));
+
+            var block = new ConditionalBlock<string>(
+                new ReactiveScope(),
+                () => condition.Value,
+                () => new StaticBlock<string>(new ReactiveScope(), ["true"]));
+
+            host.AddBlock(block);
+
+            CollectionAssert.AreEqual(new[] { "true" }, target);
+
+            condition.Value = false;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(Array.Empty<string>(), target);
+            Assert.AreEqual(0, block.Count);
+
+            condition.Value = true;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { "true" }, target);
+        }
+
+        [TestMethod]
+        public void ForBlockReconcilesCollectionOnNextTick()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
+            List<TextBox> target = [];
+            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+
+            var block = new ForBlock<int, TextBox>(
+                new ReactiveScope(),
+                source,
+                itemRef => new StaticBlock<TextBox>(
+                    new ReactiveScope(),
+                    (elements, scope) =>
+                    {
+                        var box = new TextBox();
+                        elements.Add(box);
+                        scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                            () => itemRef.Value,
+                            value => box.Text = value.ToString()));
+                    }));
+
+            host.AddBlock(block);
+
+            AssertText(target, "1", "2");
+
+            source.Add(3);
+            source[0] = 10;
+
+            AssertText(target, "1", "2");
+
+            ReactiveScheduler.Tick();
+
+            AssertText(target, "10", "2", "3");
+        }
+        [TestMethod]
+        public void ForBlockUsesCurrentSiblingOffsetAfterEarlierBlockGrows()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> first = [1, 2];
+            System.Collections.ObjectModel.ObservableCollection<int> second = [10];
+            List<TextBox> target = [];
+            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+
+            host.AddBlock(new ForBlock<int, TextBox>(
+                new ReactiveScope(),
+                first,
+                itemRef => new StaticBlock<TextBox>(
+                    new ReactiveScope(),
+                    (elements, scope) =>
+                    {
+                        var box = new TextBox();
+                        elements.Add(box);
+                        scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                            () => itemRef.Value,
+                            value => box.Text = $"a{value}"));
+                    })));
+
+            host.AddBlock(new ForBlock<int, TextBox>(
+                new ReactiveScope(),
+                second,
+                itemRef => new StaticBlock<TextBox>(
+                    new ReactiveScope(),
+                    (elements, scope) =>
+                    {
+                        var box = new TextBox();
+                        elements.Add(box);
+                        scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                            () => itemRef.Value,
+                            value => box.Text = $"b{value}"));
+                    })));
+
+            AssertText(target, "a1", "a2", "b10");
+
+            first.Add(3);
+            ReactiveScheduler.Tick();
+            second.Add(20);
+            ReactiveScheduler.Tick();
+
+            AssertText(target, "a1", "a2", "a3", "b10", "b20");
+        }
+
+        [TestMethod]
+        public void ForBlockUsesCurrentSiblingOffsetWhenBothBlocksGrowBeforeOneTick()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> first = [1, 2];
+            System.Collections.ObjectModel.ObservableCollection<int> second = [10];
+            List<TextBox> target = [];
+            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+
+            host.AddBlock(new ForBlock<int, TextBox>(
+                new ReactiveScope(),
+                first,
+                itemRef => new StaticBlock<TextBox>(
+                    new ReactiveScope(),
+                    (elements, scope) =>
+                    {
+                        var box = new TextBox();
+                        elements.Add(box);
+                        scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                            () => itemRef.Value,
+                            value => box.Text = $"a{value}"));
+                    })));
+
+            host.AddBlock(new ForBlock<int, TextBox>(
+                new ReactiveScope(),
+                second,
+                itemRef => new StaticBlock<TextBox>(
+                    new ReactiveScope(),
+                    (elements, scope) =>
+                    {
+                        var box = new TextBox();
+                        elements.Add(box);
+                        scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                            () => itemRef.Value,
+                            value => box.Text = $"b{value}"));
+                    })));
+
+            AssertText(target, "a1", "a2", "b10");
+
+            first.Add(3);
+            second.Add(20);
+
+            AssertText(target, "a1", "a2", "b10");
+
+            ReactiveScheduler.Tick();
+
+            AssertText(target, "a1", "a2", "a3", "b10", "b20");
+        }
+
+        static void AssertText(List<TextBox> boxes, params string[] expected)
+        {
+            var actual = boxes.Select(x => x.Text).ToArray();
+            CollectionAssert.AreEqual(
+                expected,
+                actual,
+                $"Expected [{string.Join(", ", expected)}], actual [{string.Join(", ", actual)}]");
+        }
+
         void OnNextTick(Action callback)
         {
             RefEffect effect = new(_ => callback());
@@ -322,6 +551,11 @@ namespace QuickMarkup.Infra.Test
                     ValueChanegd?.Invoke();
                 }
             }
+        }
+
+        class TextBox
+        {
+            public string Text { get; set; } = "";
         }
     }
 }

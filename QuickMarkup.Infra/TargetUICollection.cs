@@ -2,7 +2,7 @@
 
 namespace QuickMarkup.Infra;
 
-record TargetUICollection<T>(IList<T> targetList, Action<int, int> MoveFunction) : IUICollection<T>
+public class TargetUICollection<T>(IList<T> targetList, Action<int, int> MoveFunction) : IUICollection<T>
 {
     public TargetUICollection(IList<T> targetList) : this(targetList, (oldIndex, newIndex) =>
     {
@@ -22,8 +22,8 @@ record TargetUICollection<T>(IList<T> targetList, Action<int, int> MoveFunction)
     })
     { }
 
-    public void Move(uint oldIndex, uint newIndex)
-        => MoveFunction((int)oldIndex, (int)newIndex);
+    public void Move(int oldIndex, int newIndex)
+        => MoveFunction(oldIndex, newIndex);
 
     // IList<T> forwards
     public T this[int index] { get => targetList[index]; set => targetList[index] = value; }

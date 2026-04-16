@@ -14,6 +14,11 @@ public class ReactiveScheduler
     public static void ScheduleEffect(RefEffect effect) => Instance.Value!.ScheduleEffectPrivate(effect);
 
     /// <summary>
+    /// Schedules a callback to be executed on this thread's next tick.
+    /// </summary>
+    public static void ScheduleCallback(Action callback) => Instance.Value!.ScheduleCallbackPrivate(callback);
+
+    /// <summary>
     /// Executes all pending scheduled actions for this thread.
     /// Usually called at the end of the render loop or periodically.
     /// </summary>
@@ -37,12 +42,23 @@ public class ReactiveScheduler
     internal bool AutoTick { get; set; } = true;
     private readonly HashSet<RefEffect> Effects = [];
     private HashSet<RefEffect> TickingEffects = [];
+    private readonly Queue<Action> Callbacks = [];
+    private Queue<Action> TickingCallbacks = [];
     private bool NeedsSchedulingTick = true;
     private event Action? ScheduleTickAction;
     private bool isTicking;
     private void ScheduleEffectPrivate(RefEffect effect)
     {
         if (Effects.Add(effect) && AutoTick && NeedsSchedulingTick)
+        {
+            NeedsSchedulingTick = false;
+            ScheduleTickAction?.Invoke();
+        }
+    }
+    private void ScheduleCallbackPrivate(Action callback)
+    {
+        Callbacks.Enqueue(callback);
+        if (AutoTick && NeedsSchedulingTick)
         {
             NeedsSchedulingTick = false;
             ScheduleTickAction?.Invoke();
@@ -80,7 +96,23 @@ public class ReactiveScheduler
         try
         {
             NeedsSchedulingTick = true;
-            // clone
+            TickingCallbacks = new Queue<Action>(Callbacks);
+            Callbacks.Clear();
+            while (TickingCallbacks.Count > 0)
+            {
+                var callback = TickingCallbacks.Dequeue();
+                try
+                {
+                    callback();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    if (!ContinueOnException)
+                        throw;
+                }
+            }
+            // clone after callbacks so callback-scheduled effects can run in the same tick
             TickingEffects = [.. Effects];
             Effects.Clear();
             while (TickingEffects.Count > 0)
