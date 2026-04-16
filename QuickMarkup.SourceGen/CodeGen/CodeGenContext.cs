@@ -70,10 +70,10 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                     switch (addChild.Child)
                     {
                         case QMNodeSymbol<ITypeSymbol?> nodeChild:
-                            codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
+                            codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}.Add", CGen(nodeChild));
                             break;
                         case QMValueSymbol<ITypeSymbol?> nodeChild:
-                            codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}", CGen(nodeChild));
+                            codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}.Add", CGen(nodeChild));
                             break;
                         case QMForNodeSymbol<ITypeSymbol?> forChild:
                             if (forChild.Iterable is QMRangeSymbol range)

@@ -60,70 +60,202 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     }
     void Bind(ListAST<IQMNodeChild>? children, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
-        var childrenMode = tagInfo.ChildrenMode;
         if (children is null) return;
+        if (tagInfo.ChildrenMode is ChildrenModes.Assignment)
+        {
+            BindAssignmentChildren(children, tagInfo, targetCollection);
+            return;
+        }
+
+        var pendingMembers = new List<IQMMemberSymbol>();
         foreach (var child in children)
         {
-            switch (child)
+            if (TryBindPropertyTagChild(child, tagInfo, pendingMembers))
+                continue;
+
+            if (tagInfo.ChildrenMode is ChildrenModes.None)
             {
-                case QuickMarkupParsedTag tag:
-                    if (tag.TagStart is QuickMarkupPropertyTagStart tagStart)
-                    {
-                        if (tag.HasMismatchedEndTag)
-                            ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
-                        if (tag.InlineMembers.Count > 0)
-                            throw new NotImplementedException("Not supported now");
-                        if (tag.Children is { } tagChildren)
-                            Bind(new QuickMarkupParsedProperty(
-                                tagStart.TagName,
-                                ParsedPropertyOperator.Assign,
-                                new QuickMarkupQMs(tagChildren)
-                            ), tagInfo, targetCollection);
-                        break;
-                    }
-                    if (childrenMode is ChildrenModes.None)
-                        ErrorChildrenTooMany(tag, tagInfo);
-                    if (childrenMode is ChildrenModes.Assignment)
-                    {
-                        targetCollection.Add(new QMAssignChildMember(tagInfo.ChildrenProperty!, Bind(tag)));
-                        childrenMode = ChildrenModes.None;
-                    }
-                    else
-                    {
-                        targetCollection.Add(new QMAddChildMember($"{tagInfo.ChildrenProperty!}.Add", Bind(tag)));
-                    }
-                    break;
-                case QuickMarkupValue val:
-                    if (childrenMode is ChildrenModes.None)
-                        ErrorChildrenTooMany(val, tagInfo);
-                    if (childrenMode is ChildrenModes.Assignment)
-                    {
-                        targetCollection.Add(new QMAssignChildMember(tagInfo.ChildrenProperty!, Bind(val, tagInfo.ChildrenType, tagInfo)));
-                        childrenMode = ChildrenModes.None;
-                    }
-                    else
-                    {
-                        targetCollection.Add(new QMAddChildMember($"{tagInfo.ChildrenProperty!}.Add", Bind(val, tagInfo.ChildrenType, tagInfo)));
-                    }
-                    break;
-                case QuickMarkupParsedForNode forNode:
-                    if (childrenMode is ChildrenModes.None or ChildrenModes.Assignment)
-                        ErrorChildrenTooMany(forNode, tagInfo);
-                    targetCollection.Add(new QMAddChildMember($"{tagInfo.ChildrenProperty!}.Add", Bind(forNode, tagInfo)));
-                    break;
+                ErrorChildrenTooMany((AST.AST)child, tagInfo);
+                BindCollectionChildForDiagnostics(child, tagInfo);
+                continue;
             }
+
+            pendingMembers.Add(new QMAddChildMember(
+                tagInfo.ChildrenProperty!,
+                BindCollectionChild(child, tagInfo)
+            ));
         }
+
+        var lowering = pendingMembers.Any(RequiresStructuralLowering)
+            ? ChildCollectionLowering.Blocks
+            : ChildCollectionLowering.DirectAdd;
+
+        foreach (var member in pendingMembers)
+        {
+            targetCollection.Add(member switch
+            {
+                QMAddChildMember addChild => addChild with { CollectionLowering = lowering },
+                _ => member
+            });
+        }
+    }
+
+    void BindAssignmentChildren(ListAST<IQMNodeChild> children, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    {
+        var contentChildren = new List<IQMNodeChild>();
+        foreach (var child in children)
+        {
+            if (TryBindPropertyTagChild(child, tagInfo, targetCollection))
+                continue;
+
+            contentChildren.Add(child);
+        }
+
+        if (contentChildren.Count != 1)
+            ErrorChildrenTooMany(children, tagInfo);
+
+        foreach (var extra in contentChildren.Skip(1))
+            BindSingleChildNodeForDiagnostics(extra, tagInfo);
+
+        if (contentChildren.Count == 0)
+            return;
+
+        targetCollection.Add(new QMAssignChildMember(
+            tagInfo.ChildrenProperty!,
+            BindSingleChildNode(contentChildren[0], tagInfo)
+        ));
+    }
+
+    bool TryBindPropertyTagChild(IQMNodeChild child, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
+    {
+        if (child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart tagStart } tag)
+            return false;
+
+        if (tag.HasMismatchedEndTag)
+            ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
+        if (tag.InlineMembers.Count > 0)
+            throw new NotImplementedException("Not supported now");
+        if (tag.Children is { } tagChildren)
+            Bind(new QuickMarkupParsedProperty(
+                tagStart.TagName,
+                ParsedPropertyOperator.Assign,
+                new QuickMarkupQMs(tagChildren)
+            ), tagInfo, targetCollection);
+        return true;
+    }
+
+    IQMNodeChildSymbol BindCollectionChild(IQMNodeChild child, QMBinderTagInfo tagInfo)
+    {
+        return child switch
+        {
+            QuickMarkupParsedIfNode ifNode => BindCollectionIf(ifNode, tagInfo),
+            QuickMarkupParsedForNode forNode => Bind(forNode, tagInfo),
+            QuickMarkupParsedFragmentNode fragment => BindFragment(fragment, tagInfo),
+            QuickMarkupParsedTag tag => Bind(tag),
+            QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
+            _ => throw new NotImplementedException($"Unsupported child node: {child.GetType().Name}")
+        };
+    }
+
+    void BindCollectionChildForDiagnostics(IQMNodeChild child, QMBinderTagInfo tagInfo)
+    {
+        _ = BindCollectionChild(child, tagInfo);
+    }
+
+    IQMNodeChildSymbol BindSingleChildNode(IQMNodeChild child, QMBinderTagInfo tagInfo)
+    {
+        return child switch
+        {
+            QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
+            QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
+            QuickMarkupParsedFragmentNode fragment => ErrorFragmentNotAllowedInSingleChild(fragment, tagInfo),
+            QuickMarkupParsedTag tag => Bind(tag),
+            QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
+            _ => throw new NotImplementedException($"Unsupported child node: {child.GetType().Name}")
+        };
+    }
+
+    void BindSingleChildNodeForDiagnostics(IQMNodeChild child, QMBinderTagInfo tagInfo)
+    {
+        _ = BindSingleChildNode(child, tagInfo);
     }
 
     QMForNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedForNode forNode, QMBinderTagInfo tagInfo)
     {
         var type = forNode.VarType is null ? null : resolver.GetTypeSymbol(forNode.VarType.Type);
-        return new(type?.WithNullableAnnotation(
+        var iterable = Bind(forNode.Iterable, type, tagInfo);
+        var kind = iterable is QMRangeSymbol
+            ? QMForKind.StaticRange
+            : QMForKind.ReactiveCollection;
+        return new(kind, type?.WithNullableAnnotation(
             forNode.VarType?.IsTypeNullable ?? false ?
                 NullableAnnotation.Annotated :
                 NullableAnnotation.NotAnnotated
-            ), forNode.VarName, Bind(forNode.Iterable, type, tagInfo), Bind(forNode.Body, tagInfo));
+            ), forNode.VarName, iterable, Bind(forNode.Body, tagInfo), forNode.IndexVarName);
     }
+
+    QMIfNodeSymbol<ITypeSymbol?> BindCollectionIf(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
+        => new(
+            BindCondition(ifNode, tagInfo),
+            Bind(ifNode.BodyWhenTrue, tagInfo),
+            ifNode.BodyWhenFalse is null ? null : Bind(ifNode.BodyWhenFalse, tagInfo)
+        );
+
+    QMConditionalValueSymbol<ITypeSymbol?> BindSingleChildIf(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
+    {
+        if (ifNode.BodyWhenFalse is null)
+            ErrorSingleChildConditionalRequiresElse(ifNode);
+
+        return new(
+            BindCondition(ifNode, tagInfo),
+            BindSingleChildBranch(ifNode.BodyWhenTrue, tagInfo, ifNode, "true"),
+            ifNode.BodyWhenFalse is null
+                ? ErrorRecoveryChild(tagInfo)
+                : BindSingleChildBranch(ifNode.BodyWhenFalse, tagInfo, ifNode, "false")
+        );
+    }
+
+    IQMNodeChildSymbol BindSingleChildBranch(ListAST<IQMNodeChild> children, QMBinderTagInfo tagInfo, AST.AST owner, string branchName)
+    {
+        if (children.Count != 1)
+            ErrorSingleChildBranchMustHaveExactlyOneChild(owner, branchName, children.Count);
+
+        foreach (var extra in children.Skip(1))
+            BindSingleChildNodeForDiagnostics(extra, tagInfo);
+
+        return children.Count == 0
+            ? ErrorRecoveryChild(tagInfo)
+            : BindSingleChildNode(children[0], tagInfo);
+    }
+
+    QMFragmentNodeSymbol BindFragment(QuickMarkupParsedFragmentNode fragment, QMBinderTagInfo tagInfo)
+        => new(Bind(fragment.Children, tagInfo));
+
+    IQMValueSymbol BindCondition(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
+    {
+        if (ifNode.Condition is QuickMarkupIdentifier)
+        {
+            ErrorConditionTypeInvalid(ifNode.Condition, null);
+            return new QMValueSymbol<ITypeSymbol>(resolver.Boolean, "false");
+        }
+
+        var condition = ifNode.Condition is QuickMarkupForeign
+            ? Bind(ifNode.Condition, resolver.Boolean, tagInfo)
+            : Bind(ifNode.Condition, null, tagInfo);
+
+        if (condition is QMValueSymbol<ITypeSymbol> { Type: { } type })
+        {
+            if (!SymbolEqualityComparer.Default.Equals(type, resolver.Boolean))
+                ErrorConditionTypeInvalid(ifNode.Condition, type);
+        }
+        else
+        {
+            ErrorConditionTypeInvalid(ifNode.Condition, null);
+        }
+
+        return condition;
+    }
+
     void Bind(ListAST<QuickMarkupInlineMember> properties, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         if (properties is null) return;
@@ -275,4 +407,46 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         => Error(new QMBinderTypeUnknownError((AST.AST)tagStart, tagStart.TagName));
     void ErrorChildrenTooMany(AST.AST node, QMBinderTagInfo parentTagInfo)
         => Error(new QMBinderChildrenTooMany(node, parentTagInfo));
+    void ErrorSingleChildConditionalRequiresElse(QuickMarkupParsedIfNode node)
+        => Error(node, "Single-child conditional content requires an else branch.");
+    void ErrorSingleChildBranchMustHaveExactlyOneChild(AST.AST node, string branchName, int actualCount)
+        => Error(node, $"Single-child conditional {branchName} branch must contain exactly one child, but got {actualCount}.");
+    void ErrorConditionTypeInvalid(QuickMarkupValue node, ITypeSymbol? actualType)
+        => Error(node, $"if condition must be bool, but got {actualType?.FullNameWithoutAnnotation() ?? "unknown"}.");
+    IQMNodeChildSymbol ErrorForNotAllowedInSingleChild(QuickMarkupParsedForNode node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "foreach is not allowed in a single-child content position.");
+        _ = Bind(node, tagInfo);
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorFragmentNotAllowedInSingleChild(QuickMarkupParsedFragmentNode node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "Fragment is not allowed in a single-child content position.");
+        _ = BindFragment(node, tagInfo);
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorRecoveryChild(QMBinderTagInfo tagInfo)
+        => new QMValueSymbol<ITypeSymbol?>(tagInfo.ChildrenType, "default");
+
+    bool RequiresStructuralLowering(IQMMemberSymbol member)
+        => member switch
+        {
+            QMAddChildMember addChild => RequiresStructuralLowering(addChild.Child),
+            QMAssignChildMember assignChild => RequiresStructuralLowering(assignChild.Child),
+            _ => false
+        };
+
+    bool RequiresStructuralLowering(IQMNodeChildSymbol child)
+        => child switch
+        {
+            QMIfNodeSymbol<ITypeSymbol?> => true,
+            QMConditionalValueSymbol<ITypeSymbol?> => true,
+            QMFragmentNodeSymbol => true,
+            QMForNodeSymbol<ITypeSymbol> { Kind: QMForKind.ReactiveCollection } => true,
+            QMForNodeSymbol<ITypeSymbol> { Kind: QMForKind.StaticRange } forNode => ContainsStructuralChildren(forNode.Body),
+            _ => false
+        };
+
+    bool ContainsStructuralChildren(IReadOnlyList<IQMMemberSymbol> members)
+        => members.Any(RequiresStructuralLowering);
 }

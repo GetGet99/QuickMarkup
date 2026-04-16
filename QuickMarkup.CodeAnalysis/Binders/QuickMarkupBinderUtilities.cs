@@ -19,7 +19,7 @@ class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
             case QuickMarkupBoolean x:
                 return ValueOrAutoNew(resolver.Boolean, x.Value ? "true" : "false", type);
             case QuickMarkupString x:
-                return ValueOrAutoNew(resolver.Boolean, $"\"{SymbolDisplay.FormatLiteral(x.Value, false)}\"", type);
+                return ValueOrAutoNew(resolver.String, $"\"{SymbolDisplay.FormatLiteral(x.Value, false)}\"", type);
             case QuickMarkupDefault x:
                 if (x.IsExplicitlyNull)
                 {

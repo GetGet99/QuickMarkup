@@ -19,6 +19,18 @@ public enum BindingModes
     TwoWay, // in the future, perhaps <=>
 }
 
+public enum ChildCollectionLowering
+{
+    DirectAdd,
+    Blocks
+}
+
+public enum QMForKind
+{
+    StaticRange,
+    ReactiveCollection
+}
+
 public record class QMConstructor(
     string Method,
     IReadOnlyList<IQMValueSymbol> Parameters,
@@ -31,10 +43,40 @@ public record class QMNodeSymbol<T>(
     IReadOnlyList<IQMMemberSymbol> Members,
     string? Name
 ) : IQMNodeChildSymbol, IQMValueSymbol;
-public record class QMForNodeSymbol<T>(T? VarType, string VarName, IQMValueSymbol Iterable, IReadOnlyList<IQMMemberSymbol> Body) : IQMNodeChildSymbol;
+public record class QMForNodeSymbol<T>(
+    QMForKind Kind,
+    T? VarType,
+    string VarName,
+    IQMValueSymbol Iterable,
+    IReadOnlyList<IQMMemberSymbol> Body,
+    string? IndexVarName = null
+) : IQMNodeChildSymbol
+{
+    public QMForNodeSymbol(T? VarType, string VarName, IQMValueSymbol Iterable, IReadOnlyList<IQMMemberSymbol> Body)
+        : this(QMForKind.ReactiveCollection, VarType, VarName, Iterable, Body, null)
+    {
+    }
+}
+public record class QMIfNodeSymbol<T>(
+    IQMValueSymbol Condition,
+    IReadOnlyList<IQMMemberSymbol> BodyWhenTrue,
+    IReadOnlyList<IQMMemberSymbol>? BodyWhenFalse
+) : IQMNodeChildSymbol;
+public record class QMConditionalValueSymbol<T>(
+    IQMValueSymbol Condition,
+    IQMNodeChildSymbol ValueWhenTrue,
+    IQMNodeChildSymbol ValueWhenFalse
+) : IQMNodeChildSymbol;
+public record class QMFragmentNodeSymbol(
+    IReadOnlyList<IQMMemberSymbol> Body
+) : IQMNodeChildSymbol;
 
 public record class QMAssignChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
-public record class QMAddChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
+public record class QMAddChildMember(
+    string ChildPropertyPath,
+    IQMNodeChildSymbol Child,
+    ChildCollectionLowering CollectionLowering = ChildCollectionLowering.DirectAdd
+) : IQMMemberSymbol;
 public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "", string TargetName = "") : IQMMemberSymbol;
 public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand) : IQMMemberSymbol;
 public record class QMExtensionMember(string Method) : IQMMemberSymbol;
