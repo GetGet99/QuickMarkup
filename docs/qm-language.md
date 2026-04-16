@@ -402,11 +402,11 @@ Ranges are declared with `start..end` or `..end` syntax where `start` and `end` 
     <StackPanel>
         // Row 1, Row 2, Row 3
         foreach (var row in ..3) {
-            <TextBlock Text=/-$"Row {row + 1}"-/ />
+            <TextBlock Text=`$"Row {row + 1}"` />
         }
         // Row 4, Row 5, Row 6
         foreach (var row in 4..7) {
-            <TextBlock Text=/-$"Row {row}"-/ />
+            <TextBlock Text=`$"Row {row}"` />
         }
     </StackPanel>
 </root>
@@ -424,7 +424,7 @@ string[] animals = ["Dog", "Cat", "Tiger"];
 <root>
     <StackPanel>
         foreach (var animal in animals) {
-            <TextBlock Text=/-animal-/ />
+            <TextBlock Text=`animal` />
         }
     </StackPanel>
 </root>
