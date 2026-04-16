@@ -397,6 +397,94 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void ConditionalSlotAssignsInitialBranchAndSwitches()
+        {
+            Reference<bool> condition = new(false);
+            string? content = null;
+            var trueCreated = 0;
+            var falseCreated = 0;
+
+            using var slot = new ConditionalSlot<string>(
+                new ReactiveScope(),
+                () => condition.Value,
+                value => content = value,
+                () => new ScopedValue<string>($"true-{++trueCreated}", new ReactiveScope()),
+                () => new ScopedValue<string>($"false-{++falseCreated}", new ReactiveScope()));
+
+            Assert.AreEqual("false-1", content);
+
+            condition.Value = true;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual("true-1", content);
+
+            condition.Value = false;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual("false-2", content);
+        }
+
+        [TestMethod]
+        public void ConditionalSlotDisposesPreviousBranchEffects()
+        {
+            Reference<bool> condition = new(true);
+            Reference<string> trueText = new("true");
+            Reference<string> falseText = new("false");
+            TextBlock? content = null;
+
+            using var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => condition.Value,
+                value => content = value,
+                () => CreateScopedTextBlock(trueText),
+                () => CreateScopedTextBlock(falseText));
+
+            Assert.IsNotNull(content);
+            var trueBlock = content;
+            Assert.AreEqual("true", content.Text);
+
+            condition.Value = false;
+            ReactiveScheduler.Tick();
+
+            Assert.IsNotNull(content);
+            Assert.AreNotSame(trueBlock, content);
+            Assert.AreEqual("false", content.Text);
+
+            trueText.Value = "stale";
+            falseText.Value = "updated false";
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual("true", trueBlock.Text);
+            Assert.AreEqual("updated false", content.Text);
+        }
+
+        [TestMethod]
+        public void ConditionalSlotDisposeStopsControllerAndCurrentBranchEffects()
+        {
+            Reference<bool> condition = new(true);
+            Reference<string> text = new("active");
+            TextBlock? content = null;
+
+            var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => condition.Value,
+                value => content = value,
+                () => CreateScopedTextBlock(text),
+                () => new ScopedValue<TextBlock>(new TextBlock { Text = "inactive" }, new ReactiveScope()));
+
+            Assert.IsNotNull(content);
+            var activeBlock = content;
+            slot.Dispose();
+
+            text.Value = "changed";
+            condition.Value = false;
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(activeBlock, content);
+            Assert.AreEqual("active", activeBlock.Text);
+        }
+
+        [TestMethod]
         public void ForBlockReconcilesCollectionOnNextTick()
         {
             System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
@@ -846,6 +934,16 @@ namespace QuickMarkup.Infra.Test
                         () => $"{indexRef.Value + 1}. {text(itemRef.Value)}",
                         value => box.Text = value));
                 });
+        }
+
+        static ScopedValue<TextBlock> CreateScopedTextBlock(Reference<string> text)
+        {
+            var scope = new ReactiveScope();
+            var block = new TextBlock();
+            scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                () => text.Value,
+                value => block.Text = value));
+            return new ScopedValue<TextBlock>(block, scope);
         }
 
         void OnNextTick(Action callback)

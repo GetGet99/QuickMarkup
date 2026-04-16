@@ -405,6 +405,48 @@ false -> true again:
 
 Disposed branch effects are never re-enabled.
 
+## ConditionalSlot
+
+<!-- Implemented in QuickMarkup.Infra/ConditionalSlot.cs and QuickMarkup.Infra/ScopedValue.cs. -->
+
+`ConditionalSlot<T>` supports `if`/`else` for single-value assignment targets such as a button content property.
+
+This is separate from `ConditionalBlock<TElement>` because it does not contribute elements to a parent collection. Instead, it assigns one selected value through a setter.
+
+Conceptual generated shape:
+
+```csharp
+new ConditionalSlot<UIElement>(
+    controllerScope: new ReactiveScope(),
+    condition: () => something,
+    setValue: value => button.Content = value,
+    trueFactory: () => CreateTrueContent(),
+    falseFactory: () => CreateFalseContent());
+```
+
+Each branch returns:
+
+```csharp
+new ScopedValue<T>(value, branchScope)
+```
+
+Switch behavior:
+
+```text
+create next branch value
+assign next value to slot
+dispose previous branch scope
+```
+
+Single-child conditional binder rules should be:
+
+```text
+must have else
+each branch must produce exactly one value
+nested if is allowed if every path produces one value
+for is not allowed
+```
+
 ## ForBlock
 
 <!-- Implemented in QuickMarkup.Infra/ForBlock.cs. The current implementation has been upgraded from index-based reconciliation to keyed identity; see `for keyed reactivity design.md`. -->
