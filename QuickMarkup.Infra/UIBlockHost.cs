@@ -53,6 +53,12 @@ public sealed class UIBlockHost<TElement>
         block.Dispose();
     }
 
+    public void DetachBlock(IUIBlock<TElement> block)
+    {
+        block.Unmount();
+        blocks.Remove(block);
+    }
+
     public void InsertElement(IUIBlock<TElement> owner, int localIndex, TElement element)
     {
         var index = GetStartIndex(owner) + localIndex;

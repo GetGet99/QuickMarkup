@@ -400,17 +400,17 @@ namespace QuickMarkup.Infra.Test
         public void ForBlockReconcilesCollectionOnNextTick()
         {
             System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
-            List<TextBox> target = [];
-            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
 
-            var block = new ForBlock<int, TextBox>(
+            var block = new ForBlock<int, TextBlock>(
                 new ReactiveScope(),
                 source,
-                itemRef => new StaticBlock<TextBox>(
+                itemRef => new StaticBlock<TextBlock>(
                     new ReactiveScope(),
                     (elements, scope) =>
                     {
-                        var box = new TextBox();
+                        var box = new TextBlock();
                         elements.Add(box);
                         scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                             () => itemRef.Value,
@@ -435,31 +435,31 @@ namespace QuickMarkup.Infra.Test
         {
             System.Collections.ObjectModel.ObservableCollection<int> first = [1, 2];
             System.Collections.ObjectModel.ObservableCollection<int> second = [10];
-            List<TextBox> target = [];
-            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
 
-            host.AddBlock(new ForBlock<int, TextBox>(
+            host.AddBlock(new ForBlock<int, TextBlock>(
                 new ReactiveScope(),
                 first,
-                itemRef => new StaticBlock<TextBox>(
+                itemRef => new StaticBlock<TextBlock>(
                     new ReactiveScope(),
                     (elements, scope) =>
                     {
-                        var box = new TextBox();
+                        var box = new TextBlock();
                         elements.Add(box);
                         scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                             () => itemRef.Value,
                             value => box.Text = $"a{value}"));
                     })));
 
-            host.AddBlock(new ForBlock<int, TextBox>(
+            host.AddBlock(new ForBlock<int, TextBlock>(
                 new ReactiveScope(),
                 second,
-                itemRef => new StaticBlock<TextBox>(
+                itemRef => new StaticBlock<TextBlock>(
                     new ReactiveScope(),
                     (elements, scope) =>
                     {
-                        var box = new TextBox();
+                        var box = new TextBlock();
                         elements.Add(box);
                         scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                             () => itemRef.Value,
@@ -481,31 +481,31 @@ namespace QuickMarkup.Infra.Test
         {
             System.Collections.ObjectModel.ObservableCollection<int> first = [1, 2];
             System.Collections.ObjectModel.ObservableCollection<int> second = [10];
-            List<TextBox> target = [];
-            UIBlockHost<TextBox> host = new(new TargetUICollection<TextBox>(target));
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
 
-            host.AddBlock(new ForBlock<int, TextBox>(
+            host.AddBlock(new ForBlock<int, TextBlock>(
                 new ReactiveScope(),
                 first,
-                itemRef => new StaticBlock<TextBox>(
+                itemRef => new StaticBlock<TextBlock>(
                     new ReactiveScope(),
                     (elements, scope) =>
                     {
-                        var box = new TextBox();
+                        var box = new TextBlock();
                         elements.Add(box);
                         scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                             () => itemRef.Value,
                             value => box.Text = $"a{value}"));
                     })));
 
-            host.AddBlock(new ForBlock<int, TextBox>(
+            host.AddBlock(new ForBlock<int, TextBlock>(
                 new ReactiveScope(),
                 second,
-                itemRef => new StaticBlock<TextBox>(
+                itemRef => new StaticBlock<TextBlock>(
                     new ReactiveScope(),
                     (elements, scope) =>
                     {
-                        var box = new TextBox();
+                        var box = new TextBlock();
                         elements.Add(box);
                         scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                             () => itemRef.Value,
@@ -524,13 +524,217 @@ namespace QuickMarkup.Infra.Test
             AssertText(target, "a1", "a2", "a3", "b10", "b20");
         }
 
-        static void AssertText(List<TextBox> boxes, params string[] expected)
+        [TestMethod]
+        public void ForBlockImplicitIdentityPreservesBlockInstanceAcrossMove()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2, 3];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+            var created = 0;
+
+            host.AddBlock(new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value.ToString(), () => ++created)));
+
+            var first = target.ToArray();
+
+            source.Move(2, 0);
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[2], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            Assert.AreSame(first[1], target[2]);
+            Assert.AreEqual(3, created);
+            AssertText(target, "3", "1", "2");
+        }
+
+        [TestMethod]
+        public void ForBlockImplicitIdentityHandlesDuplicateSourceValues()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 1, 2];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value.ToString(), () => 0)));
+
+            var first = target.ToArray();
+
+            source.Move(1, 0);
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[1], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            Assert.AreSame(first[2], target[2]);
+            AssertText(target, "1", "1", "2");
+        }
+
+        [TestMethod]
+        public void ForBlockImplicitIdentityCreatesNewBlockOnReplace()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2, 3];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value.ToString(), () => 0)));
+
+            var first = target.ToArray();
+
+            source[1] = 20;
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[0], target[0]);
+            Assert.AreNotSame(first[1], target[1]);
+            Assert.AreSame(first[2], target[2]);
+            AssertText(target, "1", "20", "3");
+        }
+
+        [TestMethod]
+        public void ForBlockImplicitRefreshRecreatesAllBlocks()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+            var block = new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value.ToString(), () => 0));
+
+            host.AddBlock(block);
+            var first = target.ToArray();
+
+            block.Refresh();
+            ReactiveScheduler.Tick();
+
+            Assert.AreNotSame(first[0], target[0]);
+            Assert.AreNotSame(first[1], target[1]);
+            AssertText(target, "1", "2");
+        }
+
+        [TestMethod]
+        public void ForBlockImplicitIdentityRecreatesAllBlocksAcrossResetLikeChanges()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value.ToString(), () => 0)));
+
+            var first = target.ToArray();
+
+            source.Clear();
+            source.Add(1);
+            source.Add(2);
+            ReactiveScheduler.Tick();
+
+            Assert.AreNotSame(first[0], target[0]);
+            Assert.AreNotSame(first[1], target[1]);
+            AssertText(target, "1", "2");
+        }
+
+        [TestMethod]
+        public void ForBlockExplicitKeysPreserveBlockInstanceAcrossResetLikeChanges()
+        {
+            System.Collections.ObjectModel.ObservableCollection<KeyedItem> source = [
+                new(1, "one"),
+                new(2, "two")
+            ];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(ForBlock.Create<KeyedItem, TextBlock, int>(
+                new ReactiveScope(),
+                source,
+                item => item.Id,
+                itemRef => CreateTextBlock(itemRef, item => item.Text, () => 0)));
+
+            var first = target.ToArray();
+
+            source.Clear();
+            source.Add(new(2, "two updated"));
+            source.Add(new(1, "one updated"));
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[1], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            AssertText(target, "two updated", "one updated");
+        }
+
+        [TestMethod]
+        public void ForBlockExplicitDuplicateKeysThrow()
+        {
+            System.Collections.ObjectModel.ObservableCollection<KeyedItem> source = [
+                new(1, "one"),
+                new(1, "duplicate")
+            ];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+            var block = ForBlock.Create<KeyedItem, TextBlock, int>(
+                new ReactiveScope(),
+                source,
+                item => item.Id,
+                itemRef => CreateTextBlock(itemRef, item => item.Text, () => 0));
+
+            try
+            {
+                host.AddBlock(block);
+                Assert.Fail("Expected duplicate keys to throw.");
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        [TestMethod]
+        public void ExplicitKeyManagerDoesNotCaptureReactiveDependencies()
+        {
+            Reference<int> key = new(1);
+            var source = new[] { 42 };
+            var effect = ReferenceTracker.RunAndRerunOnReferenceChange(
+                () =>
+                {
+                    var manager = ForKeyManager.Create<int, int>(_ => key.Value);
+                    manager.Initialize(source);
+                    return manager.Keys[0];
+                },
+                _ => { });
+
+            Assert.HasCount(0, effect.Dependencies);
+        }
+
+        static void AssertText(List<TextBlock> boxes, params string[] expected)
         {
             var actual = boxes.Select(x => x.Text).ToArray();
             CollectionAssert.AreEqual(
                 expected,
                 actual,
                 $"Expected [{string.Join(", ", expected)}], actual [{string.Join(", ", actual)}]");
+        }
+
+        static StaticBlock<TextBlock> CreateTextBlock<T>(
+            Reference<T> itemRef,
+            Func<T, string> text,
+            Func<int> instanceId)
+        {
+            return new StaticBlock<TextBlock>(
+                new ReactiveScope(),
+                (elements, scope) =>
+                {
+                    var box = new TextBlock { InstanceId = instanceId() };
+                    elements.Add(box);
+                    scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                        () => itemRef.Value,
+                        value => box.Text = text(value)));
+                });
         }
 
         void OnNextTick(Action callback)
@@ -553,10 +757,13 @@ namespace QuickMarkup.Infra.Test
             }
         }
 
-        class TextBox
+        class TextBlock
         {
+            public int InstanceId { get; set; }
             public string Text { get; set; } = "";
         }
+
+        sealed record KeyedItem(int Id, string Text);
     }
 }
 static class Extension

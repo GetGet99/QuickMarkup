@@ -407,7 +407,7 @@ Disposed branch effects are never re-enabled.
 
 ## ForBlock
 
-<!-- Implemented in QuickMarkup.Infra/ForBlock.cs with next-tick dirty reconciliation. -->
+<!-- Implemented in QuickMarkup.Infra/ForBlock.cs. The current implementation has been upgraded from index-based reconciliation to keyed identity; see `for keyed reactivity design.md`. -->
 
 A `ForBlock` owns:
 
@@ -496,9 +496,9 @@ ReconcileOnTick:
 
 This collapses multiple collection operations before one tick into one reconcile pass.
 
-### V1 Reconcile: Unkeyed Index-Based
+### Original V1 Reconcile: Unkeyed Index-Based
 
-<!-- Implemented in QuickMarkup.Infra/ForBlock.cs. -->
+<!-- Superseded by the keyed ForBlock implementation in QuickMarkup.Infra/ForBlock.cs and QuickMarkup.Infra/ForKeyManager.cs. -->
 
 The first version should not replay queued collection events. Treat the current source collection as the truth.
 

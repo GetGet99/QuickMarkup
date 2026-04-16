@@ -2,13 +2,39 @@ using System.Collections.Specialized;
 
 namespace QuickMarkup.Infra;
 
-public sealed class ForBlock<TItem, TElement>(
-    ReactiveScope controllerScope,
-    IReadOnlyList<TItem> source,
-    INotifyCollectionChanged? collectionChanged,
-    Func<Reference<TItem>, IUIBlock<TElement>> itemFactory) : IUIBlock<TElement>
+public sealed class ForBlock<TSrc, TElement> : ForBlock<TSrc, TElement, int>
 {
-    readonly List<ForItemState<TItem, TElement>> items = [];
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : this(controllerScope, source, source as INotifyCollectionChanged, itemFactory)
+    {
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        INotifyCollectionChanged? collectionChanged,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : base(
+            controllerScope,
+            source,
+            collectionChanged,
+            ForKeyManager.CreateImplicit<TSrc>(),
+            itemFactory)
+    {
+    }
+}
+
+public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
+{
+    readonly ReactiveScope controllerScope;
+    readonly IReadOnlyList<TSrc> source;
+    readonly INotifyCollectionChanged? collectionChanged;
+    readonly IForKeyManager<TSrc, TKey> keyManager;
+    readonly Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory;
+    readonly List<ForItemState<TSrc, TElement, TKey>> items = [];
     UIBlockHost<TElement>? childHost;
     UIBlockHost<TElement>? host;
     bool dirty;
@@ -17,10 +43,25 @@ public sealed class ForBlock<TItem, TElement>(
 
     public ForBlock(
         ReactiveScope controllerScope,
-        IReadOnlyList<TItem> source,
-        Func<Reference<TItem>, IUIBlock<TElement>> itemFactory)
-        : this(controllerScope, source, source as INotifyCollectionChanged, itemFactory)
+        IReadOnlyList<TSrc> source,
+        IForKeyManager<TSrc, TKey> keyManager,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : this(controllerScope, source, source as INotifyCollectionChanged, keyManager, itemFactory)
     {
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        INotifyCollectionChanged? collectionChanged,
+        IForKeyManager<TSrc, TKey> keyManager,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        this.controllerScope = controllerScope;
+        this.source = source;
+        this.collectionChanged = collectionChanged;
+        this.keyManager = keyManager;
+        this.itemFactory = itemFactory;
     }
 
     public int Count => childHost?.Count ?? 0;
@@ -30,10 +71,23 @@ public sealed class ForBlock<TItem, TElement>(
         this.host = host;
         childHost = new UIBlockHost<TElement>(host, this);
 
+        keyManager.Initialize(source);
+        ValidateKeyCount();
+        ValidateUniqueKeys();
+
         collectionChanged?.CollectionChanged += Source_CollectionChanged;
 
         for (var i = 0; i < source.Count; i++)
-            AppendItem(source[i]);
+            AddInitialItem(keyManager.Keys[i], source[i]);
+    }
+
+    public void Refresh()
+    {
+        if (disposed)
+            return;
+
+        keyManager.Refresh(source);
+        MarkDirty();
     }
 
     public void Unmount()
@@ -61,6 +115,7 @@ public sealed class ForBlock<TItem, TElement>(
 
     void Source_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        keyManager.ApplyCollectionChanged(e, source);
         MarkDirty();
     }
 
@@ -68,7 +123,7 @@ public sealed class ForBlock<TItem, TElement>(
     {
         dirty = true;
 
-        if (scheduled)
+        if (host is null || scheduled)
             return;
 
         scheduled = true;
@@ -88,24 +143,60 @@ public sealed class ForBlock<TItem, TElement>(
 
     void ReconcileToCurrentSource()
     {
-        var commonCount = Math.Min(items.Count, source.Count);
+        ValidateKeyCount();
 
-        for (var i = 0; i < commonCount; i++)
-            items[i].ItemRef.Value = source[i];
+        var oldItems = items.ToArray();
+        var nextItems = new List<ForItemState<TSrc, TElement, TKey>>(source.Count);
+        var reused = new HashSet<ForItemState<TSrc, TElement, TKey>>();
+        var nextKeys = new HashSet<TKey>();
 
-        while (items.Count > source.Count)
-            RemoveItemAt(items.Count - 1);
+        for (var i = 0; i < source.Count; i++)
+        {
+            var key = keyManager.Keys[i];
+            if (!nextKeys.Add(key))
+                throw new InvalidOperationException($"Duplicate key found in for block: {key}");
 
-        while (items.Count < source.Count)
-            AppendItem(source[items.Count]);
+            var state = FindState(oldItems, key);
+            if (state is not null)
+            {
+                state.ItemRef.Value = source[i];
+                reused.Add(state);
+                nextItems.Add(state);
+            }
+            else
+            {
+                nextItems.Add(CreateItem(key, source[i]));
+            }
+        }
+
+        foreach (var old in oldItems)
+        {
+            if (reused.Contains(old))
+                childHost!.DetachBlock(old.Block);
+            else
+                childHost!.RemoveBlock(old.Block);
+        }
+
+        items.Clear();
+        foreach (var item in nextItems)
+        {
+            items.Add(item);
+            childHost!.AddBlock(item.Block);
+        }
     }
 
-    void AppendItem(TItem item)
+    void AddInitialItem(TKey key, TSrc item)
     {
-        var itemRef = new Reference<TItem>(item);
+        var state = CreateItem(key, item);
+        items.Add(state);
+        childHost!.AddBlock(state.Block);
+    }
+
+    ForItemState<TSrc, TElement, TKey> CreateItem(TKey key, TSrc item)
+    {
+        var itemRef = new Reference<TSrc>(item);
         var block = itemFactory(itemRef);
-        items.Add(new ForItemState<TItem, TElement>(itemRef, block));
-        childHost!.AddBlock(block);
+        return new ForItemState<TSrc, TElement, TKey>(key, itemRef, block);
     }
 
     void RemoveItemAt(int index)
@@ -114,9 +205,83 @@ public sealed class ForBlock<TItem, TElement>(
         childHost!.RemoveBlock(state.Block);
         items.RemoveAt(index);
     }
+
+    void ValidateKeyCount()
+    {
+        if (keyManager.Keys.Count != source.Count)
+            throw new InvalidOperationException(
+                $"For block key count mismatch. Expected {source.Count}, got {keyManager.Keys.Count}.");
+    }
+
+    void ValidateUniqueKeys()
+    {
+        var keys = new HashSet<TKey>();
+        foreach (var key in keyManager.Keys)
+        {
+            if (!keys.Add(key))
+                throw new InvalidOperationException($"Duplicate key found in for block: {key}");
+        }
+    }
+
+    static ForItemState<TSrc, TElement, TKey>? FindState(
+        IReadOnlyList<ForItemState<TSrc, TElement, TKey>> states,
+        TKey key)
+    {
+        var comparer = EqualityComparer<TKey>.Default;
+
+        for (var i = 0; i < states.Count; i++)
+        {
+            if (comparer.Equals(states[i].Key, key))
+                return states[i];
+        }
+
+        return null;
+    }
 }
 
-public sealed record ForItemState<TItem, TElement>(
-    Reference<TItem> ItemRef,
+public static class ForBlock
+{
+    public static ForBlock<TSrc, TElement, int> Create<TSrc, TElement>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.CreateImplicit<TSrc>(),
+            itemFactory);
+    }
+
+    public static ForBlock<TSrc, TElement, TKey> Create<TSrc, TElement, TKey>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<TSrc, TKey> keyFn,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.Create(keyFn),
+            itemFactory);
+    }
+
+    public static ForBlock<TSrc, TElement, TKey> Create<TSrc, TElement, TKey>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<TSrc, int, TKey> keyFn,
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.Create(keyFn),
+            itemFactory);
+    }
+}
+
+public sealed record ForItemState<TSrc, TElement, TKey>(
+    TKey Key,
+    Reference<TSrc> ItemRef,
     IUIBlock<TElement> Block
 );
