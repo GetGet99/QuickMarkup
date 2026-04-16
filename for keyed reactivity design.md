@@ -326,6 +326,7 @@ Item state:
 ```csharp
 public sealed record ForItemState<TSrc, TElement, TKey>(
     TKey Key,
+    Reference<int>? IndexRef,
     Reference<TSrc> ItemRef,
     IUIBlock<TElement> Block
 );
@@ -341,6 +342,50 @@ public sealed class ForBlock<TSrc, TElement> : IUIBlock<TElement>
 ```
 
 or it can be removed once sourcegen uses `ForBlock.Create(...)`.
+
+## Optional Index Reference
+
+<!-- Implemented in ForBlock<TSrc, TElement> and ForBlock<TSrc, TElement, TKey> through index-aware item factory overloads. -->
+
+`for` bodies may request the current row index:
+
+```csharp
+for (var (index, item) in items) {
+    <TextBlock Text=`$"{index + 1}. {item}"` />
+}
+```
+
+Infrastructure supports this with an index-aware item factory:
+
+```csharp
+Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>>
+```
+
+The existing item-only factory remains:
+
+```csharp
+Func<Reference<TSrc>, IUIBlock<TElement>>
+```
+
+Performance rule:
+
+```text
+item-only factory:
+  do not allocate Reference<int>
+
+index-aware factory:
+  allocate one Reference<int> per rendered row
+  update IndexRef during reconcile after final order is known
+```
+
+On reconcile for a reused state:
+
+```csharp
+state.IndexRef?.Value = index;
+state.ItemRef.Value = source[index];
+```
+
+This keeps the non-index path cheap while allowing index-dependent bindings to update when rows move, insert, or reset.
 
 ## Dirty Scheduling
 

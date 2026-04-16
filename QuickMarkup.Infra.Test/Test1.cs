@@ -711,6 +711,93 @@ namespace QuickMarkup.Infra.Test
             Assert.HasCount(0, effect.Dependencies);
         }
 
+        [TestMethod]
+        public void ForBlockIndexAwareFactoryRendersInitialIndexes()
+        {
+            System.Collections.ObjectModel.ObservableCollection<string> source = ["alpha", "beta"];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<string, TextBlock>(
+                new ReactiveScope(),
+                source,
+                (indexRef, itemRef) => CreateIndexedTextBlock(indexRef, itemRef)));
+
+            AssertText(target, "1. alpha", "2. beta");
+        }
+
+        [TestMethod]
+        public void ForBlockIndexAwareFactoryUpdatesIndexesAcrossMove()
+        {
+            System.Collections.ObjectModel.ObservableCollection<string> source = ["alpha", "beta", "gamma"];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<string, TextBlock>(
+                new ReactiveScope(),
+                source,
+                (indexRef, itemRef) => CreateIndexedTextBlock(indexRef, itemRef)));
+
+            var first = target.ToArray();
+
+            source.Move(2, 0);
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[2], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            Assert.AreSame(first[1], target[2]);
+            AssertText(target, "1. gamma", "2. alpha", "3. beta");
+        }
+
+        [TestMethod]
+        public void ForBlockIndexAwareFactoryDefersAddUntilNextTick()
+        {
+            System.Collections.ObjectModel.ObservableCollection<string> source = ["alpha"];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<string, TextBlock>(
+                new ReactiveScope(),
+                source,
+                (indexRef, itemRef) => CreateIndexedTextBlock(indexRef, itemRef)));
+
+            source.Add("beta");
+
+            AssertText(target, "1. alpha");
+
+            ReactiveScheduler.Tick();
+
+            AssertText(target, "1. alpha", "2. beta");
+        }
+
+        [TestMethod]
+        public void ForBlockExplicitKeysWithIndexAwareFactoryPreserveBlocksAndUpdateIndexes()
+        {
+            System.Collections.ObjectModel.ObservableCollection<KeyedItem> source = [
+                new(1, "one"),
+                new(2, "two")
+            ];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(ForBlock.Create<KeyedItem, TextBlock, int>(
+                new ReactiveScope(),
+                source,
+                item => item.Id,
+                (indexRef, itemRef) => CreateIndexedTextBlock(indexRef, itemRef, item => item.Text)));
+
+            var first = target.ToArray();
+
+            source.Clear();
+            source.Add(new(2, "two updated"));
+            source.Add(new(1, "one updated"));
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[1], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            AssertText(target, "1. two updated", "2. one updated");
+        }
+
         static void AssertText(List<TextBlock> boxes, params string[] expected)
         {
             var actual = boxes.Select(x => x.Text).ToArray();
@@ -734,6 +821,30 @@ namespace QuickMarkup.Infra.Test
                     scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
                         () => itemRef.Value,
                         value => box.Text = text(value)));
+                });
+        }
+
+        static StaticBlock<TextBlock> CreateIndexedTextBlock(
+            Reference<int> indexRef,
+            Reference<string> itemRef)
+        {
+            return CreateIndexedTextBlock(indexRef, itemRef, item => item);
+        }
+
+        static StaticBlock<TextBlock> CreateIndexedTextBlock<T>(
+            Reference<int> indexRef,
+            Reference<T> itemRef,
+            Func<T, string> text)
+        {
+            return new StaticBlock<TextBlock>(
+                new ReactiveScope(),
+                (elements, scope) =>
+                {
+                    var box = new TextBlock();
+                    elements.Add(box);
+                    scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                        () => $"{indexRef.Value + 1}. {text(itemRef.Value)}",
+                        value => box.Text = value));
                 });
         }
 

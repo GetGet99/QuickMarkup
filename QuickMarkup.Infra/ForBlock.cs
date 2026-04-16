@@ -15,8 +15,30 @@ public sealed class ForBlock<TSrc, TElement> : ForBlock<TSrc, TElement, int>
     public ForBlock(
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : this(controllerScope, source, source as INotifyCollectionChanged, itemFactory)
+    {
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
         INotifyCollectionChanged? collectionChanged,
         Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : base(
+            controllerScope,
+            source,
+            collectionChanged,
+            ForKeyManager.CreateImplicit<TSrc>(),
+            itemFactory)
+    {
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        INotifyCollectionChanged? collectionChanged,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
         : base(
             controllerScope,
             source,
@@ -34,6 +56,7 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
     readonly INotifyCollectionChanged? collectionChanged;
     readonly IForKeyManager<TSrc, TKey> keyManager;
     readonly Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory;
+    readonly Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>>? indexedItemFactory;
     readonly List<ForItemState<TSrc, TElement, TKey>> items = [];
     UIBlockHost<TElement>? childHost;
     UIBlockHost<TElement>? host;
@@ -62,6 +85,30 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
         this.collectionChanged = collectionChanged;
         this.keyManager = keyManager;
         this.itemFactory = itemFactory;
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        IForKeyManager<TSrc, TKey> keyManager,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        : this(controllerScope, source, source as INotifyCollectionChanged, keyManager, itemFactory)
+    {
+    }
+
+    public ForBlock(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        INotifyCollectionChanged? collectionChanged,
+        IForKeyManager<TSrc, TKey> keyManager,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        this.controllerScope = controllerScope;
+        this.source = source;
+        this.collectionChanged = collectionChanged;
+        this.keyManager = keyManager;
+        this.itemFactory = static _ => throw new InvalidOperationException("This for block uses the index-aware item factory.");
+        indexedItemFactory = itemFactory;
     }
 
     public int Count => childHost?.Count ?? 0;
@@ -159,13 +206,14 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
             var state = FindState(oldItems, key);
             if (state is not null)
             {
+                state.IndexRef?.Value = i;
                 state.ItemRef.Value = source[i];
                 reused.Add(state);
                 nextItems.Add(state);
             }
             else
             {
-                nextItems.Add(CreateItem(key, source[i]));
+                nextItems.Add(CreateItem(key, source[i], i));
             }
         }
 
@@ -187,16 +235,23 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
 
     void AddInitialItem(TKey key, TSrc item)
     {
-        var state = CreateItem(key, item);
+        var state = CreateItem(key, item, items.Count);
         items.Add(state);
         childHost!.AddBlock(state.Block);
     }
 
-    ForItemState<TSrc, TElement, TKey> CreateItem(TKey key, TSrc item)
+    ForItemState<TSrc, TElement, TKey> CreateItem(TKey key, TSrc item, int index)
     {
         var itemRef = new Reference<TSrc>(item);
-        var block = itemFactory(itemRef);
-        return new ForItemState<TSrc, TElement, TKey>(key, itemRef, block);
+
+        if (indexedItemFactory is not null)
+        {
+            var indexRef = new Reference<int>(index);
+            var block = indexedItemFactory(indexRef, itemRef);
+            return new ForItemState<TSrc, TElement, TKey>(key, itemRef, indexRef, block);
+        }
+
+        return new ForItemState<TSrc, TElement, TKey>(key, itemRef, null, itemFactory(itemRef));
     }
 
     void RemoveItemAt(int index)
@@ -253,11 +308,36 @@ public static class ForBlock
             itemFactory);
     }
 
+    public static ForBlock<TSrc, TElement, int> Create<TSrc, TElement>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.CreateImplicit<TSrc>(),
+            itemFactory);
+    }
+
     public static ForBlock<TSrc, TElement, TKey> Create<TSrc, TElement, TKey>(
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
         Func<TSrc, TKey> keyFn,
         Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.Create(keyFn),
+            itemFactory);
+    }
+
+    public static ForBlock<TSrc, TElement, TKey> Create<TSrc, TElement, TKey>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<TSrc, TKey> keyFn,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
     {
         return new(
             controllerScope,
@@ -278,10 +358,24 @@ public static class ForBlock
             ForKeyManager.Create(keyFn),
             itemFactory);
     }
+
+    public static ForBlock<TSrc, TElement, TKey> Create<TSrc, TElement, TKey>(
+        ReactiveScope controllerScope,
+        IReadOnlyList<TSrc> source,
+        Func<TSrc, int, TKey> keyFn,
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+    {
+        return new(
+            controllerScope,
+            source,
+            ForKeyManager.Create(keyFn),
+            itemFactory);
+    }
 }
 
 public sealed record ForItemState<TSrc, TElement, TKey>(
     TKey Key,
     Reference<TSrc> ItemRef,
+    Reference<int>? IndexRef,
     IUIBlock<TElement> Block
 );
