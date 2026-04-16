@@ -332,6 +332,44 @@ sealed class StaticBlock<TElement> : IUIBlock<TElement>
 
 For permanent root UI, the root block may use a component-level scope. For dynamic UI, each branch or item should get its own scope.
 
+## FragmentBlock
+
+<!-- Implemented in QuickMarkup.Infra/FragmentBlock.cs. -->
+
+`FragmentBlock<TElement>` represents one logical block that can contain multiple child blocks.
+
+It is useful for fragment syntax such as `{ ... }`, `<>...</>`, or any generated body that needs to group several child statements as one block.
+
+Unlike `StaticBlock<TElement>`, a fragment can contain nested structural blocks:
+
+```text
+FragmentBlock
+  StaticBlock
+  ConditionalBlock
+  ForBlock
+```
+
+Mount behavior:
+
+```text
+create a child UIBlockHost that maps through the fragment block
+build child blocks into that host
+```
+
+Unmount/remount behavior:
+
+```text
+unmount child blocks without disposing them
+remount existing child blocks later if the fragment is reused
+```
+
+Dispose behavior:
+
+```text
+dispose all child blocks
+dispose the fragment scope
+```
+
 ## ConditionalBlock
 
 <!-- Implemented in QuickMarkup.Infra/ConditionalBlock.cs. -->

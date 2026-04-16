@@ -53,6 +53,24 @@ public sealed class UIBlockHost<TElement>
         block.Dispose();
     }
 
+    public void Clear()
+    {
+        while (blocks.Count > 0)
+            RemoveBlock(blocks[^1]);
+    }
+
+    public void UnmountAll()
+    {
+        for (var i = blocks.Count - 1; i >= 0; i--)
+            blocks[i].Unmount();
+    }
+
+    public void RemountAll()
+    {
+        foreach (var block in blocks)
+            block.Mount(this);
+    }
+
     public void DetachBlock(IUIBlock<TElement> block)
     {
         block.Unmount();

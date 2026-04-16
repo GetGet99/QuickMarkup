@@ -485,6 +485,93 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void FragmentBlockMountsMultipleChildrenAsOneLogicalBlock()
+        {
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            var fragment = new FragmentBlock<TextBlock>(
+                new ReactiveScope(),
+                (fragmentHost, _) =>
+                {
+                    fragmentHost.AddBlock(new StaticBlock<TextBlock>(
+                        new ReactiveScope(),
+                        [new TextBlock { Text = "a" }]));
+                    fragmentHost.AddBlock(new StaticBlock<TextBlock>(
+                        new ReactiveScope(),
+                        [new TextBlock { Text = "b" }]));
+                });
+
+            host.AddBlock(fragment);
+
+            Assert.AreEqual(2, fragment.Count);
+            AssertText(target, "a", "b");
+        }
+
+        [TestMethod]
+        public void FragmentBlockSupportsNestedConditionalAndForBlocks()
+        {
+            Reference<bool> showHeader = new(true);
+            System.Collections.ObjectModel.ObservableCollection<string> items = ["one"];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new FragmentBlock<TextBlock>(
+                new ReactiveScope(),
+                (fragmentHost, _) =>
+                {
+                    fragmentHost.AddBlock(new ConditionalBlock<TextBlock>(
+                        new ReactiveScope(),
+                        () => showHeader.Value,
+                        () => new StaticBlock<TextBlock>(
+                            new ReactiveScope(),
+                            [new TextBlock { Text = "header" }])));
+                    fragmentHost.AddBlock(new ForBlock<string, TextBlock>(
+                        new ReactiveScope(),
+                        items,
+                        itemRef => CreateTextBlock(itemRef, item => item, () => 0)));
+                }));
+
+            AssertText(target, "header", "one");
+
+            showHeader.Value = false;
+            items.Add("two");
+            ReactiveScheduler.Tick();
+
+            AssertText(target, "one", "two");
+        }
+
+        [TestMethod]
+        public void FragmentBlockPreservesChildrenAcrossDetachAndRemount()
+        {
+            System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => new FragmentBlock<TextBlock>(
+                    new ReactiveScope(),
+                    (fragmentHost, _) =>
+                    {
+                        fragmentHost.AddBlock(CreateTextBlock(
+                            itemRef,
+                            value => value.ToString(),
+                            () => 0));
+                    })));
+
+            var first = target.ToArray();
+
+            source.Move(1, 0);
+            ReactiveScheduler.Tick();
+
+            Assert.AreSame(first[1], target[0]);
+            Assert.AreSame(first[0], target[1]);
+            AssertText(target, "2", "1");
+        }
+
+        [TestMethod]
         public void ForBlockReconcilesCollectionOnNextTick()
         {
             System.Collections.ObjectModel.ObservableCollection<int> source = [1, 2];
