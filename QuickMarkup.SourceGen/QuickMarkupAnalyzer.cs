@@ -183,7 +183,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
                     ));
             }
-            var binder = new Binder(
+            var binder = new QuickMarkupBinder(
                 new CodeTypeResolver(
                     context.Compilation,
                     qm.Usings,

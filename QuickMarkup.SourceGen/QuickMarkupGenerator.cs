@@ -70,7 +70,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                         if (template is not null)
                         {
                             var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
-                            var analyzer = new Binder(resolver);
+                            var analyzer = new QuickMarkupBinder(resolver);
                             var output = analyzer.Bind(template, typeSymbol);
                             ct.ThrowIfCancellationRequested();
                             var cgen = new CodeGenContext(
@@ -221,7 +221,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 var ((target, usings, refs), compilation) = x;
                 var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
                 var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
-                var binder = new Binder(resolver, failFast: true);
+                var binder = new QuickMarkupBinder(resolver, failFast: true);
                 var boundRefs = binder.BindRefDeclarations(refs, containingType);
                 StringBuilder sb = new();
                 var rgen = new RefsGenContext(sb, target.FullTypeName);
