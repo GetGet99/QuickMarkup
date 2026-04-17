@@ -245,7 +245,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(
             Terminal.For,
             Terminal.OpenBracket,
-            OptionalTypeDecl, AS, nameof(QuickMarkupParsedForNode.VarType),
+            TypeDeclOrVarKeyword, AS, nameof(QuickMarkupParsedForNode.VarType),
             Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
             Terminal.In,
             QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
@@ -258,7 +258,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(
             Terminal.For,
             Terminal.OpenBracket,
-            OptionalTypeDecl, AS, nameof(QuickMarkupParsedForNode.VarType),
+            TypeDeclOrVarKeyword, AS, nameof(QuickMarkupParsedForNode.VarType),
             Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
             Terminal.In,
             QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
@@ -316,7 +316,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<TypeDeclaration>]
         [Rule(TypeDecl, AS, VALUE, IDENTITY)]
         [Rule(Terminal.Var, WITHPARAM, VALUE, null, IDENTITY)]
-        OptionalTypeDecl,
+        TypeDeclOrVarKeyword,
     }
     static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
         => tag with { Name = name };
