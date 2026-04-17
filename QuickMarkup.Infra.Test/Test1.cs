@@ -485,6 +485,112 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void NestedConditionalSlotAssignsSelectedNestedBranch()
+        {
+            Reference<bool> outerCondition = new(true);
+            Reference<bool> innerCondition = new(false);
+            TextBlock? content = null;
+
+            using var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => outerCondition.Value,
+                value => content = value,
+                () => CreateNestedConditionalScopedTextBlock(
+                    innerCondition,
+                    new Reference<string>("inner true"),
+                    new Reference<string>("inner false"),
+                    value => content = value),
+                () => new ScopedValue<TextBlock>(new TextBlock { Text = "outer false" }, new ReactiveScope()));
+
+            Assert.IsNotNull(content);
+            Assert.AreEqual("inner false", content.Text);
+
+            innerCondition.Value = true;
+            ReactiveScheduler.Tick();
+
+            Assert.IsNotNull(content);
+            Assert.AreEqual("inner true", content.Text);
+        }
+
+        [TestMethod]
+        public void NestedConditionalSlotOuterSwitchDisposesActiveInnerSlot()
+        {
+            Reference<bool> outerCondition = new(true);
+            Reference<bool> innerCondition = new(true);
+            Reference<string> innerTrueText = new("inner true");
+            Reference<string> innerFalseText = new("inner false");
+            TextBlock? content = null;
+
+            using var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => outerCondition.Value,
+                value => content = value,
+                () => CreateNestedConditionalScopedTextBlock(
+                    innerCondition,
+                    innerTrueText,
+                    innerFalseText,
+                    value => content = value),
+                () => new ScopedValue<TextBlock>(new TextBlock { Text = "outer false" }, new ReactiveScope()));
+
+            Assert.IsNotNull(content);
+            var innerTrueBlock = content;
+            Assert.AreEqual("inner true", content.Text);
+
+            outerCondition.Value = false;
+            ReactiveScheduler.Tick();
+
+            Assert.IsNotNull(content);
+            Assert.AreEqual("outer false", content.Text);
+
+            innerCondition.Value = false;
+            innerTrueText.Value = "stale";
+            innerFalseText.Value = "should not show";
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual("inner true", innerTrueBlock.Text);
+            Assert.AreEqual("outer false", content.Text);
+        }
+
+        [TestMethod]
+        public void NestedConditionalSlotInnerSwitchDisposesOnlyReplacedInnerBranch()
+        {
+            Reference<bool> outerCondition = new(true);
+            Reference<bool> innerCondition = new(true);
+            Reference<string> innerTrueText = new("inner true");
+            Reference<string> innerFalseText = new("inner false");
+            TextBlock? content = null;
+
+            using var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => outerCondition.Value,
+                value => content = value,
+                () => CreateNestedConditionalScopedTextBlock(
+                    innerCondition,
+                    innerTrueText,
+                    innerFalseText,
+                    value => content = value),
+                () => new ScopedValue<TextBlock>(new TextBlock { Text = "outer false" }, new ReactiveScope()));
+
+            Assert.IsNotNull(content);
+            var innerTrueBlock = content;
+
+            innerCondition.Value = false;
+            ReactiveScheduler.Tick();
+
+            Assert.IsNotNull(content);
+            var innerFalseBlock = content;
+            Assert.AreNotSame(innerTrueBlock, innerFalseBlock);
+            Assert.AreEqual("inner false", innerFalseBlock.Text);
+
+            innerTrueText.Value = "stale";
+            innerFalseText.Value = "updated false";
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual("inner true", innerTrueBlock.Text);
+            Assert.AreEqual("updated false", innerFalseBlock.Text);
+        }
+
+        [TestMethod]
         public void FragmentBlockMountsMultipleChildrenAsOneLogicalBlock()
         {
             List<TextBlock> target = [];
@@ -1031,6 +1137,28 @@ namespace QuickMarkup.Infra.Test
                 () => text.Value,
                 value => block.Text = value));
             return new ScopedValue<TextBlock>(block, scope);
+        }
+
+        static ScopedValue<TextBlock> CreateNestedConditionalScopedTextBlock(
+            Reference<bool> condition,
+            Reference<string> trueText,
+            Reference<string> falseText,
+            Action<TextBlock> setValue)
+        {
+            var scope = new ReactiveScope();
+            TextBlock value = null!;
+            var slot = new ConditionalSlot<TextBlock>(
+                new ReactiveScope(),
+                () => condition.Value,
+                next =>
+                {
+                    value = next;
+                    setValue(next);
+                },
+                () => CreateScopedTextBlock(trueText),
+                () => CreateScopedTextBlock(falseText));
+            scope.Add(slot);
+            return new ScopedValue<TextBlock>(value, scope);
         }
 
         void OnNextTick(Action callback)

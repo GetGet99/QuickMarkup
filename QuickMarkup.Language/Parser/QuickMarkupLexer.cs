@@ -53,6 +53,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Equal,
         [Regex(@";", State = (int)LexerStates.Props)]
+        [Regex(@";", State = (int)LexerStates.BeforeRoot)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Semicolon,
         [Regex(@"=>", State = (int)LexerStates.Props)]
@@ -83,6 +84,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Colon,
         [Regex(@"\?", State = (int)LexerStates.Props)]
+        [Regex(@"\?", State = (int)LexerStates.BeforeRoot)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QuestionMark,
         [Regex(@"!", State = (int)LexerStates.InsideQMOpenTag)]
@@ -106,6 +108,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex<bool>(@"false", nameof(FalseValue), State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [Regex<bool>(@"true", nameof(TrueValue), State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
         [Regex<bool>(@"false", nameof(FalseValue), State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex<bool>(@"true", nameof(TrueValue), State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex<bool>(@"false", nameof(FalseValue), State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
         Boolean,
         [Regex(@"null", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
@@ -164,7 +168,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"var", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         Var,
         [Regex(@"foreach", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
-        For,
+        Foreach,
         [Regex(@"if", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         If,
         [Regex(@"else", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]

@@ -71,7 +71,7 @@ namespace QuickMarkup.Syntax.Test
         public void ForLoopRange()
         {
             var output = Lex("foreach (i in ..3) { }", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
-            Assert.AreEqual(QuickMarkupLexer.Tokens.For, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Foreach, output[0].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.OpenBracket, output[1].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.In, output[3].TokenType);
@@ -86,7 +86,7 @@ namespace QuickMarkup.Syntax.Test
         public void ForLoopForeign()
         {
             var output = Lex("foreach (i in /-(string[])[\"1\"]-/) { }", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
-            Assert.AreEqual(QuickMarkupLexer.Tokens.For, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Foreach, output[0].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.OpenBracket, output[1].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.In, output[3].TokenType);
@@ -94,6 +94,96 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual(QuickMarkupLexer.Tokens.CloseBracket, output[5].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.OpenCuryBracket, output[6].TokenType);
             Assert.AreEqual(QuickMarkupLexer.Tokens.CloseCuryBracket, output[7].TokenType);
+        }
+
+        [TestMethod]
+        public void Lexer_ForeachAdvancedHeaderPunctuation()
+        {
+            var output = Lex("foreach (index; string? item in `items`; `item.Id`) <A />", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
+            CollectionAssert.Contains(output.Select(x => x.TokenType).ToArray(), QuickMarkupLexer.Tokens.Semicolon);
+            CollectionAssert.Contains(output.Select(x => x.TokenType).ToArray(), QuickMarkupLexer.Tokens.QuestionMark);
+        }
+
+        [TestMethod]
+        public void Parse_FragmentChild()
+        {
+            var sfc = Parse("""
+                <root>
+                    {
+                        <A />
+                        <B />
+                    }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var fragment = sfc.Template.Children[0] as QuickMarkupParsedFragmentNode;
+            Assert.IsNotNull(fragment);
+            Assert.HasCount(2, fragment.Children);
+        }
+
+        [TestMethod]
+        public void Parse_ValueListIsNotFragment()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Grid RowDefinitions=<>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </> />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var grid = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(grid);
+            Assert.HasCount(1, grid.InlineMembers);
+            var property = grid.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(property);
+            Assert.IsInstanceOfType<QuickMarkupValueList>(property.Value);
+        }
+
+        [TestMethod]
+        public void Parse_IfElseBindsElseToNearestIf()
+        {
+            var sfc = Parse("""
+                <root>
+                    if (`a`) <A />
+                    if (`b`) <B /> else <C />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(2, sfc.Template.Children);
+            var first = sfc.Template.Children[0] as QuickMarkupParsedIfNode;
+            var second = sfc.Template.Children[1] as QuickMarkupParsedIfNode;
+            Assert.IsNotNull(first);
+            Assert.IsNotNull(second);
+            Assert.IsNull(first.BodyWhenFalse);
+            Assert.IsNotNull(second.BodyWhenFalse);
+        }
+
+        [TestMethod]
+        public void Parse_ForeachIndexAndKey()
+        {
+            var sfc = Parse("""
+                <root>
+                    foreach (index; var item in `items`; `item.Id`) {
+                        <A Text=`item.Text` />
+                    }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var foreachNode = sfc.Template.Children[0] as QuickMarkupParsedForNode;
+            Assert.IsNotNull(foreachNode);
+            Assert.AreEqual("index", foreachNode.IndexVarName);
+            Assert.AreEqual("item", foreachNode.VarName);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(foreachNode.Iterable);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(foreachNode.Key);
+            Assert.IsInstanceOfType<QuickMarkupParsedFragmentNode>(foreachNode.Body);
         }
 
         [TestMethod]

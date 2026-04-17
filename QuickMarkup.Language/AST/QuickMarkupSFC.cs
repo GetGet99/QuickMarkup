@@ -73,26 +73,16 @@ public record class QuickMarkupParsedForNode(
     TypeDeclaration? VarType,
     string VarName,
     QuickMarkupValue Iterable,
-    ListAST<IQMNodeChild> Body,
+    IQMNodeChild Body,
     string? IndexVarName = null,
     QuickMarkupValue? Key = null
-) : AST, IQMNodeChild
-{
-    public QuickMarkupParsedForNode(
-        TypeDeclaration? VarType,
-        string VarName,
-        QuickMarkupValue Iterable,
-        ListAST<IQMNodeChild> Body)
-        : this(VarType, VarName, Iterable, Body, null, null)
-    {
-    }
-}
+) : AST, IQMNodeChild;
 
 // Not implemented yet
 public record class QuickMarkupParsedIfNode(
     QuickMarkupValue Condition,
-    ListAST<IQMNodeChild> BodyWhenTrue,
-    ListAST<IQMNodeChild>? BodyWhenFalse
+    IQMNodeChild BodyWhenTrue,
+    IQMNodeChild? BodyWhenFalse
 ) : AST, IQMNodeChild;
 
 public record class QuickMarkupParsedFragmentNode(
@@ -169,4 +159,4 @@ public record class QuickMarkupString(string Value) : QuickMarkupValue();
 public record class QuickMarkupDefault(bool IsExplicitlyNull) : QuickMarkupValue();
 public record class QuickMarkupForeign(string Code) : QuickMarkupValue(), IQMNodeChild;
 public record class QuickMarkupIdentifier(string Identifier) : QuickMarkupValue();
-public record class QuickMarkupQMs(ListAST<IQMNodeChild> Value) : QuickMarkupValue();
+public record class QuickMarkupValueList(ListAST<IQMNodeChild> Value) : QuickMarkupValue();

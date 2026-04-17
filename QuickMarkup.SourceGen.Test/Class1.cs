@@ -6,11 +6,10 @@ namespace QuickMarkup.SourceGen.Test;
     Console.WriteLine("Test");
     </setup>
     <root>
-        <Class1 A=`A + 1` />
-        //<Class1>
-        //    <Class2>
-        //    <Class3></Class4>
-        //</Class1>
+        if (true)
+            if (false) <Class1 A=1 /> else <Class1 A=2 />
+        else
+            <Class1 A=3 />
     </root>
     """)]
 public partial class Class1

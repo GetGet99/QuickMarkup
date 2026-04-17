@@ -40,7 +40,7 @@ class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
                 if (type is null)
                     throw new NotImplementedException($"Cannot infer type for the enum member {x.Identifier}");
                 return Value(type, $"{type.FullName()}.{x.Identifier}");
-            case QuickMarkupQMs:
+            case QuickMarkupValueList:
             case QuickMarkupParsedTag:
                 throw new ArgumentException("Parsed tag is not supported");
             case QuickMarkupRange x:

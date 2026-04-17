@@ -142,7 +142,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             Bind(new QuickMarkupParsedProperty(
                 tagStart.TagName,
                 ParsedPropertyOperator.Assign,
-                new QuickMarkupQMs(tagChildren)
+                new QuickMarkupValueList(tagChildren)
             ), tagInfo, targetCollection);
         return true;
     }
@@ -171,7 +171,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         {
             QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
-            QuickMarkupParsedFragmentNode fragment => ErrorFragmentNotAllowedInSingleChild(fragment, tagInfo),
+            QuickMarkupParsedFragmentNode fragment => BindSingleChildFragment(fragment, tagInfo),
             QuickMarkupParsedTag tag => Bind(tag),
             QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
             _ => throw new NotImplementedException($"Unsupported child node: {child.GetType().Name}")
@@ -194,8 +194,10 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         scopedLocalNames.Push(forNode.VarName);
         if (forNode.IndexVarName is not null)
             scopedLocalNames.Push(forNode.IndexVarName);
+        if (forNode.Key is not null and not QuickMarkupForeign)
+            ErrorForKeyMustBeForeign(forNode.Key);
         var key = forNode.Key is null ? null : Bind(forNode.Key, null, tagInfo);
-        var body = Bind(forNode.Body, tagInfo);
+        var body = BindStructuralBody(forNode.Body, tagInfo);
         if (forNode.IndexVarName is not null)
             scopedLocalNames.Pop();
         scopedLocalNames.Pop();
@@ -210,8 +212,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     QMIfNodeSymbol<ITypeSymbol?> BindCollectionIf(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
         => new(
             BindCondition(ifNode, tagInfo),
-            Bind(ifNode.BodyWhenTrue, tagInfo),
-            ifNode.BodyWhenFalse is null ? null : Bind(ifNode.BodyWhenFalse, tagInfo)
+            BindStructuralBody(ifNode.BodyWhenTrue, tagInfo),
+            ifNode.BodyWhenFalse is null ? null : BindStructuralBody(ifNode.BodyWhenFalse, tagInfo)
         );
 
     QMConditionalValueSymbol<ITypeSymbol?> BindSingleChildIf(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
@@ -221,24 +223,32 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
 
         return new(
             BindCondition(ifNode, tagInfo),
-            BindSingleChildBranch(ifNode.BodyWhenTrue, tagInfo, ifNode, "true"),
+            BindSingleChildBranch(ifNode.BodyWhenTrue, tagInfo),
             ifNode.BodyWhenFalse is null
                 ? ErrorRecoveryChild(tagInfo)
-                : BindSingleChildBranch(ifNode.BodyWhenFalse, tagInfo, ifNode, "false")
+                : BindSingleChildBranch(ifNode.BodyWhenFalse, tagInfo)
         );
     }
 
-    IQMNodeChildSymbol BindSingleChildBranch(ListAST<IQMNodeChild> children, QMBinderTagInfo tagInfo, AST.AST owner, string branchName)
-    {
-        if (children.Count != 1)
-            ErrorSingleChildBranchMustHaveExactlyOneChild(owner, branchName, children.Count);
+    List<IQMMemberSymbol> BindStructuralBody(IQMNodeChild body, QMBinderTagInfo tagInfo)
+        => body is QuickMarkupParsedFragmentNode fragment
+            ? Bind(fragment.Children, tagInfo)
+            : Bind(new ListAST<IQMNodeChild>([body]), tagInfo);
 
-        foreach (var extra in children.Skip(1))
+    IQMNodeChildSymbol BindSingleChildBranch(IQMNodeChild child, QMBinderTagInfo tagInfo)
+        => BindSingleChildNode(child, tagInfo);
+
+    IQMNodeChildSymbol BindSingleChildFragment(QuickMarkupParsedFragmentNode fragment, QMBinderTagInfo tagInfo)
+    {
+        if (fragment.Children.Count != 1)
+            ErrorSingleChildFragmentMustHaveExactlyOneChild(fragment, fragment.Children.Count);
+
+        foreach (var extra in fragment.Children.Skip(1))
             BindSingleChildNodeForDiagnostics(extra, tagInfo);
 
-        return children.Count == 0
+        return fragment.Children.Count == 0
             ? ErrorRecoveryChild(tagInfo)
-            : BindSingleChildNode(children[0], tagInfo);
+            : BindSingleChildNode(fragment.Children[0], tagInfo);
     }
 
     QMFragmentNodeSymbol BindFragment(QuickMarkupParsedFragmentNode fragment, QMBinderTagInfo tagInfo)
@@ -305,7 +315,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 break;
             case ParsedPropertyOperator.Assign:
                 // Property
-                if (property.Value is QuickMarkupQMs listAssign)
+                if (property.Value is QuickMarkupValueList listAssign)
                 {
                     // <Grid RowDefinitions=<>
                     //          <RowDefinition/>
@@ -399,9 +409,9 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     {
         switch (value)
         {
-            case QuickMarkupQMs x:
+            case QuickMarkupValueList x:
                 if (tagInfo is null)
-                    throw new NotImplementedException($"Nested QMs require a parent tag type");
+                    throw new NotImplementedException($"Value lists require a parent tag type");
                 return new QMNestedValuesSymbol<ITypeSymbol>(type, Bind(x.Value, tagInfo));
             case QuickMarkupParsedTag x:
                 return Bind(x);
@@ -444,20 +454,16 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         => Error(new QMBinderChildrenTooMany(node, parentTagInfo));
     void ErrorSingleChildConditionalRequiresElse(QuickMarkupParsedIfNode node)
         => Error(node, "Single-child conditional content requires an else branch.");
-    void ErrorSingleChildBranchMustHaveExactlyOneChild(AST.AST node, string branchName, int actualCount)
-        => Error(node, $"Single-child conditional {branchName} branch must contain exactly one child, but got {actualCount}.");
     void ErrorConditionTypeInvalid(QuickMarkupValue node, ITypeSymbol? actualType)
         => Error(node, $"if condition must be bool, but got {actualType?.FullNameWithoutAnnotation() ?? "unknown"}.");
+    void ErrorForKeyMustBeForeign(QuickMarkupValue node)
+        => Error(node, "foreach key must be a C# literal expression.");
+    void ErrorSingleChildFragmentMustHaveExactlyOneChild(QuickMarkupParsedFragmentNode node, int actualCount)
+        => Error(node, $"Single-child fragment must contain exactly one child, but got {actualCount}.");
     IQMNodeChildSymbol ErrorForNotAllowedInSingleChild(QuickMarkupParsedForNode node, QMBinderTagInfo tagInfo)
     {
         Error(node, "foreach is not allowed in a single-child content position.");
         _ = Bind(node, tagInfo);
-        return ErrorRecoveryChild(tagInfo);
-    }
-    IQMNodeChildSymbol ErrorFragmentNotAllowedInSingleChild(QuickMarkupParsedFragmentNode node, QMBinderTagInfo tagInfo)
-    {
-        Error(node, "Fragment is not allowed in a single-child content position.");
-        _ = BindFragment(node, tagInfo);
         return ErrorRecoveryChild(tagInfo);
     }
     IQMNodeChildSymbol ErrorRecoveryChild(QMBinderTagInfo tagInfo)

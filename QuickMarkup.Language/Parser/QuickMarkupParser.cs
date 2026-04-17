@@ -9,6 +9,7 @@ using Terminal = QuickMarkup.Parser.QuickMarkupLexer.Tokens;
 namespace QuickMarkup.Parser;
 
 [Parser(SFC, UseGetLexerTypeInformation = true)]
+[Precedence(Terminal.Else, Associativity.Right)]
 public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, QuickMarkupSFC>
 {
     public enum NonTerminal
@@ -234,40 +235,125 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(QMChildren, AS, LIST, QMChild, AS, VALUE, APPENDLIST)]
         [Rule(QMChildren, AS, VALUE, ERROR, IDENTITY)]
         QMChildren,
-        [Type<ListAST<IQMNodeChild>>]
-        [Rule(QMChild, AS, VALUE, SINGLELIST)]
-        QMSingleChildList,
         [Type<IQMNodeChild>]
+        [Rule(ParsedIfNode, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
         [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
+        [Rule(ParsedFragmentNode, AS, VALUE, IDENTITY)]
         [Rule(QMValue, AS, VALUE, IDENTITY)]
         QMChild,
+        [Type<IQMNodeChild>]
+        [Rule(MatchedStructuralBody, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
+        [Rule(UnmatchedIf, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
+        StructuralBody,
+        [Type<IQMNodeChild>]
+        [Rule(ParsedFragmentNode, AS, VALUE, IDENTITY)]
+        [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
+        [Rule(QMValue, AS, VALUE, IDENTITY)]
+        [Rule(MatchedIf, AS, VALUE, IDENTITY)]
+        MatchedStructuralBody,
         [Type<QuickMarkupParsedForNode>]
         [Rule(
-            Terminal.For,
+            Terminal.Foreach,
             Terminal.OpenBracket,
-            TypeDeclOrVarKeyword, AS, nameof(QuickMarkupParsedForNode.VarType),
-            Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
-            Terminal.In,
-            QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
+            ParsedForHeader, AS, "header",
             Terminal.CloseBracket,
-            Terminal.OpenCuryBracket,
-            QMChildren, AS, nameof(QuickMarkupParsedForNode.Body),
-            Terminal.CloseCuryBracket,
-            typeof(QuickMarkupParsedForNode)
-        )]
-        [Rule(
-            Terminal.For,
-            Terminal.OpenBracket,
-            TypeDeclOrVarKeyword, AS, nameof(QuickMarkupParsedForNode.VarType),
-            Terminal.Identifier, AS, nameof(QuickMarkupParsedForNode.VarName),
-            Terminal.In,
-            QMIterable, AS, nameof(QuickMarkupParsedForNode.Iterable),
-            Terminal.CloseBracket,
-            QMSingleChildList, AS, nameof(QuickMarkupParsedForNode.Body),
-            typeof(QuickMarkupParsedForNode)
+            StructuralBody, AS, "body",
+            nameof(CreateForNode)
         )]
         ParsedForNode,
+        [Type<ParsedForHeader>]
+        [Rule(
+            TypeDeclOrVarKeyword, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.In,
+            QMIterable, AS, "Iterable",
+            WITHPARAM, "IndexVarName", null,
+            WITHPARAM, "Key", null,
+            typeof(ParsedForHeader)
+        )]
+        [Rule(
+            Terminal.Identifier, AS, "IndexVarName",
+            Terminal.Semicolon,
+            TypeDeclOrVarKeyword, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.In,
+            QMIterable, AS, "Iterable",
+            WITHPARAM, "Key", null,
+            typeof(ParsedForHeader)
+        )]
+        [Rule(
+            TypeDeclOrVarKeyword, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.In,
+            QMIterable, AS, "Iterable",
+            Terminal.Semicolon,
+            QMValue, AS, "Key",
+            WITHPARAM, "IndexVarName", null,
+            typeof(ParsedForHeader)
+        )]
+        [Rule(
+            Terminal.Identifier, AS, "IndexVarName",
+            Terminal.Semicolon,
+            TypeDeclOrVarKeyword, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.In,
+            QMIterable, AS, "Iterable",
+            Terminal.Semicolon,
+            QMValue, AS, "Key",
+            typeof(ParsedForHeader)
+        )]
+        ParsedForHeader,
+        [Type<QuickMarkupParsedIfNode>]
+        [Rule(MatchedIf, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
+        [Rule(UnmatchedIf, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
         ParsedIfNode,
+        [Type<QuickMarkupParsedIfNode>]
+        [Rule(
+            Terminal.If,
+            Terminal.OpenBracket,
+            QMValue, AS, nameof(QuickMarkupParsedIfNode.Condition),
+            Terminal.CloseBracket,
+            MatchedStructuralBody, AS, nameof(QuickMarkupParsedIfNode.BodyWhenTrue),
+            Terminal.Else,
+            MatchedStructuralBody, AS, nameof(QuickMarkupParsedIfNode.BodyWhenFalse),
+            typeof(QuickMarkupParsedIfNode),
+            WITHPRECDENCE,
+            Terminal.Else
+        )]
+        MatchedIf,
+        [Type<QuickMarkupParsedIfNode>]
+        [Rule(
+            Terminal.If,
+            Terminal.OpenBracket,
+            QMValue, AS, nameof(QuickMarkupParsedIfNode.Condition),
+            Terminal.CloseBracket,
+            StructuralBody, AS, nameof(QuickMarkupParsedIfNode.BodyWhenTrue),
+            WITHPARAM, nameof(QuickMarkupParsedIfNode.BodyWhenFalse), null,
+            typeof(QuickMarkupParsedIfNode),
+            WITHPRECDENCE,
+            Terminal.Else
+        )]
+        [Rule(
+            Terminal.If,
+            Terminal.OpenBracket,
+            QMValue, AS, nameof(QuickMarkupParsedIfNode.Condition),
+            Terminal.CloseBracket,
+            MatchedStructuralBody, AS, nameof(QuickMarkupParsedIfNode.BodyWhenTrue),
+            Terminal.Else,
+            UnmatchedIf, AS, nameof(QuickMarkupParsedIfNode.BodyWhenFalse),
+            typeof(QuickMarkupParsedIfNode),
+            WITHPRECDENCE,
+            Terminal.Else
+        )]
+        UnmatchedIf,
+        [Type<QuickMarkupParsedFragmentNode>]
+        [Rule(
+            Terminal.OpenCuryBracket,
+            QMChildren, AS, nameof(QuickMarkupParsedFragmentNode.Children),
+            Terminal.CloseCuryBracket,
+            typeof(QuickMarkupParsedFragmentNode)
+        )]
+        ParsedFragmentNode,
         [Type<PositionedIdentifier>]
         [Rule(Terminal.Identifier, AS, nameof(PositionedIdentifier.Name), typeof(PositionedIdentifier))]
         QMPositionedIdentifier,
@@ -282,9 +368,9 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Default, WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
         [Rule(ParsedTag, AS, VALUE, IDENTITY)]
         [Rule(Terminal.QMOpenTagOpen, Terminal.QMOpenTagClose,
-            QMChildren, AS, nameof(QuickMarkupQMs.Value),
+            QMChildren, AS, nameof(QuickMarkupValueList.Value),
             Terminal.QMCloseTagOpen, Terminal.QMCloseTagClose,
-            typeof(QuickMarkupQMs))]
+            typeof(QuickMarkupValueList))]
         QMValueWithoutNamedTag,
         [Type<QuickMarkupValue>]
         [Rule(QMValueWithoutNamedTag, AS, VALUE, IDENTITY)]
@@ -318,6 +404,14 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Var, WITHPARAM, VALUE, null, IDENTITY)]
         TypeDeclOrVarKeyword,
     }
+    record class ParsedForHeader(
+        TypeDeclaration? VarType,
+        string VarName,
+        QuickMarkupValue Iterable,
+        string? IndexVarName,
+        QuickMarkupValue? Key);
+    static QuickMarkupParsedForNode CreateForNode(ParsedForHeader header, IQMNodeChild body)
+        => new(header.VarType, header.VarName, header.Iterable, body, header.IndexVarName, header.Key);
     static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
         => tag with { Name = name };
     static PositionedIdentifier AddDot(string name)

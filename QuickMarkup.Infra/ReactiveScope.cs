@@ -2,18 +2,21 @@ namespace QuickMarkup.Infra;
 
 public sealed class ReactiveScope : IDisposable
 {
-    readonly List<RefEffect> effects = [];
+    readonly List<IDisposable> disposables = [];
     bool disposed;
 
     public void Add(RefEffect effect)
+        => Add((IDisposable)effect);
+
+    public void Add(IDisposable disposable)
     {
         if (disposed)
         {
-            effect.Dispose();
+            disposable.Dispose();
             return;
         }
 
-        effects.Add(effect);
+        disposables.Add(disposable);
     }
 
     public void Dispose()
@@ -23,9 +26,9 @@ public sealed class ReactiveScope : IDisposable
 
         disposed = true;
 
-        foreach (var effect in effects)
-            effect.Dispose();
+        foreach (var disposable in disposables)
+            disposable.Dispose();
 
-        effects.Clear();
+        disposables.Clear();
     }
 }

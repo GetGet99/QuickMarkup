@@ -431,12 +431,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     void CGenConditionalSlot(QMConditionalValueSymbol<ITypeSymbol?> conditional, string target)
     {
-        var type = conditional.ValueWhenTrue switch
-        {
-            QMNodeSymbol<ITypeSymbol?> node => node.Type,
-            QMValueSymbol<ITypeSymbol?> value => value.Type,
-            _ => null
-        };
+        var type = GetChildValueType(conditional);
         var typeName = TypeName(type);
         var slot = NewVariable();
         codeBuilder.AppendLine($$"""
@@ -445,16 +440,16 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             () => {{CGen(conditional.Condition)}},
             QUICKMARKUP_VALUE => {{target}} = QUICKMARKUP_VALUE,
             () => {
-                {{CGenScopedValueFactoryBody(conditional.ValueWhenTrue, type).IndentWOF(2)}}
+                {{CGenScopedValueFactoryBody(conditional.ValueWhenTrue, type, target).IndentWOF(2)}}
             },
             () => {
-                {{CGenScopedValueFactoryBody(conditional.ValueWhenFalse, type).IndentWOF(2)}}
+                {{CGenScopedValueFactoryBody(conditional.ValueWhenFalse, type, target).IndentWOF(2)}}
             });
         QUICKMARKUP_DISPOSABLES.Add({{slot}});
         """);
     }
 
-    string CGenScopedValueFactoryBody(IQMNodeChildSymbol child, ITypeSymbol? type)
+    string CGenScopedValueFactoryBody(IQMNodeChildSymbol child, ITypeSymbol? type, string target)
     {
         var scope = NewVariable();
         var nested = new StringBuilder();
@@ -464,7 +459,12 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         {
             QMNodeSymbol<ITypeSymbol?> node => CGenInto(node, nested),
             QMValueSymbol<ITypeSymbol?> value => CGen(value),
-            QMConditionalValueSymbol<ITypeSymbol?> => throw new NotSupportedException("Nested conditional slot codegen is not implemented yet."),
+            QMConditionalValueSymbol<ITypeSymbol?> conditional => CGenNestedConditionalSlot(
+                conditional,
+                type,
+                target,
+                scope,
+                nested),
             _ => throw new NotSupportedException($"Scoped value codegen does not support {child.GetType().Name}.")
         };
         disposableAddTarget = previousDisposableTarget;
@@ -477,6 +477,47 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             {{scope}});
         """;
     }
+
+    string CGenNestedConditionalSlot(
+        QMConditionalValueSymbol<ITypeSymbol?> conditional,
+        ITypeSymbol? type,
+        string target,
+        string scope,
+        StringBuilder nested)
+    {
+        var typeName = TypeName(type);
+        var value = NewVariable();
+        var slot = NewVariable();
+        nested.AppendLine($$"""
+        {{typeName}} {{value}} = default!;
+        var {{slot}} = new global::QuickMarkup.Infra.ConditionalSlot<{{typeName}}>(
+            new global::QuickMarkup.Infra.ReactiveScope(),
+            () => {{CGen(conditional.Condition)}},
+            QUICKMARKUP_VALUE => {
+                {{value}} = QUICKMARKUP_VALUE;
+                {{target}} = QUICKMARKUP_VALUE;
+            },
+            () => {
+                {{CGenScopedValueFactoryBody(conditional.ValueWhenTrue, type, target).IndentWOF(2)}}
+            },
+            () => {
+                {{CGenScopedValueFactoryBody(conditional.ValueWhenFalse, type, target).IndentWOF(2)}}
+            });
+        {{scope}}.Add({{slot}});
+        """);
+        return value;
+    }
+
+    ITypeSymbol? GetChildValueType(IQMNodeChildSymbol child)
+        => child switch
+        {
+            QMNodeSymbol<ITypeSymbol?> node => node.Type,
+            QMValueSymbol<ITypeSymbol?> value => value.Type,
+            QMConditionalValueSymbol<ITypeSymbol?> conditional =>
+                GetChildValueType(conditional.ValueWhenTrue) ??
+                GetChildValueType(conditional.ValueWhenFalse),
+            _ => null
+        };
 
     string CGenInto(QMNodeSymbol<ITypeSymbol?> node, StringBuilder targetBuilder)
     {
