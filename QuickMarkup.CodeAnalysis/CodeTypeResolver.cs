@@ -70,31 +70,47 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
             return propertySymbol is not null;
         }
         childrenMode = ChildrenModes.Add;
-        var content = symbol.GetMembers("Children");
-        if (content.Length is 0)
-            content = symbol.GetMembers("Items");
-        if (content.Length is 0)
+        propertySymbol = FindProperty(symbol, "Children") ?? FindProperty(symbol, "Items");
+        if (propertySymbol is null)
         {
-            content = symbol.GetMembers("Child");
+            propertySymbol = FindProperty(symbol, "Child");
             childrenMode = ChildrenModes.Assignment;
         }
-        if (content.Length is 0)
+        if (propertySymbol is null)
         {
-            content = symbol.GetMembers("Content");
+            propertySymbol = FindProperty(symbol, "Content");
             childrenMode = ChildrenModes.Assignment;
         }
-        if (content.Length is not 1)
-        {
-            propertySymbol = null;
+        if (propertySymbol is null)
             return false;
-        }
-        if (content[0] is not IPropertySymbol prop)
-        {
-            propertySymbol = null;
-            return false;
-        }
-        propertySymbol = prop;
+
         return true;
+    }
+
+    public ITypeSymbol? GetCollectionElementType(ITypeSymbol? collectionType)
+    {
+        var addMethod = FindMethod(collectionType, "Add");
+        if (addMethod?.Parameters.Length is 1)
+            return addMethod.Parameters[0].Type;
+
+        if (collectionType is not null)
+        {
+            foreach (var @interface in collectionType.AllInterfaces)
+            {
+                if (@interface is INamedTypeSymbol namedInterface &&
+                    namedInterface.IsGenericType &&
+                    namedInterface.TypeArguments.Length is 1 &&
+                    namedInterface.ConstructedFrom.FullNameWithoutAnnotation() is
+                        "global::System.Collections.Generic.ICollection<T>" or
+                        "global::System.Collections.Generic.IList<T>" or
+                        "global::System.Collections.Generic.IEnumerable<T>")
+                {
+                    return namedInterface.TypeArguments[0];
+                }
+            }
+        }
+
+        return null;
     }
 
     static AttributeData? FindContentAttirbute(ITypeSymbol type)

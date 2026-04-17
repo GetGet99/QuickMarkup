@@ -11,13 +11,8 @@ public class TargetUICollection<T>(IList<T> targetList, Action<int, int> MoveFun
 
         var item = targetList[oldIndex];
 
-        // Remove first — critical invariant
+        // Remove first: newIndex is the final index after removal.
         targetList.RemoveAt(oldIndex);
-
-        // Adjust index if needed
-        if (newIndex > oldIndex)
-            newIndex--;
-
         targetList.Insert(newIndex, item);
     })
     { }

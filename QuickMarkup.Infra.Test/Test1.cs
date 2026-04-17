@@ -237,6 +237,39 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void TargetUICollectionMoveUsesFinalIndexWhenMovingForward()
+        {
+            List<string> target = ["A", "B", "C", "D"];
+            TargetUICollection<string> collection = new(target);
+
+            collection.Move(0, 2);
+
+            CollectionAssert.AreEqual(new[] { "B", "C", "A", "D" }, target);
+        }
+
+        [TestMethod]
+        public void TargetUICollectionMoveUsesFinalIndexWhenMovingBackward()
+        {
+            List<string> target = ["A", "B", "C", "D"];
+            TargetUICollection<string> collection = new(target);
+
+            collection.Move(2, 0);
+
+            CollectionAssert.AreEqual(new[] { "C", "A", "B", "D" }, target);
+        }
+
+        [TestMethod]
+        public void TargetUICollectionMoveSameIndexIsNoOp()
+        {
+            List<string> target = ["A", "B", "C"];
+            TargetUICollection<string> collection = new(target);
+
+            collection.Move(1, 1);
+
+            CollectionAssert.AreEqual(new[] { "A", "B", "C" }, target);
+        }
+
+        [TestMethod]
         public void ComputedShouldRerunImmedietely()
         {
             int rerunCount = 0;

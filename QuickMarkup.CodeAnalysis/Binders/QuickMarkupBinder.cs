@@ -24,7 +24,10 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         if (type is null)
             ErrorUnknownType(tag.TagStart);
         resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
-        var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, propSymbol?.Type, childrenMode);
+        var childrenType = childrenMode is ChildrenModes.Add
+            ? resolver.GetCollectionElementType(propSymbol?.Type)
+            : propSymbol?.Type;
+        var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode);
 
 
         var members = new List<IQMMemberSymbol>();
@@ -106,12 +109,23 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     void BindAssignmentChildren(ListAST<IQMNodeChild> children, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
         var contentChildren = new List<IQMNodeChild>();
+        var hasPropertyChildren = false;
         foreach (var child in children)
         {
             if (TryBindPropertyTagChild(child, tagInfo, targetCollection))
+            {
+                hasPropertyChildren = true;
                 continue;
+            }
 
             contentChildren.Add(child);
+        }
+
+        if (contentChildren.Count == 0)
+        {
+            if (!hasPropertyChildren)
+                ErrorChildrenTooMany(children, tagInfo);
+            return;
         }
 
         if (contentChildren.Count != 1)
@@ -119,9 +133,6 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
 
         foreach (var extra in contentChildren.Skip(1))
             BindSingleChildNodeForDiagnostics(extra, tagInfo);
-
-        if (contentChildren.Count == 0)
-            return;
 
         targetCollection.Add(new QMAssignChildMember(
             tagInfo.ChildrenProperty!,
@@ -324,12 +335,16 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                     // </Grid>
                     if (targetPropSymbol?.Name is not { } name)
                         throw new InvalidOperationException("Name is null");
+                    var elementType = resolver.GetCollectionElementType(targetType);
+                    var childrenMode = elementType is null
+                        ? ChildrenModes.Assignment
+                        : ChildrenModes.Add;
                     Bind(listAssign.Value, new(
                         targetType,
                         name,
                         name,
-                        null, // element type
-                        ChildrenModes.Add
+                        childrenMode is ChildrenModes.Add ? elementType : targetType,
+                        childrenMode
                     ), targetCollection);
                 }
                 else

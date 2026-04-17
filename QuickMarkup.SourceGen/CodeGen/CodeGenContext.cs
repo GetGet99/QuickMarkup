@@ -350,6 +350,22 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         if (forNode.Key is null)
             throw new InvalidOperationException("For key factory requires a key expression.");
 
+        if (forNode.VarType is { } varType)
+        {
+            if (forNode.IndexVarName is null)
+                return $$"""
+                ({{varType.FullName()}} {{forNode.VarName}}) => {
+                    return {{CGen(forNode.Key)}};
+                }
+                """;
+
+            return $$"""
+            ({{varType.FullName()}} {{forNode.VarName}}, int {{forNode.IndexVarName}}) => {
+                return {{CGen(forNode.Key)}};
+            }
+            """;
+        }
+
         var item = NewVariable();
         var index = NewVariable();
         if (forNode.IndexVarName is null)
@@ -567,10 +583,10 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         }
 
         return $$"""
-        (() => {
+        (new global::System.Func<{{TypeName(value.Type)}}>(() => {
             {{locals.ToString().IndentWOF(1)}}
             return {{value.ValueInFinalCode}};
-        })()
+        }))()
         """;
     }
 
