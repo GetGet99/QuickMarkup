@@ -49,11 +49,12 @@ public record class QMForNodeSymbol<T>(
     string VarName,
     IQMValueSymbol Iterable,
     IReadOnlyList<IQMMemberSymbol> Body,
-    string? IndexVarName = null
+    string? IndexVarName = null,
+    IQMValueSymbol? Key = null
 ) : IQMNodeChildSymbol
 {
     public QMForNodeSymbol(T? VarType, string VarName, IQMValueSymbol Iterable, IReadOnlyList<IQMMemberSymbol> Body)
-        : this(QMForKind.ReactiveCollection, VarType, VarName, Iterable, Body, null)
+        : this(QMForKind.ReactiveCollection, VarType, VarName, Iterable, Body, null, null)
     {
     }
 }
@@ -72,17 +73,18 @@ public record class QMFragmentNodeSymbol(
 ) : IQMNodeChildSymbol;
 
 public record class QMAssignChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
-public record class QMAddChildMember(
+public record class QMAddChildMember<T>(
     string ChildPropertyPath,
     IQMNodeChildSymbol Child,
-    ChildCollectionLowering CollectionLowering = ChildCollectionLowering.DirectAdd
+    ChildCollectionLowering CollectionLowering = ChildCollectionLowering.DirectAdd,
+    T? ChildElementType = default
 ) : IQMMemberSymbol;
 public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "", string TargetName = "") : IQMMemberSymbol;
 public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand) : IQMMemberSymbol;
 public record class QMExtensionMember(string Method) : IQMMemberSymbol;
 public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMemberSymbol;
 
-public record class QMValueSymbol<T>(T? Type, string ValueInFinalCode) : IQMValueSymbol;
+public record class QMValueSymbol<T>(T? Type, string ValueInFinalCode, IReadOnlyCollection<string>? CapturedLocalNames = null) : IQMValueSymbol;
 public record class QMRangeSymbol(int Start, int End) : IQMValueSymbol;
 public record class QMNestedValuesSymbol<T>(T? Type, IReadOnlyList<IQMMemberSymbol> Values) : IQMValueSymbol;
 

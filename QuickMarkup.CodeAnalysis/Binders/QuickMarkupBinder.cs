@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
+using System.Text.RegularExpressions;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
@@ -10,6 +11,7 @@ record class QMBinderTagInfo(ITypeSymbol? TagType, string TagName, string? Child
 partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true) : Binder(failFast)
 {
     readonly QuickMarkupBinderUtilities utils = new(resolver);
+    readonly Stack<string> scopedLocalNames = [];
     public QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag, ITypeSymbol rootType) => BindPrivate(tag, rootType);
     QMNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTag tag) => BindPrivate(tag, null);
     QMNodeSymbol<ITypeSymbol?> BindPrivate(QuickMarkupParsedTag tag, ITypeSymbol? rootType)
@@ -80,9 +82,10 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 continue;
             }
 
-            pendingMembers.Add(new QMAddChildMember(
+            pendingMembers.Add(new QMAddChildMember<ITypeSymbol?>(
                 tagInfo.ChildrenProperty!,
-                BindCollectionChild(child, tagInfo)
+                BindCollectionChild(child, tagInfo),
+                ChildElementType: tagInfo.ChildrenType
             ));
         }
 
@@ -94,7 +97,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         {
             targetCollection.Add(member switch
             {
-                QMAddChildMember addChild => addChild with { CollectionLowering = lowering },
+                QMAddChildMember<ITypeSymbol?> addChild => addChild with { CollectionLowering = lowering },
                 _ => member
             });
         }
@@ -187,11 +190,21 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         var kind = iterable is QMRangeSymbol
             ? QMForKind.StaticRange
             : QMForKind.ReactiveCollection;
+
+        scopedLocalNames.Push(forNode.VarName);
+        if (forNode.IndexVarName is not null)
+            scopedLocalNames.Push(forNode.IndexVarName);
+        var key = forNode.Key is null ? null : Bind(forNode.Key, null, tagInfo);
+        var body = Bind(forNode.Body, tagInfo);
+        if (forNode.IndexVarName is not null)
+            scopedLocalNames.Pop();
+        scopedLocalNames.Pop();
+
         return new(kind, type?.WithNullableAnnotation(
             forNode.VarType?.IsTypeNullable ?? false ?
                 NullableAnnotation.Annotated :
                 NullableAnnotation.NotAnnotated
-            ), forNode.VarName, iterable, Bind(forNode.Body, tagInfo), forNode.IndexVarName);
+            ), forNode.VarName, iterable, body, forNode.IndexVarName, key);
     }
 
     QMIfNodeSymbol<ITypeSymbol?> BindCollectionIf(QuickMarkupParsedIfNode ifNode, QMBinderTagInfo tagInfo)
@@ -393,9 +406,31 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             case QuickMarkupParsedTag x:
                 return Bind(x);
             default:
-                return utils.Bind(value, type);
+                return AddCapturedLocalNames(value, utils.Bind(value, type));
         }
         ;
+    }
+
+    IQMValueSymbol AddCapturedLocalNames(QuickMarkupValue? value, IQMValueSymbol symbol)
+    {
+        if (value is not QuickMarkupForeign foreign ||
+            symbol is not QMValueSymbol<ITypeSymbol> valueSymbol ||
+            scopedLocalNames.Count == 0)
+            return symbol;
+
+        List<string>? captures = null;
+        foreach (var name in scopedLocalNames)
+        {
+            if (!Regex.IsMatch(foreign.Code, $@"\b{Regex.Escape(name)}\b"))
+                continue;
+
+            captures ??= [];
+            captures.Add(name);
+        }
+
+        return captures is null
+            ? symbol
+            : valueSymbol with { CapturedLocalNames = captures };
     }
     void ErrorUnknownType(PositionedIdentifier identifier)
         => Error(new QMBinderTypeUnknownError(identifier, identifier.Name));
@@ -431,7 +466,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     bool RequiresStructuralLowering(IQMMemberSymbol member)
         => member switch
         {
-            QMAddChildMember addChild => RequiresStructuralLowering(addChild.Child),
+            QMAddChildMember<ITypeSymbol?> addChild => RequiresStructuralLowering(addChild.Child),
             QMAssignChildMember assignChild => RequiresStructuralLowering(assignChild.Child),
             _ => false
         };

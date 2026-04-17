@@ -62,7 +62,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     
                     StringBuilder generatedProperties = new();
                     StringBuilder codeBuilder = new();
-                    generatedProperties.AppendLine("global::System.Collections.Generic.List<global::QuickMarkup.Infra.RefEffect> QUICKMARKUP_EFFECTS { get; } = [];");
+                    generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
                     var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
                     ct.ThrowIfCancellationRequested();
                     try
@@ -108,11 +108,11 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                         generatedMethod = $$"""
                         private void Init() {
                             {
-                                // in case of re-initialize, cleanup all previous effects
-                                foreach (global::QuickMarkup.Infra.RefEffect QUICKMARKUP_EFFECT in QUICKMARKUP_EFFECTS) {
-                                    QUICKMARKUP_EFFECT.Dispose();
+                                // in case of re-initialize, cleanup all previous generated disposables
+                                foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
+                                    QUICKMARKUP_DISPOSABLE.Dispose();
                                 }
-                                QUICKMARKUP_EFFECTS.Clear();
+                                QUICKMARKUP_DISPOSABLES.Clear();
                             }
                             {{script?.RawScript ?? "// No raw scripts was provided"}}
                             {{codeBuilder.ToString().IndentWOF()}}

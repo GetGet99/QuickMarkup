@@ -1,6 +1,6 @@
 ﻿namespace QuickMarkup.Infra;
 
-public class RefEffect(Action<RefEffect> callback)
+public class RefEffect(Action<RefEffect> callback) : IDisposable
 {
     internal HashSet<IReference> Dependencies { get; } = [];
     public void AddDependency(IReference reference)
