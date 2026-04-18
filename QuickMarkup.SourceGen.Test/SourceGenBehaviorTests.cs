@@ -159,14 +159,26 @@ public sealed class SourceGenBehaviorTests
     [TestMethod]
     public void ForeachCapturedEventHandlerKeepsDelegateType()
     {
-        ForeachEventCaptureCase.ClickCount = 0;
+        ForeachEventCaptureCase.FirstClickCount = 0;
+        ForeachEventCaptureCase.SecondClickCount = 0;
         var page = new ForeachEventCaptureCase();
         var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
         var button = TestTreeAssert.Child<TestButton>(panel.Children, 0);
 
         button.RaiseClicked();
 
-        Assert.AreEqual(1, ForeachEventCaptureCase.ClickCount);
+        Assert.AreEqual(1, ForeachEventCaptureCase.FirstClickCount);
+        Assert.AreEqual(0, ForeachEventCaptureCase.SecondClickCount);
+
+        page.Items[0] = new(1, "updated", (_, _) => ForeachEventCaptureCase.SecondClickCount++);
+        ReactiveScheduler.Tick();
+
+        Assert.AreSame(button, panel.Children[0]);
+
+        button.RaiseClicked();
+
+        Assert.AreEqual(1, ForeachEventCaptureCase.FirstClickCount);
+        Assert.AreEqual(1, ForeachEventCaptureCase.SecondClickCount);
     }
 
     [TestMethod]

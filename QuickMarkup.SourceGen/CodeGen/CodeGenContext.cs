@@ -208,6 +208,15 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     void CGenAddEvent(QMAddEventMember<ITypeSymbol?> addEvent, string target)
     {
+        if (addEvent.Value is QMValueSymbol<ITypeSymbol?> { CapturedLocalNames.Count: > 0 } capturedValue &&
+            addEvent.MemberType is INamedTypeSymbol { DelegateInvokeMethod: { } invokeMethod } eventType)
+        {
+            codeBuilder.AddEventAssign(
+                $"{target}.{addEvent.EventName}",
+                CGenCapturedEventHandler(capturedValue, eventType, invokeMethod, addEvent.IsShorthand));
+            return;
+        }
+
         var rhs = CGen(addEvent.Value);
         if (addEvent.IsShorthand)
         {
@@ -221,6 +230,46 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                     """;
         }
         codeBuilder.AddEventAssign($"{target}.{addEvent.EventName}", rhs);
+    }
+
+    string CGenCapturedEventHandler(
+        QMValueSymbol<ITypeSymbol?> value,
+        INamedTypeSymbol eventType,
+        IMethodSymbol invokeMethod,
+        bool isShorthand)
+    {
+        var parameters = invokeMethod.Parameters
+            .Select((_, index) => $"QUICKMARKUP_EVENT_ARG_{index}")
+            .ToArray();
+        var parameterList = parameters.Length is 0
+            ? "()"
+            : $"({string.Join(", ", parameters)})";
+        var arguments = string.Join(", ", parameters);
+        var locals = CGenCapturedLocalDeclarations(value);
+        var body = new StringBuilder();
+        body.Append(locals);
+
+        if (isShorthand)
+        {
+            if (invokeMethod.ReturnsVoid)
+                body.AppendLine($"{value.ValueInFinalCode};");
+            else
+                body.AppendLine($"return {value.ValueInFinalCode};");
+        }
+        else
+        {
+            var eventTypeName = TypeName(eventType.WithNullableAnnotation(NullableAnnotation.NotAnnotated));
+            if (invokeMethod.ReturnsVoid)
+                body.AppendLine($"(({eventTypeName})({value.ValueInFinalCode}))!({arguments});");
+            else
+                body.AppendLine($"return (({eventTypeName})({value.ValueInFinalCode}))!({arguments});");
+        }
+
+        return $$"""
+        {{parameterList}} => {
+            {{body.ToString().IndentWOF(1)}}
+        }
+        """;
     }
 
     string CGenBlock(IQMNodeChildSymbol child, ITypeSymbol? elementType)
@@ -571,6 +620,35 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         if (forScopes.Count == 0 || value.CapturedLocalNames is not { Count: > 0 })
             return value.ValueInFinalCode;
 
+        var captures = GetCapturedLocals(value);
+
+        if (captures.Count is 1)
+            return $$"""
+            global::QuickMarkup.Infra.CompilerHelpers.ClosureValue(
+                {{captures[0].Ref}}.Value,
+                {{captures[0].Name}} => {{value.ValueInFinalCode}})
+            """;
+
+        if (captures.Count is 2)
+            return $$"""
+            global::QuickMarkup.Infra.CompilerHelpers.ClosureValue(
+                {{captures[0].Ref}}.Value,
+                {{captures[1].Ref}}.Value,
+                ({{captures[0].Name}}, {{captures[1].Name}}) => {{value.ValueInFinalCode}})
+            """;
+
+        var locals = CGenCapturedLocalDeclarations(value);
+
+        return $$"""
+        (new global::System.Func<{{TypeName(value.Type)}}>(() => {
+            {{locals.IndentWOF(1)}}
+            return {{value.ValueInFinalCode}};
+        }))()
+        """;
+    }
+
+    List<(string Name, string Ref)> GetCapturedLocals(QMValueSymbol<ITypeSymbol?> value)
+    {
         var captures = new List<(string Name, string Ref)>();
         foreach (var scope in forScopes)
         {
@@ -582,31 +660,16 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                 captures.Add((scope.IndexName, scope.IndexRef));
         }
 
-        if (captures.Count is 1)
-            return $$"""
-            global::QuickMarkup.Infra.CompilerHelpers.Closure(
-                {{captures[0].Ref}}.Value,
-                {{captures[0].Name}} => {{value.ValueInFinalCode}})
-            """;
+        return captures;
+    }
 
-        if (captures.Count is 2)
-            return $$"""
-            global::QuickMarkup.Infra.CompilerHelpers.Closure(
-                {{captures[0].Ref}}.Value,
-                {{captures[1].Ref}}.Value,
-                ({{captures[0].Name}}, {{captures[1].Name}}) => {{value.ValueInFinalCode}})
-            """;
-
+    string CGenCapturedLocalDeclarations(QMValueSymbol<ITypeSymbol?> value)
+    {
         var locals = new StringBuilder();
-        foreach (var capture in captures)
+        foreach (var capture in GetCapturedLocals(value))
             locals.AppendLine($"var {capture.Name} = {capture.Ref}.Value;");
 
-        return $$"""
-        (new global::System.Func<{{TypeName(value.Type)}}>(() => {
-            {{locals.ToString().IndentWOF(1)}}
-            return {{value.ValueInFinalCode}};
-        }))()
-        """;
+        return locals.ToString();
     }
 
     static string TypeName(ITypeSymbol? type)

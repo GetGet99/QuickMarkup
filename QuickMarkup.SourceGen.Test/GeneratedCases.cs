@@ -163,7 +163,7 @@ public partial class ForeachCase : TestRoot
     using QuickMarkup.SourceGen.Test;
     <root>
         <TestPanel>
-            foreach (var item in `Items`) {
+            foreach (EventItem item in `Items`; `item.Id`) {
                 <TestButton Clicked+=`item.Clicked` />
             }
         </TestPanel>
@@ -171,10 +171,11 @@ public partial class ForeachCase : TestRoot
     """)]
 public partial class ForeachEventCaptureCase : TestRoot
 {
-    public static int ClickCount { get; set; }
+    public static int FirstClickCount { get; set; }
+    public static int SecondClickCount { get; set; }
     public ObservableCollection<EventItem> Items { get; } =
     [
-        new("one", (_, _) => ClickCount++)
+        new(1, "one", (_, _) => FirstClickCount++)
     ];
 }
 

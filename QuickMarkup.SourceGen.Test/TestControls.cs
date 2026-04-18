@@ -71,4 +71,4 @@ public sealed class TestElementCollection : Collection<TestElement>
 
 public sealed record TestItem(int Id, string Text);
 
-public sealed record EventItem(string Text, EventHandler Clicked);
+public sealed record EventItem(int Id, string Text, EventHandler Clicked);
