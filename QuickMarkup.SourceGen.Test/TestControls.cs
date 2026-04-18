@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using QuickMarkup.Infra;
 
 namespace QuickMarkup.SourceGen.Test;
 
@@ -26,6 +27,48 @@ public sealed class TestButton : TestElement
     {
         Clicked?.Invoke(this, EventArgs.Empty);
     }
+}
+
+public sealed class DependencyProperty;
+
+public sealed class TestDependencyHoldButton : TestElement
+{
+    public static readonly DependencyProperty IsHoldingProperty = new();
+    readonly List<Action<object?, object?>> propertyChangedCallbacks = [];
+    bool isHolding;
+
+    public bool IsHolding
+    {
+        get => isHolding;
+        set
+        {
+            if (isHolding == value)
+                return;
+
+            isHolding = value;
+            foreach (var callback in propertyChangedCallbacks)
+                callback(this, EventArgs.Empty);
+        }
+    }
+
+    public void RegisterPropertyChangedCallback(DependencyProperty property, Action<object?, object?> callback)
+    {
+        if (property == IsHoldingProperty)
+            propertyChangedCallbacks.Add(callback);
+    }
+}
+
+public sealed class TestComputedHoldButton : TestElement
+{
+    public Reference<bool> IsHoldingInputProp => field ??= new(false);
+    public bool IsHoldingInput
+    {
+        get => IsHoldingInputProp.Value;
+        set => IsHoldingInputProp.Value = value;
+    }
+
+    public Computed<bool> IsHoldingComp => field ??= new(() => IsHoldingInput);
+    public bool IsHolding => IsHoldingComp.Value;
 }
 
 public sealed class TestText : TestElement

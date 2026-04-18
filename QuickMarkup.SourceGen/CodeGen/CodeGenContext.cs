@@ -199,8 +199,8 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             else
                 codeBuilder.AddPropertyBindOneWay(
                     addProp.PropertyType,
-                    property,
                     CGen(addProp.Value),
+                    property,
                     disposableAddTarget: disposableAddTarget
                 );
         }

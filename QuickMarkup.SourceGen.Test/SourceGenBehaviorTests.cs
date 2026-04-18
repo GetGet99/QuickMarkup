@@ -90,6 +90,33 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void BindBackTracksComputedTargetReference()
+    {
+        var page = new ComputedBindBackCase();
+        var holdButton = TestTreeAssert.Child<TestComputedHoldButton>(page.Children, 0);
+
+        Assert.IsFalse(page.ShouldShowOriginal);
+
+        holdButton.IsHoldingInput = true;
+        ReactiveScheduler.Tick();
+
+        Assert.IsTrue(page.ShouldShowOriginal);
+    }
+
+    [TestMethod]
+    public void BindBackTracksDependencyPropertyTarget()
+    {
+        var page = new DependencyPropertyBindBackCase();
+        var holdButton = TestTreeAssert.Child<TestDependencyHoldButton>(page.Children, 0);
+
+        Assert.IsFalse(page.ShouldShowOriginal);
+
+        holdButton.IsHolding = true;
+
+        Assert.IsTrue(page.ShouldShowOriginal);
+    }
+
+    [TestMethod]
     public void NestedConditionalSingleChildUsesNearestElseAndDisposesInactiveBranch()
     {
         var page = new NestedConditionalContentCase();

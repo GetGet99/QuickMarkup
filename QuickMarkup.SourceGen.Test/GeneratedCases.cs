@@ -83,6 +83,28 @@ public partial class ConditionalContentCase : TestRoot
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    bool ShouldShowOriginal;
+    <root>
+        holdButton=<TestComputedHoldButton IsHolding=>`ShouldShowOriginal` />
+    </root>
+    """)]
+public partial class ComputedBindBackCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    bool ShouldShowOriginal;
+    <root>
+        holdButton=<TestDependencyHoldButton IsHolding=>`ShouldShowOriginal` />
+    </root>
+    """)]
+public partial class DependencyPropertyBindBackCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     bool Outer = true;
     bool Inner = false;
     string InnerTrue = "inner true";

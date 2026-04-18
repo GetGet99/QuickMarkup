@@ -375,16 +375,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 bool isDependencyProp;
                 string depName = "";
                 {
-                    var deProp = CodeTypeResolver.FindProperty(tagInfo.TagType, $"{property.Key}Property");
-                    if (deProp is null)
-                        isDependencyProp = false;
-                    else if (!deProp.IsStatic)
-                        isDependencyProp = false;
-                    else
-                    {
-                        isDependencyProp = deProp.Type.Name is "DependencyProperty";
-                        depName = $"{deProp.ContainingType.FullNameWithoutAnnotation()}.{deProp.Name}";
-                    }
+                    isDependencyProp = CodeTypeResolver.TryGetDependencyProperty(
+                        tagInfo.TagType,
+                        property.Key,
+                        out var dependencyPropertyName);
+                    depName = dependencyPropertyName ?? "";
                 }
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,

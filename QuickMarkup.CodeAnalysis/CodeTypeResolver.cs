@@ -164,6 +164,51 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
         return null;
     }
 
+    public static IFieldSymbol? FindField(ITypeSymbol? type, string field)
+    {
+        for (ITypeSymbol? current = type;
+             current != null;
+             current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers(field))
+            {
+                if (member is IFieldSymbol sym)
+                {
+                    return sym;
+                }
+            }
+        }
+        return null;
+    }
+
+    public static bool TryGetDependencyProperty(ITypeSymbol? type, string property, [NotNullWhen(true)] out string? dependencyPropertyName)
+    {
+        dependencyPropertyName = null;
+        var memberName = $"{property}Property";
+        var prop = FindProperty(type, memberName);
+        var field = FindField(type, memberName);
+        var memberType = prop?.Type ?? field?.Type;
+        if (memberType?.Name is not "DependencyProperty")
+            return false;
+
+        if (prop is { IsStatic: false } || field is { IsStatic: false })
+            return false;
+
+        if (prop is not null)
+        {
+            dependencyPropertyName = $"{prop.ContainingType.FullNameWithoutAnnotation()}.{prop.Name}";
+            return true;
+        }
+
+        if (field is not null)
+        {
+            dependencyPropertyName = $"{field.ContainingType.FullNameWithoutAnnotation()}.{field.Name}";
+            return true;
+        }
+
+        return false;
+    }
+
     public bool ShouldAutoNew(ITypeSymbol? value, ITypeSymbol target)
     {
         if (CanAssign(value, target))
