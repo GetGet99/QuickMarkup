@@ -163,6 +163,25 @@ public partial class ForeachCase : TestRoot
     using QuickMarkup.SourceGen.Test;
     <root>
         <TestPanel>
+            foreach (var item in `Items`) {
+                <TestButton Clicked+=`item.Clicked` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class ForeachEventCaptureCase : TestRoot
+{
+    public static int ClickCount { get; set; }
+    public ObservableCollection<EventItem> Items { get; } =
+    [
+        new("one", (_, _) => ClickCount++)
+    ];
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
             foreach (index; TestItem item in `Items`; `item.Id`) {
                 <TestText Text=`$"{index}:{item.Text}"` />
             }

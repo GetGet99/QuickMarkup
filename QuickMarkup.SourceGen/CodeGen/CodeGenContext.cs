@@ -571,16 +571,35 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         if (forScopes.Count == 0 || value.CapturedLocalNames is not { Count: > 0 })
             return value.ValueInFinalCode;
 
-        var locals = new StringBuilder();
+        var captures = new List<(string Name, string Ref)>();
         foreach (var scope in forScopes)
         {
             if (value.CapturedLocalNames.Contains(scope.ItemName))
-                locals.AppendLine($"var {scope.ItemName} = {scope.ItemRef}.Value;");
+                captures.Add((scope.ItemName, scope.ItemRef));
             if (scope.IndexName is not null &&
                 scope.IndexRef is not null &&
                 value.CapturedLocalNames.Contains(scope.IndexName))
-                locals.AppendLine($"var {scope.IndexName} = {scope.IndexRef}.Value;");
+                captures.Add((scope.IndexName, scope.IndexRef));
         }
+
+        if (captures.Count is 1)
+            return $$"""
+            global::QuickMarkup.Infra.CompilerHelpers.Closure(
+                {{captures[0].Ref}}.Value,
+                {{captures[0].Name}} => {{value.ValueInFinalCode}})
+            """;
+
+        if (captures.Count is 2)
+            return $$"""
+            global::QuickMarkup.Infra.CompilerHelpers.Closure(
+                {{captures[0].Ref}}.Value,
+                {{captures[1].Ref}}.Value,
+                ({{captures[0].Name}}, {{captures[1].Name}}) => {{value.ValueInFinalCode}})
+            """;
+
+        var locals = new StringBuilder();
+        foreach (var capture in captures)
+            locals.AppendLine($"var {capture.Name} = {capture.Ref}.Value;");
 
         return $$"""
         (new global::System.Func<{{TypeName(value.Type)}}>(() => {

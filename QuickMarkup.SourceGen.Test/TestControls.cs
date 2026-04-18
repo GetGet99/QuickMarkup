@@ -20,6 +20,12 @@ public sealed class TestPanel : TestElement
 public sealed class TestButton : TestElement
 {
     public TestElement? Content { get; set; }
+    public event EventHandler? Clicked;
+
+    public void RaiseClicked()
+    {
+        Clicked?.Invoke(this, EventArgs.Empty);
+    }
 }
 
 public sealed class TestText : TestElement
@@ -64,3 +70,5 @@ public sealed class TestElementCollection : Collection<TestElement>
 }
 
 public sealed record TestItem(int Id, string Text);
+
+public sealed record EventItem(string Text, EventHandler Clicked);

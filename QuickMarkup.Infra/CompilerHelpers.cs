@@ -12,4 +12,14 @@ public static class CompilerHelpers
     {
         action(item);
     }
+
+    public static TResult Closure<T, TResult>(T item, Func<T, TResult> func)
+    {
+        return func(item);
+    }
+
+    public static TResult Closure<T1, T2, TResult>(T1 item1, T2 item2, Func<T1, T2, TResult> func)
+    {
+        return func(item1, item2);
+    }
 }
