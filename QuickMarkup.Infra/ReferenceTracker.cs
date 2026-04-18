@@ -1,4 +1,6 @@
-﻿namespace QuickMarkup.Infra;
+using System.Diagnostics;
+
+namespace QuickMarkup.Infra;
 
 public class ReferenceTracker
 {
@@ -26,21 +28,18 @@ public class ReferenceTracker
     {
         var tracker = Instance.Value!;
         RefEffect effect = new(Rerun);
-        try
-        {
-            // run once
-            effect.Tick();
-        } catch (Exception e)
-        {
-            Console.WriteLine(e);
-            if (!ReactiveScheduler.Instance.Value!.ContinueOnException)
-                throw;
-        }
+        // run once
+        effect.Tick();
 
         return effect;
 
         void Rerun(RefEffect effect)
         {
+            if (tracker != Instance.Value!)
+            {
+                // potential cross-thread safety
+                Debugger.Break();
+            }
             // Remove old subscriptions
             effect.ResetDependency();
 
@@ -50,12 +49,26 @@ public class ReferenceTracker
 
             // Run the function
             tracker.CurrentEffect = effect;
-            var result = func();
-            tracker.CurrentEffect = null;
+            T? result;
+            try
+            {
+                result = func();
 
-            tracker.ReferenceRead -= OnRead;
+                tracker.CurrentEffect = null;
 
-            continueAction(result);
+                tracker.ReferenceRead -= OnRead;
+
+                continueAction(result);
+            }
+            catch (Exception e)
+            {
+                tracker.CurrentEffect = null;
+
+                tracker.ReferenceRead -= OnRead;
+                Console.WriteLine(e);
+                if (!ReactiveScheduler.Instance.Value!.ContinueOnException)
+                    throw;
+            }
         }
     }
 }

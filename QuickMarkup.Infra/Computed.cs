@@ -1,4 +1,4 @@
-﻿using System.Xml.Linq;
+using System.Xml.Linq;
 
 namespace QuickMarkup.Infra;
 
@@ -22,8 +22,11 @@ public class Computed<T> : IReference<T>
         {
             var oldVal = _Value;
             _Value = x;
-            ValueChanged?.Invoke(oldVal ?? x, x);
-            ValueChangedBase?.Invoke();
+            if (!EqualityComparer<T>.Default.Equals(oldVal, x))
+            {
+                ValueChanged?.Invoke(oldVal ?? x, x);
+                ValueChangedBase?.Invoke();
+            }
         });
     }
 

@@ -1,19 +1,30 @@
+using System.Diagnostics;
+
 namespace QuickMarkup.Infra;
 
 public class Reference<T>(T defaultValue, string name = "") : IReference
 {
+    int created = Thread.CurrentThread.ManagedThreadId;
     public T Value
     {
         get
         {
-            ReferenceTracker.NotifyRefernceRead(this);
             DebugPrintCalleeRead();
+            if (created == Thread.CurrentThread.ManagedThreadId)
+            {
+                ReferenceTracker.NotifyRefernceRead(this);
+            }
             return field;
         }
         set
         {
             if (!EqualityComparer<T>.Default.Equals(field, value))
             {
+                if (created != Thread.CurrentThread.ManagedThreadId)
+                {
+                    // Cross thread call detected
+                    Debugger.Break();
+                }
                 DebugPrintCalleeWrite();
                 var oldValue = field;
                 field = value;
