@@ -105,9 +105,11 @@ ReactiveScheduler.Tick();
 
 "Tick" is when all changed references' dependencies will all get re-executed.
 
+If an effect schedules another effect while a tick is already running, the newly scheduled effect runs on the next tick. Reading a `Computed<T>.Value` can force that computed to update immediately when its own effect is already scheduled.
+
 ### Automatically scheduling Tick
 
-In most UI frameworks, there will be a way to schedule a call to be running later. In most rael world use cases, there will be no need to call Tick manually. With a setup call on the program starup, you can setup reactivity with a few lines and the system will be ready to go.
+In most UI frameworks, there will be a way to schedule a call to be running later. In most real world use cases, there will be no need to call Tick manually. With a setup call on the program starup, you can setup reactivity with a few lines and the system will be ready to go.
 
 ```cs
 ReactiveScheduler.AddTickCallbackForCurrentThread(delegate

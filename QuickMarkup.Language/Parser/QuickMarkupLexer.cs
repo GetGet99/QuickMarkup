@@ -113,9 +113,13 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
         Boolean,
         [Regex(@"null", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"null", State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"null", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
         Null,
         [Regex(@"default", State = (int)LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"default", State = (int)LexerStates.InsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [Regex(@"default", State = (int)LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateConstantLanguageScope(ConstantLanguageType.Boolean, Priority = (int)TextmateOrder.Keywords)]
         Default,
         [Regex<int>(@"-[0-9][0-9_]*", nameof(ParseInt), State = (int)LexerStates.Props)]

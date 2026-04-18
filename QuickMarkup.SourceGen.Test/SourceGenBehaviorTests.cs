@@ -64,6 +64,49 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void SetupVariablesAreAvailableToTemplateExpressions()
+    {
+        var page = new SetupScopeCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("from setup", text.Text);
+    }
+
+    [TestMethod]
+    public void PrimitiveValuesAndBooleanShorthandAssignProperties()
+    {
+        var page = new PrimitiveValueCase();
+
+        var trueText = TestTreeAssert.Child<TestText>(page.Children, 0);
+        var falseText = TestTreeAssert.Child<TestText>(page.Children, 1);
+        var defaults = TestTreeAssert.Child<TestText>(page.Children, 2);
+
+        Assert.IsTrue(trueText.Flag);
+        Assert.IsFalse(falseText.Flag);
+        Assert.IsNull(defaults.Text);
+        Assert.AreEqual(0, defaults.Number);
+    }
+
+    [TestMethod]
+    public void NumericLiteralAutoNewsOneParameterTargetType()
+    {
+        var page = new AutoNewCase();
+        var element = TestTreeAssert.Child<AutoNewElement>(page.Children, 0);
+
+        Assert.AreEqual(16, element.Radius.Value);
+    }
+
+    [TestMethod]
+    public void ExtensionAndForeignCallbacksRunDuringInitialization()
+    {
+        var page = new CallbackCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        Assert.IsTrue(panel.ExtensionApplied);
+        Assert.IsTrue(panel.CallbackApplied);
+    }
+
+    [TestMethod]
     public void ConditionalSingleChildReplacesContentAndUpdatesActiveBranch()
     {
         var page = new ConditionalContentCase();
@@ -114,6 +157,26 @@ public sealed class SourceGenBehaviorTests
         holdButton.IsHolding = true;
 
         Assert.IsTrue(page.ShouldShowOriginal);
+    }
+
+    [TestMethod]
+    public void TwoWayDependencyPropertyBindingSynchronizesBothDirections()
+    {
+        var page = new DependencyPropertyTwoWayCase();
+        var first = TestTreeAssert.Child<TestDependencyHoldButton>(page.Children, 0);
+        var second = TestTreeAssert.Child<TestDependencyHoldButton>(page.Children, 1);
+
+        page.SharedHolding = true;
+        ReactiveScheduler.Tick();
+
+        Assert.IsTrue(first.IsHolding);
+        Assert.IsTrue(second.IsHolding);
+
+        first.IsHolding = false;
+        ReactiveScheduler.Tick();
+
+        Assert.IsFalse(page.SharedHolding);
+        Assert.IsFalse(second.IsHolding);
     }
 
     [TestMethod]
@@ -171,6 +234,15 @@ public sealed class SourceGenBehaviorTests
         var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
 
         TestTreeAssert.Texts(panel.Children, "A", "B");
+    }
+
+    [TestMethod]
+    public void RangeForeachAddsStaticRangeChildren()
+    {
+        var page = new RangeForeachCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "Row 1", "Row 2", "Row 3", "Row 4", "Row 5", "Row 6");
     }
 
     [TestMethod]

@@ -134,16 +134,6 @@ Supported comments are in `//` and `/* */` style.
 
 Note:`<!-- -->` is not supported.
 
-```cs
-// This is a comment
-/* And this is also
-   a comment */
-```
-
-Supported comments are in `//` and `/* */` style.
-
-Note:`<!-- -->` is not supported.
-
 ### QuickMarkup Primitive Values
 
 QuickMarkup supports following value kinds.
@@ -314,6 +304,15 @@ double Step = 1;
 </root>
 ```
 
+The `<> ... </>` syntax can be used as a value list for property values, for example:
+
+```cs
+<Grid RowDefinitions=<>
+    <RowDefinition />
+    <RowDefinition />
+</> />
+```
+
 #### Special Callbacks
 
 Identifier being alone, if it is identified as not a valid property variable, will be called as an extension method.
@@ -383,6 +382,41 @@ string[] options = ["Apple", "Orange", "Banana"];
 </root>
 ```
 
+#### Fragment children
+
+A `{ ... }` block is a fragment. It can contain any valid QuickMarkup child node, including elements, nested fragments, `if`, and `foreach`.
+
+```cs
+<root>
+    <StackPanel>
+        {
+            <TextBlock Text="A" />
+            <TextBlock Text="B" />
+        }
+    </StackPanel>
+</root>
+```
+
+#### Conditional children
+
+QuickMarkup supports `if` and `if`/`else` as child nodes. The body can be a single child node or a `{ ... }` fragment.
+
+```cs
+bool ShowDetails = true;
+<root>
+    <StackPanel>
+        if (`ShowDetails`) {
+            <TextBlock Text="Details" />
+            <Button Content="Close" />
+        }
+        else
+            <TextBlock Text="Summary" />
+    </StackPanel>
+</root>
+```
+
+For single-child content positions, such as `Content`, conditional content requires an `else` branch and each branch must resolve to exactly one child.
+
 #### Foreach loop
 
 > [!WARNING]  
@@ -414,19 +448,84 @@ Ranges are declared with `start..end` or `..end` syntax where `start` and `end` 
 
 ##### Loop over iterables
 
-> [!WARNING]  
-> Loop iterables are evaluated **only once**. If any elements of the iterables are being replaced, added, or removed, the UI will not be changed. This may change in future versions of QuickMarkup. Therefore, it is an undefined behavior to put a changing list into the foreach loop.
+Iterable loops are backed by reactive collection blocks when the source collection implements `INotifyCollectionChanged`, such as `ObservableCollection<T>`. When that collection changes, QuickMarkup reconciles the generated children. Plain arrays and other non-notifying enumerables can still be rendered initially, but they will not notify QuickMarkup about later insert, remove, replace, or move operations.
 
 ```cs
 <setup>
-string[] animals = ["Dog", "Cat", "Tiger"];
+ObservableCollection<string> animals = ["Dog", "Cat", "Tiger"];
 </setup>
 <root>
     <StackPanel>
-        foreach (var animal in animals) {
+        foreach (var animal in `animals`) {
             <TextBlock Text=`animal` />
         }
     </StackPanel>
 </root>
 ```
+
+For stable identity across collection changes, provide a key expression after a semicolon. Key must be unqiue (otherwise there will be a thrown exception).
+
+```cs
+// C#
+record class Animal(int Id, string Name);
+```
+
+```cs
+<setup>
+ObservableCollection<Animal> animals = [
+    new(1, "Dog"),
+    new(2, "Dog"),
+    new(3, "Cat"),
+    new(4, "Tiger")
+];
+</setup>
+<root>
+    <StackPanel>
+        foreach (var animal in `animals`; `animal.Id`) {
+            <TextBlock Text=`animal.Name` />
+        }
+    </StackPanel>
+</root>
+```
+
+You can also request an index reference:
+
+```cs
+<setup>
+ObservableCollection<string> animals = ["Dog", "Cat", "Tiger"];
+</setup>
+<root>
+    <StackPanel>
+        // declare a new variable named "index"
+        foreach (index; var animal in `animals`) {
+            <TextBlock Text=`$"{index + 1}. {animal}"` />
+        }
+    </StackPanel>
+</root>
+```
+
+or both provide a key and request references:
+
+```cs
+<setup>
+<setup>
+ObservableCollection<Animal> animals = [
+    new(3, "Dog"),
+    new(4, "Dog"),
+    new(5, "Cat"),
+    new(6, "Tiger")
+];
+</setup>
+<root>
+    <StackPanel>
+        // index variable declaration goes in the front
+        // keys goes in the back
+        foreach (index; var animal in `animals`; `animal.Id`) {
+            <TextBlock Text=`$"{index + 1}. {animal.Name}"` />
+        }
+    </StackPanel>
+</root>
+```
+
+The key expression must be a C# literal expression in (backtick expression or legacy syntax).
 

@@ -237,6 +237,101 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void ReferenceWatchRunsOnlyAfterChangeUnlessImmediate()
+        {
+            Reference<int> value = new(1);
+            List<int> seen = [];
+
+            value.Watch(seen.Add);
+
+            Assert.HasCount(0, seen);
+
+            value.Value = 2;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { 2 }, seen);
+        }
+
+        [TestMethod]
+        public void ComputedWatchImmediateReadsCurrentValueAndTracksChanges()
+        {
+            Reference<int> value = new(1);
+            Computed<int> doubled = new(() => value.Value * 2);
+            List<int> seen = [];
+
+            doubled.Watch(seen.Add, immediete: true);
+
+            CollectionAssert.AreEqual(new[] { 2 }, seen);
+
+            value.Value = 3;
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { 2 }, seen);
+
+            ReactiveScheduler.Tick();
+
+            CollectionAssert.AreEqual(new[] { 2, 6 }, seen);
+        }
+
+        [TestMethod]
+        public void NoCapturePreventsDependencyTracking()
+        {
+            Reference<int> tracked = new(1);
+            Reference<int> ignored = new(10);
+            int result = 0;
+
+            var effect = ReferenceTracker.RunAndRerunOnReferenceChange(
+                () => tracked.Value + ReferenceTracker.NoCapture(() => ignored.Value),
+                x => result = x);
+
+            Assert.AreEqual(11, result);
+            Assert.DepsEqual(effect.Dependencies, tracked);
+
+            ignored.Value = 20;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(11, result);
+
+            tracked.Value = 2;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(22, result);
+        }
+
+        [TestMethod]
+        public void QuickRefsEffectRunsOnNextTickForSelectedReferences()
+        {
+            Reference<int> a = new(1);
+            Reference<int> b = new(10);
+            int runs = 0;
+            int sum = 0;
+
+            using var effect = QuickRefs.Effect(() =>
+            {
+                runs++;
+                sum = a.Value + b.Value;
+            }, a);
+
+            Assert.AreEqual(0, runs);
+
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(1, runs);
+            Assert.AreEqual(11, sum);
+
+            b.Value = 20;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(1, runs);
+
+            a.Value = 2;
+            ReactiveScheduler.Tick();
+
+            Assert.AreEqual(2, runs);
+            Assert.AreEqual(22, sum);
+        }
+
+        [TestMethod]
         public void TargetUICollectionMoveUsesFinalIndexWhenMovingForward()
         {
             List<string> target = ["A", "B", "C", "D"];

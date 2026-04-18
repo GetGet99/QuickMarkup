@@ -65,6 +65,51 @@ public partial class ReactiveBindingCase : TestRoot
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    <setup>
+    var suffix = " setup";
+    </setup>
+    <root>
+        <TestText Text=`"from" + suffix` />
+    </root>
+    """)]
+public partial class SetupScopeCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText Name="true" Flag />
+        <TestText Name="false" !Flag />
+        <TestText Name="defaults" Text=null Number=default />
+    </root>
+    """)]
+public partial class PrimitiveValueCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <AutoNewElement Radius=16 />
+    </root>
+    """)]
+public partial class AutoNewCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel MarkPanel `x => x.CallbackApplied = true` />
+    </root>
+    """)]
+public partial class CallbackCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     bool UseA = true;
     string AText = "A";
     string BText = "B";
@@ -100,6 +145,18 @@ public partial class ComputedBindBackCase : TestRoot
     </root>
     """)]
 public partial class DependencyPropertyBindBackCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    bool SharedHolding;
+    <root>
+        <TestDependencyHoldButton IsHolding<=>`SharedHolding` />
+        <TestDependencyHoldButton IsHolding<=>`SharedHolding` />
+    </root>
+    """)]
+public partial class DependencyPropertyTwoWayCase : TestRoot
 {
 }
 
@@ -171,6 +228,23 @@ public partial class CollectionIfCase : TestRoot
     </root>
     """)]
 public partial class FragmentCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            foreach (var row in ..3) {
+                <TestText Text=`$"Row {row + 1}"` />
+            }
+            foreach (int row in 4..7) {
+                <TestText Text=`$"Row {row}"` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class RangeForeachCase : TestRoot
 {
 }
 

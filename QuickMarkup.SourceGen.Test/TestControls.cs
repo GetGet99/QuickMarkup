@@ -16,6 +16,8 @@ public class TestRoot
 public sealed class TestPanel : TestElement
 {
     public TestElementCollection Children { get; } = [];
+    public bool ExtensionApplied { get; set; }
+    public bool CallbackApplied { get; set; }
 }
 
 public sealed class TestButton : TestElement
@@ -80,6 +82,13 @@ public sealed class TestText : TestElement
 
 public sealed class NullableRefItem;
 
+public readonly record struct TestRadius(int Value);
+
+public sealed class AutoNewElement : TestElement
+{
+    public TestRadius Radius { get; set; }
+}
+
 public sealed class ItemsOnlyElement : TestElement
 {
     public TestElementCollection Items { get; } = [];
@@ -117,3 +126,11 @@ public sealed class TestElementCollection : Collection<TestElement>
 public sealed record TestItem(int Id, string Text);
 
 public sealed record EventItem(int Id, string Text, EventHandler Clicked);
+
+public static class TestElementExtensions
+{
+    public static void MarkPanel(this TestPanel panel)
+    {
+        panel.ExtensionApplied = true;
+    }
+}
