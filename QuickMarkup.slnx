@@ -14,7 +14,6 @@
   </Folder>
   <Project Path="QuickMarkup.Infra.Test/QuickMarkup.Infra.Test.csproj" Id="8ce6f563-b4da-4552-956c-beb3e51648dd" />
   <Project Path="QuickMarkup.Infra/QuickMarkup.Infra.csproj" Id="141f36ca-c094-45e9-9559-315c38783ec9" />
-  <Project Path="QuickMarkup.IntegrationTest/QuickMarkup.IntegrationTest.csproj" Id="78e4530c-69b2-4f1e-bb44-03ba441d462d" />
   <Project Path="QuickMarkup.Language/QuickMarkup.Language.csproj" />
   <Project Path="QuickMarkup.SourceGen.Test/QuickMarkup.SourceGen.Test.csproj" Id="e61a9f0e-7a5c-4a6c-99fd-e6c3e7a7e6b6" />
   <Project Path="QuickMarkup.SourceGen/QuickMarkup.SourceGen.csproj" Id="88646990-7457-4dbf-a047-0f33c980f9c6" />
