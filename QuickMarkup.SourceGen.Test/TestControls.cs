@@ -78,6 +78,8 @@ public sealed class TestText : TestElement
     public bool Flag { get; set; }
 }
 
+public sealed class NullableRefItem;
+
 public sealed class ItemsOnlyElement : TestElement
 {
     public TestElementCollection Items { get; } = [];

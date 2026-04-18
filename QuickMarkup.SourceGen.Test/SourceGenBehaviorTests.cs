@@ -117,6 +117,15 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void NullableReferenceDeclarationsCanDefaultToNull()
+    {
+        var page = new NullableNullRefDeclarationCase();
+
+        Assert.IsNull(page.NullableItem);
+        Assert.IsNull(page.SomeList);
+    }
+
+    [TestMethod]
     public void NestedConditionalSingleChildUsesNearestElseAndDisposesInactiveBranch()
     {
         var page = new NestedConditionalContentCase();

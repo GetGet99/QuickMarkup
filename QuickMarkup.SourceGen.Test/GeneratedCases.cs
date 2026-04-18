@@ -104,6 +104,18 @@ public partial class DependencyPropertyBindBackCase : TestRoot
 }
 
 [QuickMarkup("""
+    using System.Collections.Generic;
+    using QuickMarkup.SourceGen.Test;
+    NullableRefItem? NullableItem = null;
+    `List<int>?` SomeList = null;
+    <root>
+    </root>
+    """)]
+public partial class NullableNullRefDeclarationCase : TestRoot
+{
+}
+
+[QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
     bool Outer = true;
     bool Inner = false;

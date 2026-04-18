@@ -26,7 +26,7 @@ class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
                     if (type is null)
                         return Value(type, "null");
                     else
-                        return Value(type, $"(null as {type.FullName()})");
+                        return Value(type, $"(({type.FullName()})null)");
                 }
                 if (type is null)
                 {

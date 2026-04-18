@@ -22,6 +22,7 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
             compilation.SyntaxTrees.First().Options;
 
         var source = $$"""
+            #nullable enable
             {{usings}}
             namespace {{@namespace}}.QUICKMARKUP_TEMP_NAMESPACE;
 
@@ -40,8 +41,8 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
             .OfType<FieldDeclarationSyntax>()
             .Single();
 
-        var result = model.GetTypeInfo(field.Declaration.Type)
-            .Type as INamedTypeSymbol;
+        var fieldSymbol = model.GetDeclaredSymbol(field.Declaration.Variables.Single()) as IFieldSymbol;
+        var result = fieldSymbol?.Type as INamedTypeSymbol;
         if (result is IErrorTypeSymbol)
         {
             result = null;
