@@ -4,6 +4,37 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>QuickMarkup</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>SparklingThoughts</Authors>
+    <Description>QuickMarkup infrastructure library and source generator.</Description>
+    <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/GetGet99/QuickMarkup</RepositoryUrl>
+    <PackageOutputPath>D:\Programming\VS\.LocalNugetPackages</PackageOutputPath>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddSourceGeneratorToPackage</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <SourceGeneratorTargetFramework>netstandard2.0</SourceGeneratorTargetFramework>
+    <SourceGeneratorOutputPath>$(MSBuildThisFileDirectory)..\QuickMarkup.SourceGen\bin\$(Configuration)\$(SourceGeneratorTargetFramework)\</SourceGeneratorOutputPath>
+  </PropertyGroup>
+
+  <Target Name="AddSourceGeneratorToPackage">
+    <MSBuild Projects="..\QuickMarkup.SourceGen\QuickMarkup.SourceGen.csproj"
+             Targets="Restore;Build"
+             Properties="Configuration=$(Configuration);UseSharedCompilation=false"
+             RemoveProperties="TargetFramework;TargetFrameworks;RuntimeIdentifier;RuntimeIdentifiers;SelfContained">
+    </MSBuild>
+
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(SourceGeneratorOutputPath)QuickMarkup.SourceGen.dll"
+                              PackagePath="analyzers/dotnet/cs/" />
+    </ItemGroup>
+  </Target>
 
 </Project>

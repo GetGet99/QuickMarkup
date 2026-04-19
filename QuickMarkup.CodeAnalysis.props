@@ -4,7 +4,7 @@
 		<ProjectReference Include="..\Parser\Get.Lexer.SourceGenerator\Get.Lexer.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 		<ProjectReference Include="..\Parser\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 		<Compile Include="..\Parser\Get.Lexer\**\*.cs" Link="Dependencies\Get.Lexer\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.Lexer\obj\**\*" />
-		<Compile Include="..\Parser\Get.LangSupport\**\*.cs" Link="Dependencies\Get.LangSupport\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.LangSupport\obj\**\*" />
+		<Compile Include="..\Parser\Get.LangSupport\**\*.cs" Link="Dependencies\Get.LangSupport\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.LangSupport\obj\**\*;..\Parser\Get.LangSupport\TextmateGrammarGenerator.cs" />
 		<Compile Include="..\Parser\Get.PLShared\**\*.cs" Link="Dependencies\Get.PLShared\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\Parser\Get.PLShared\obj\**\*" />
 		<Compile Include="..\QuickMarkup.Language\**\*.cs" Link="Language\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\QuickMarkup.Language\obj\**\*" />
 		<Compile Include="..\QuickMarkup.Infra\**\*.cs" Link="Dependencies\QuickMarkup.Infra\%(RecursiveDir)%(Filename)%(Extension)" Exclude="..\QuickMarkup.Infra\obj\**\*" />
