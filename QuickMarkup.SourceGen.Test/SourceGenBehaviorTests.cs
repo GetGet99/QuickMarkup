@@ -88,6 +88,17 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void GeneratedQuickMarkupPropertiesAreVisibleToOtherMarkup()
+    {
+        var page = new GeneratedPropertyConsumerCase();
+        var element = TestTreeAssert.Child<GeneratedPropertyElement>(page.Children, 0);
+
+        Assert.AreEqual("from generated property", element.Text);
+        Assert.AreEqual(TestKind.Secondary, element.Kind);
+        Assert.IsTrue(element.Flag);
+    }
+
+    [TestMethod]
     public void NumericLiteralAutoNewsOneParameterTargetType()
     {
         var page = new AutoNewCase();

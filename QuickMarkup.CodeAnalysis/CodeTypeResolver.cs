@@ -7,8 +7,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace QuickMarkup.CodeAnalysis;
 
-class CodeTypeResolver(Compilation compilation, string usings, string @namespace)
+class CodeTypeResolver(
+    Compilation compilation,
+    string usings,
+    string @namespace,
+    QuickMarkupGeneratedMemberTable? generatedMembers = null,
+    string? currentTypeName = null)
 {
+    readonly QuickMarkupGeneratedMemberTable generatedMembers = generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty;
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName);
     public ITypeSymbol? String => field ??= Type<string>();
     public ITypeSymbol? Int32 => field ??= Type<int>();
@@ -51,7 +57,7 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
         return result;
     }
 
-    public bool TryGetContentProperty(ITypeSymbol? symbol, [MaybeNullWhen(false)] out IPropertySymbol propertySymbol, out ChildrenModes childrenMode)
+    public bool TryGetContentProperty(ITypeSymbol? symbol, [MaybeNullWhen(false)] out ResolvedProperty? propertySymbol, out ChildrenModes childrenMode)
     {
         if (symbol is null)
         {
@@ -61,7 +67,7 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
         }
         if (FindContentAttirbute(symbol) is { } result)
         {
-            IPropertySymbol? property = null;
+            ResolvedProperty? property = null;
             if (result.ConstructorArguments.Length > 0)
                 property = FindProperty(symbol, result.ConstructorArguments[0].Value?.ToString() ?? "");
             else if (result.NamedArguments.Length > 0)
@@ -131,18 +137,34 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
         return null;
     }
 
-    public static IPropertySymbol? FindProperty(ITypeSymbol? type, string property)
+    public ResolvedProperty? FindProperty(ITypeSymbol? type, string property)
+        => generatedMembers.FindProperty(type, property, currentTypeName, ResolveGeneratedPropertyType);
+
+    ITypeSymbol? ResolveGeneratedPropertyType(string typeName)
+        => GetTypeSymbol(typeName);
+
+    public static IPropertySymbol? FindRoslynProperty(ITypeSymbol? type, string property)
     {
         for (ITypeSymbol? current = type;
              current != null;
              current = current.BaseType)
         {
-            foreach (var prop in current.GetMembers(property))
+            if (FindRoslynPropertyOnTypeOnly(current, property) is { } sym)
+                return sym;
+        }
+        return null;
+    }
+
+    public static IPropertySymbol? FindRoslynPropertyOnTypeOnly(ITypeSymbol? type, string property)
+    {
+        if (type is null)
+            return null;
+
+        foreach (var prop in type.GetMembers(property))
+        {
+            if (prop is IPropertySymbol sym)
             {
-                if (prop is IPropertySymbol sym)
-                {
-                    return sym;
-                }
+                return sym;
             }
         }
         return null;
@@ -186,7 +208,7 @@ class CodeTypeResolver(Compilation compilation, string usings, string @namespace
     {
         dependencyPropertyName = null;
         var memberName = $"{property}Property";
-        var prop = FindProperty(type, memberName);
+        var prop = FindRoslynProperty(type, memberName);
         var field = FindField(type, memberName);
         var memberType = prop?.Type ?? field?.Type;
         if (memberType?.Name is not "DependencyProperty")

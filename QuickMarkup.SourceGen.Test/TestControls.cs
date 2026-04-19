@@ -80,6 +80,12 @@ public sealed class TestText : TestElement
     public bool Flag { get; set; }
 }
 
+public enum TestKind
+{
+    Default,
+    Secondary
+}
+
 public sealed class NullableRefItem;
 
 public readonly record struct TestRadius(int Value);

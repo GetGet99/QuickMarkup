@@ -307,7 +307,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         }
         if (inlineMember is not QuickMarkupParsedProperty property)
             throw new NotImplementedException();
-        var targetPropSymbol = CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key);
+        var targetPropSymbol = resolver.FindProperty(tagInfo.TagType, property.Key);
         var targetType = targetPropSymbol?.Type;
         switch (property.Operator)
         {
@@ -384,7 +384,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
                     property.Key,
-                    new QMValueSymbol<ITypeSymbol>(CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
+                    new QMValueSymbol<ITypeSymbol>(resolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
                     property.Operator is ParsedPropertyOperator.BindBack ?
                         BindingModes.TargetToSource :
                         BindingModes.TwoWay,
@@ -395,7 +395,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 break;
             case ParsedPropertyOperator.None:
                 // extension or boolean value
-                if (CodeTypeResolver.FindProperty(tagInfo.TagType, property.Key) is { } propSymbol)
+                if (resolver.FindProperty(tagInfo.TagType, property.Key) is { } propSymbol)
                 {
                     // <QM IsEnabled />
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(

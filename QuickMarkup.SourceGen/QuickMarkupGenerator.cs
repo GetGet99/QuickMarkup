@@ -34,6 +34,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
     {
         context.RegisterPostInitializationOutput(OnInitialize);
         var (nonErrorMarkups, errorMarkups) = context.SyntaxProvider.ForAllParsedQuickMarkup();
+        var generatedMemberTable = nonErrorMarkups
+            .Combine(context.CompilationProvider)
+            .Select((x, ct) =>
+            {
+                var (markup, compilation) = x;
+                return BuildGeneratedTypeMembers(markup, compilation, ct);
+            })
+            .Collect()
+            .Select((items, _) => new QuickMarkupGeneratedMemberTable(items.Where(x => x is not null).Select(x => x!.Value)));
         
         // INIT (SETUP + MARKUP)
         {
@@ -44,10 +53,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 }
             );
 
-            var sources = sfcs.Combine(context.CompilationProvider).Select(
+            var sources = sfcs.Combine(context.CompilationProvider).Combine(generatedMemberTable).Select(
                 (x, ct) =>
                 {
-                    var ((target, usings, script, template), compilation) = x;
+                    var (((target, usings, script, template), compilation), generatedMembers) = x;
 
                     if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
                     {
@@ -69,7 +78,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     {
                         if (template is not null)
                         {
-                            var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
+                            var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
                             var analyzer = new QuickMarkupBinder(resolver);
                             var output = analyzer.Bind(template, typeSymbol);
                             ct.ThrowIfCancellationRequested();
@@ -214,12 +223,12 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 }
             );
 
-            var withCompilation = refs.Combine(context.CompilationProvider);
+            var withCompilation = refs.Combine(context.CompilationProvider).Combine(generatedMemberTable);
 
             var lines = withCompilation.Select((x, tok) =>
             {
-                var ((target, usings, refs), compilation) = x;
-                var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
+                var (((target, usings, refs), compilation), generatedMembers) = x;
+                var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
                 var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
                 var binder = new QuickMarkupBinder(resolver, failFast: true);
                 var boundRefs = binder.BindRefDeclarations(refs, containingType);
@@ -285,4 +294,76 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             searchTypeName = searchTypeName[..idx];
         return compilation.GetTypeByMetadataName(searchTypeName);
     }
+
+    static QuickMarkupGeneratedTypeMembers? BuildGeneratedTypeMembers(
+        QuickMarkupParsedAttribute markup,
+        Compilation compilation,
+        CancellationToken ct)
+    {
+        var target = markup.Target;
+        if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out _))
+            return null;
+
+        var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, target.Namespace);
+        var binder = new QuickMarkupBinder(resolver, failFast: true);
+        var refs = binder.BindRefDeclarations(markup.AST.Refs, typeSymbol);
+        var properties = new Dictionary<string, QuickMarkupGeneratedPropertySymbol>();
+        var unknownTypes = typeSymbol.TypeParameters.Length > 0;
+
+        foreach (var @ref in refs)
+        {
+            AddGeneratedProperty(
+                properties,
+                new(
+                    @ref.Name,
+                    unknownTypes ? null : TypeName(@ref.RefType),
+                    @ref.IsPrivate,
+                    @ref.IsComputedDeclaration
+                        ? QuickMarkupGeneratedPropertyKind.ComputedValue
+                        : QuickMarkupGeneratedPropertyKind.RefValue));
+
+            var backingName = @ref.IsComputedDeclaration
+                ? $"{@ref.Name}Comp"
+                : $"{@ref.Name}Prop";
+            var backingType = unknownTypes
+                ? null
+                : ConstructBackingTypeName(@ref.RefType, @ref.IsComputedDeclaration);
+
+            AddGeneratedProperty(
+                properties,
+                new(
+                    backingName,
+                    backingType,
+                    @ref.IsPrivate,
+                    @ref.IsComputedDeclaration
+                        ? QuickMarkupGeneratedPropertyKind.ComputedBacking
+                        : QuickMarkupGeneratedPropertyKind.RefBacking));
+
+            ct.ThrowIfCancellationRequested();
+        }
+
+        return new(target.FullTypeName, properties);
+    }
+
+    static void AddGeneratedProperty(
+        Dictionary<string, QuickMarkupGeneratedPropertySymbol> properties,
+        QuickMarkupGeneratedPropertySymbol property)
+    {
+        if (!properties.ContainsKey(property.Name))
+            properties.Add(property.Name, property);
+    }
+
+    static string? ConstructBackingTypeName(ITypeSymbol? valueType, bool isComputed)
+    {
+        var valueTypeName = TypeName(valueType);
+        if (valueTypeName is null)
+            return null;
+
+        return isComputed
+            ? $"global::QuickMarkup.Infra.Computed<{valueTypeName}>"
+            : $"global::QuickMarkup.Infra.Reference<{valueTypeName}>";
+    }
+
+    static string? TypeName(ITypeSymbol? type)
+        => type?.FullName();
 }

@@ -90,6 +90,26 @@ public partial class PrimitiveValueCase : TestRoot
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    string Text = "";
+    TestKind Kind = Default;
+    bool Flag = false;
+    """)]
+public partial class GeneratedPropertyElement : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <GeneratedPropertyElement Text="from generated property" Kind=Secondary Flag />
+    </root>
+    """)]
+public partial class GeneratedPropertyConsumerCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     <root>
         <AutoNewElement Radius=16 />
     </root>
