@@ -31,6 +31,13 @@ public enum QMForKind
     ReactiveCollection
 }
 
+public enum QMComponentKind
+{
+    None,
+    Single,
+    Fragment
+}
+
 public record class QMConstructor(
     string Method,
     IReadOnlyList<IQMValueSymbol> Parameters,
@@ -41,7 +48,10 @@ public record class QMNodeSymbol<T>(
     T Type,
     QMConstructor Constructor,
     IReadOnlyList<IQMMemberSymbol> Members,
-    string? Name
+    string? Name,
+    QMComponentKind ComponentKind = QMComponentKind.None,
+    T? ComponentOutputType = default,
+    string ComponentOutputPropertyName = "MarkupNode"
 ) : IQMNodeChildSymbol, IQMValueSymbol;
 public record class QMForNodeSymbol<T>(
     QMForKind Kind,
@@ -72,6 +82,12 @@ public record class QMFragmentNodeSymbol(
     IReadOnlyList<IQMMemberSymbol> Body
 ) : IQMNodeChildSymbol;
 
+public record class QMComponentRootMember<T>(
+    QMComponentKind Kind,
+    T? OutputType,
+    IQMNodeChildSymbol Output,
+    string OutputPropertyName = "MarkupNode"
+) : IQMMemberSymbol;
 public record class QMAssignChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
 public record class QMAddChildMember<T>(
     string ChildPropertyPath,
@@ -81,7 +97,7 @@ public record class QMAddChildMember<T>(
 ) : IQMMemberSymbol;
 public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "", string TargetName = "") : IQMMemberSymbol;
 public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand) : IQMMemberSymbol;
-public record class QMExtensionMember(string Method) : IQMMemberSymbol;
+public record class QMExtensionMember(string Method, string TargetPath = "") : IQMMemberSymbol;
 public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMemberSymbol;
 
 public record class QMValueSymbol<T>(T? Type, string ValueInFinalCode, IReadOnlyCollection<string>? CapturedLocalNames = null) : IQMValueSymbol;

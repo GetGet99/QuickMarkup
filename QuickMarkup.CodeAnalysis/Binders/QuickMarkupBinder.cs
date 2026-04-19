@@ -7,7 +7,14 @@ using System.Text.RegularExpressions;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
-record class QMBinderTagInfo(ITypeSymbol? TagType, string TagName, string? ChildrenProperty, ITypeSymbol? ChildrenType, ChildrenModes ChildrenMode);
+record class QMBinderTagInfo(
+    ITypeSymbol? TagType,
+    string TagName,
+    string? ChildrenProperty,
+    ITypeSymbol? ChildrenType,
+    ChildrenModes ChildrenMode,
+    QMComponentKind ComponentKind = QMComponentKind.None,
+    ITypeSymbol? ComponentOutputType = null);
 partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true) : Binder(failFast)
 {
     readonly QuickMarkupBinderUtilities utils = new(resolver);
@@ -23,11 +30,14 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
             ErrorUnknownType(tag.TagStart);
+        var componentKind = resolver.GetComponentKind(type, out var componentOutputType);
+        if (rootType is not null && componentKind is not QMComponentKind.None)
+            return BindComponentRoot(tag, type, componentKind, componentOutputType);
         resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
         var childrenType = childrenMode is ChildrenModes.Add
             ? resolver.GetCollectionElementType(propSymbol?.Type)
             : propSymbol?.Type;
-        var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode);
+        var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode, componentKind, componentOutputType);
 
 
         var members = new List<IQMMemberSymbol>();
@@ -38,8 +48,69 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             type,
             Bind((QuickMarkupConstructor)tag.TagStart, tagInfo),
             members,
-            tag.Name
+            tag.Name,
+            componentKind,
+            componentOutputType,
+            CodeTypeResolver.ComponentOutputPropertyName
         );
+    }
+
+    QMNodeSymbol<ITypeSymbol?> BindComponentRoot(
+        QuickMarkupParsedTag tag,
+        ITypeSymbol type,
+        QMComponentKind componentKind,
+        ITypeSymbol? componentOutputType)
+    {
+        resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
+        var childrenType = childrenMode is ChildrenModes.Add
+            ? resolver.GetCollectionElementType(propSymbol?.Type)
+            : propSymbol?.Type;
+        var componentTagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode, componentKind, componentOutputType);
+        var outputTagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, CodeTypeResolver.ComponentOutputPropertyName, componentOutputType, componentKind is QMComponentKind.Fragment ? ChildrenModes.Add : ChildrenModes.Assignment, componentKind, componentOutputType);
+
+        var members = new List<IQMMemberSymbol>();
+        Bind(tag.InlineMembers, componentTagInfo, members);
+
+        var outputChildren = new List<IQMNodeChild>();
+        foreach (var child in tag.Children ?? [])
+        {
+            if (TryBindPropertyTagChild(child, componentTagInfo, members))
+                continue;
+
+            outputChildren.Add(child);
+        }
+
+        if (outputChildren.Count > 0)
+        {
+            if (componentKind is QMComponentKind.Single)
+            {
+                if (outputChildren.Count != 1)
+                    ErrorChildrenTooMany(tag.Children!, outputTagInfo);
+                foreach (var extra in outputChildren.Skip(1))
+                    BindSingleChildNodeForDiagnostics(extra, outputTagInfo);
+
+                members.Add(new QMComponentRootMember<ITypeSymbol?>(
+                    componentKind,
+                    componentOutputType,
+                    BindSingleChildNode(outputChildren[0], outputTagInfo)));
+            }
+            else
+            {
+                members.Add(new QMComponentRootMember<ITypeSymbol?>(
+                    componentKind,
+                    componentOutputType,
+                    new QMFragmentNodeSymbol(Bind(new ListAST<IQMNodeChild>(outputChildren), outputTagInfo))));
+            }
+        }
+
+        return new(
+            type,
+            Bind((QuickMarkupConstructor)tag.TagStart, componentTagInfo),
+            members,
+            tag.Name,
+            componentKind,
+            componentOutputType,
+            CodeTypeResolver.ComponentOutputPropertyName);
     }
     QMConstructor Bind(QuickMarkupConstructor constructor, QMBinderTagInfo tagInfo)
     {
@@ -183,7 +254,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
             QuickMarkupParsedFragmentNode fragment => BindSingleChildFragment(fragment, tagInfo),
-            QuickMarkupParsedTag tag => Bind(tag),
+            QuickMarkupParsedTag tag => BindSingleChildTag(tag),
             QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
             _ => throw new NotImplementedException($"Unsupported child node: {child.GetType().Name}")
         };
@@ -192,6 +263,14 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
     void BindSingleChildNodeForDiagnostics(IQMNodeChild child, QMBinderTagInfo tagInfo)
     {
         _ = BindSingleChildNode(child, tagInfo);
+    }
+
+    QMNodeSymbol<ITypeSymbol?> BindSingleChildTag(QuickMarkupParsedTag tag)
+    {
+        var bound = Bind(tag);
+        if (bound.ComponentKind is QMComponentKind.Fragment)
+            Error(tag, "Fragment components are not allowed in single-child content positions.");
+        return bound;
     }
 
     QMForNodeSymbol<ITypeSymbol> Bind(QuickMarkupParsedForNode forNode, QMBinderTagInfo tagInfo)
@@ -308,6 +387,16 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         if (inlineMember is not QuickMarkupParsedProperty property)
             throw new NotImplementedException();
         var targetPropSymbol = resolver.FindProperty(tagInfo.TagType, property.Key);
+        var targetPropertyName = property.Key;
+        var propertyTargetType = tagInfo.TagType;
+        if (targetPropSymbol is null &&
+            tagInfo.ComponentKind is QMComponentKind.Single &&
+            resolver.FindProperty(tagInfo.ComponentOutputType, property.Key) is { } outputPropSymbol)
+        {
+            targetPropSymbol = outputPropSymbol;
+            targetPropertyName = $"{CodeTypeResolver.ComponentOutputPropertyName}.{property.Key}";
+            propertyTargetType = tagInfo.ComponentOutputType;
+        }
         var targetType = targetPropSymbol?.Type;
         switch (property.Operator)
         {
@@ -317,9 +406,17 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 var isShorthand = property.Key.StartsWith("@");
                 var eventName = isShorthand ? property.Key[1..] : property.Key;
                 var eventSymbol = CodeTypeResolver.FindEvent(tagInfo.TagType, eventName);
+                var eventTargetName = eventName;
+                if (eventSymbol is null &&
+                    tagInfo.ComponentKind is QMComponentKind.Single &&
+                    CodeTypeResolver.FindEvent(tagInfo.ComponentOutputType, eventName) is { } outputEventSymbol)
+                {
+                    eventSymbol = outputEventSymbol;
+                    eventTargetName = $"{CodeTypeResolver.ComponentOutputPropertyName}.{eventName}";
+                }
                 targetCollection.Add(new QMAddEventMember<ITypeSymbol>(
                     eventSymbol?.Type, // type hint to null
-                    eventName,
+                    eventTargetName,
                     Bind(property.Value ?? throw new NotImplementedException(), null, tagInfo),
                     isShorthand
                 ));
@@ -335,6 +432,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                     // </Grid>
                     if (targetPropSymbol?.Name is not { } name)
                         throw new InvalidOperationException("Name is null");
+                    if (targetPropertyName.Contains('.'))
+                        name = targetPropertyName;
                     var elementType = resolver.GetCollectionElementType(targetType);
                     var childrenMode = elementType is null
                         ? ChildrenModes.Assignment
@@ -352,7 +451,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                     // <QM Value=`Target` />
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
-                        property.Key,
+                        targetPropertyName,
                         Bind(property.Value, targetType, tagInfo),
                         // treated as one way binding if it is foreign
                         // treated as assignment otherwise
@@ -376,31 +475,31 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 string depName = "";
                 {
                     isDependencyProp = CodeTypeResolver.TryGetDependencyProperty(
-                        tagInfo.TagType,
+                        propertyTargetType,
                         property.Key,
                         out var dependencyPropertyName);
                     depName = dependencyPropertyName ?? "";
                 }
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
-                    property.Key,
-                    new QMValueSymbol<ITypeSymbol>(resolver.FindProperty(tagInfo.TagType, property.Key)?.Type, target),
+                    targetPropertyName,
+                    new QMValueSymbol<ITypeSymbol>(targetType, target),
                     property.Operator is ParsedPropertyOperator.BindBack ?
                         BindingModes.TargetToSource :
                         BindingModes.TwoWay,
                     isDependencyProp,
                     depName,
-                    property.Key
+                    targetPropertyName
                 ));
                 break;
             case ParsedPropertyOperator.None:
                 // extension or boolean value
-                if (resolver.FindProperty(tagInfo.TagType, property.Key) is { } propSymbol)
+                if (targetPropSymbol is { } propSymbol)
                 {
                     // <QM IsEnabled />
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
-                        property.Key,
+                        targetPropertyName,
                         new QMValueSymbol<ITypeSymbol>(propSymbol.Type, "true"),
                         BindingModes.OneTime
                     ));
@@ -408,7 +507,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 else
                 {
                     // <QM Extension />
-                    targetCollection.Add(new QMExtensionMember(property.Key));
+                    targetCollection.Add(new QMExtensionMember(
+                        property.Key,
+                        tagInfo.ComponentKind is QMComponentKind.Single
+                            ? CodeTypeResolver.ComponentOutputPropertyName
+                            : ""));
                 }
                 break;
             default:
@@ -493,6 +596,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             QMIfNodeSymbol<ITypeSymbol?> => true,
             QMConditionalValueSymbol<ITypeSymbol?> => true,
             QMFragmentNodeSymbol => true,
+            QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment } => true,
             QMForNodeSymbol<ITypeSymbol> { Kind: QMForKind.ReactiveCollection } => true,
             QMForNodeSymbol<ITypeSymbol> { Kind: QMForKind.StaticRange } forNode => ContainsStructuralChildren(forNode.Body),
             _ => false

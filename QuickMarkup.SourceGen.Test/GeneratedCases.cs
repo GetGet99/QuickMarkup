@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using QuickMarkup.Infra;
 
 namespace QuickMarkup.SourceGen.Test;
 
@@ -105,6 +106,55 @@ public partial class GeneratedPropertyElement : TestElement
     </root>
     """)]
 public partial class GeneratedPropertyConsumerCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Text = "";
+    TestKind Kind = Default;
+    <root>
+        <TestText Text=`$"{Kind}:{Text}"` />
+    </root>
+    """)]
+public partial class StyledTestText : IQuickMarkupComponent<TestText>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            <StyledTestText Text="Hello" Kind=Secondary Number=7 MarkElement />
+        </TestPanel>
+    </root>
+    """)]
+public partial class SingleComponentConsumerCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText Text="fragment A" />
+        <TestText Text="fragment B" />
+    </root>
+    """)]
+public partial class TwoTextFragment : IQuickMarkupFragmentComponent<TestElement>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            <TestText Text="before" />
+            <TwoTextFragment />
+            <TestText Text="after" />
+        </TestPanel>
+    </root>
+    """)]
+public partial class FragmentComponentConsumerCase : TestRoot
 {
 }
 

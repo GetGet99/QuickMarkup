@@ -99,6 +99,28 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void SingleComponentUnwrapsMarkupNodeAndAppliesOutputMembers()
+    {
+        var page = new SingleComponentConsumerCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        var text = TestTreeAssert.Child<TestText>(panel.Children, 0);
+
+        Assert.AreEqual("Secondary:Hello", text.Text);
+        Assert.AreEqual(7, text.Number);
+        Assert.IsTrue(text.ElementExtensionApplied);
+    }
+
+    [TestMethod]
+    public void FragmentComponentExpandsIntoParentCollection()
+    {
+        var page = new FragmentComponentConsumerCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "before", "fragment A", "fragment B", "after");
+    }
+
+    [TestMethod]
     public void NumericLiteralAutoNewsOneParameterTargetType()
     {
         var page = new AutoNewCase();

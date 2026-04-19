@@ -6,6 +6,8 @@ using QuickMarkup.SourceGen.CodeGen;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis.Helpers;
+using QuickMarkup.Language.Symbols;
+using QuickMarkup.AST;
 
 namespace QuickMarkup.SourceGen;
 
@@ -66,20 +68,35 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                             Stack Trace:
                                 {failureReason.StackTrace.IndentWOF(1)}
                             """;
-                        return (target, usings, code: "", error);
+                        return (target, usings, code: "", error, isComponent: false);
                     }
                     
                     StringBuilder generatedProperties = new();
                     StringBuilder codeBuilder = new();
                     generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
                     var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
+                    var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
+                    var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
+                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && HasComponentRootOutput(template);
+                    if (shouldGenerateComponentOutput)
+                    {
+                        if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
+                        {
+                            var error = $"Type {target.FullTypeName} already declares {CodeTypeResolver.ComponentOutputPropertyName}, but QuickMarkup needs to generate it from <root> children.";
+                            return (target, usings, code: "", error, isComponent: componentKind is not QMComponentKind.None);
+                        }
+
+                        var outputType = componentKind is QMComponentKind.Fragment
+                            ? $"global::QuickMarkup.Infra.FragmentBlock<{componentOutputType?.FullName() ?? "object"}>"
+                            : componentOutputType?.FullName() ?? "object";
+                        generatedProperties.AppendLine($"public {outputType} {CodeTypeResolver.ComponentOutputPropertyName} {{ get; private set; }} = null!;");
+                    }
                     ct.ThrowIfCancellationRequested();
                     try
                     {
                         if (template is not null)
                         {
-                            var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
-                            var analyzer = new QuickMarkupBinder(resolver);
+                            var analyzer = new QuickMarkupBinder(componentInfoResolver);
                             var output = analyzer.Bind(template, typeSymbol);
                             ct.ThrowIfCancellationRequested();
                             var cgen = new CodeGenContext(
@@ -103,7 +120,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                             Stack Trace:
                                 {e.StackTrace.IndentWOF(1)}
                             """;
-                        return (target, usings, code: "", error);
+                        return (target, usings, code: "", error, isComponent: componentKind is not QMComponentKind.None);
                     }
                     string generatedMethod;
                     if (isConstructorMode)
@@ -130,13 +147,13 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     return (target, usings, code: $"""
                                 {generatedProperties}
                                 {generatedMethod}
-                                """, error: default(string));
+                                """, error: default(string), isComponent: componentKind is not QMComponentKind.None);
                 }
             );
 
             context.RegisterSourceOutput(sources, (sourceProductionContext, value) =>
             {
-                var (ctx, usings, code, error) = value;
+                var (ctx, usings, code, error, isComponent) = value;
                 if (error is not null)
                 {
                     code = $"""
@@ -146,7 +163,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     {code}
                     """;
                 }
-                sourceProductionContext.AddSource(ctx, "INIT", code, usings);
+                var typeModifiers = isComponent ? "sealed partial" : "partial";
+                sourceProductionContext.AddSource(ctx, "INIT", code, usings, typeModifiers);
             });
             /*
             // ERRORS from source file:
@@ -235,13 +253,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 StringBuilder sb = new();
                 var rgen = new RefsGenContext(sb, target.FullTypeName);
                 rgen.CGenWrite(boundRefs, tok);
-                return (target, usings, sb.ToString());
+                var isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
+                return (target, usings, sb.ToString(), isComponent);
             });
 
             context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
             {
-                var (ctx, usings, refsCode) = value;
-                sourceProductionContext.AddSource(ctx, "REFS", refsCode);
+                var (ctx, usings, refsCode, isComponent) = value;
+                var typeModifiers = isComponent ? "sealed partial" : "partial";
+                sourceProductionContext.AddSource(ctx, "REFS", refsCode, usings, typeModifiers);
             });
         }
 
@@ -309,6 +329,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         var refs = binder.BindRefDeclarations(markup.AST.Refs, typeSymbol);
         var properties = new Dictionary<string, QuickMarkupGeneratedPropertySymbol>();
         var unknownTypes = typeSymbol.TypeParameters.Length > 0;
+        var componentKind = resolver.GetComponentKind(typeSymbol, out var componentOutputType);
 
         foreach (var @ref in refs)
         {
@@ -342,6 +363,22 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             ct.ThrowIfCancellationRequested();
         }
 
+        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(markup.AST.Template))
+        {
+            var outputTypeName = unknownTypes
+                ? null
+                : componentKind is QMComponentKind.Fragment
+                    ? $"global::QuickMarkup.Infra.FragmentBlock<{TypeName(componentOutputType) ?? "object"}>"
+                    : TypeName(componentOutputType);
+            AddGeneratedProperty(
+                properties,
+                new(
+                    CodeTypeResolver.ComponentOutputPropertyName,
+                    outputTypeName,
+                    false,
+                    QuickMarkupGeneratedPropertyKind.ComponentOutput));
+        }
+
         return new(target.FullTypeName, properties);
     }
 
@@ -366,4 +403,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
     static string? TypeName(ITypeSymbol? type)
         => type?.FullName();
+
+    static bool HasComponentRootOutput(QuickMarkupParsedTag? template)
+        => template?.Children?.Any(static child => child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart }) ?? false;
+
 }

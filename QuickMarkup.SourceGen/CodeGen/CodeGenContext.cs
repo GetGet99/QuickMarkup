@@ -78,10 +78,13 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                     CGenAddEvent(addEvent, target);
                     break;
                 case QMExtensionMember extension:
-                    codeBuilder.AddMethodCall($"{target}.{extension.Method}");
+                    codeBuilder.AddMethodCall($"{target}{TargetPath(extension.TargetPath)}.{extension.Method}");
                     break;
                 case QMCallbackMember<ITypeSymbol?> callback:
                     codeBuilder.AddClosure(callback.Type, target, callback.RawDelegateCode);
+                    break;
+                case QMComponentRootMember<ITypeSymbol?> componentRoot:
+                    CGenComponentRoot(componentRoot, target);
                     break;
                 default:
                     throw new NotImplementedException();
@@ -122,7 +125,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         switch (addChild.Child)
         {
             case QMNodeSymbol<ITypeSymbol?> nodeChild:
-                codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}.Add", CGen(nodeChild));
+                codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}.Add", CGenNodeValue(nodeChild));
                 break;
             case QMValueSymbol<ITypeSymbol?> nodeChild:
                 codeBuilder.AddMethodCall($"{target}.{addChild.ChildPropertyPath}.Add", CGen(nodeChild));
@@ -144,7 +147,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         switch (assignChild.Child)
         {
             case QMNodeSymbol<ITypeSymbol?> nodeChild:
-                codeBuilder.AddPropertyAssign($"{target}.{assignChild.ChildPropertyPath}", CGen(nodeChild));
+                codeBuilder.AddPropertyAssign($"{target}.{assignChild.ChildPropertyPath}", CGenNodeValue(nodeChild));
                 break;
             case QMConditionalValueSymbol<ITypeSymbol?> conditional:
                 CGenConditionalSlot(conditional, $"{target}.{assignChild.ChildPropertyPath}");
@@ -192,7 +195,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             if (addProp.IsDependencyProperty)
                 codeBuilder.AddDependencyPropertyBindBack(
                     property,
-                    target,
+                    TargetObjectForPropertyPath(target, addProp.PropertyName),
                     addProp.DependencyPropertyName,
                     CGen(addProp.Value)
                 );
@@ -203,6 +206,37 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                     property,
                     disposableAddTarget: disposableAddTarget
                 );
+        }
+    }
+
+    void CGenComponentRoot(QMComponentRootMember<ITypeSymbol?> componentRoot, string target)
+    {
+        var property = $"{target}.{componentRoot.OutputPropertyName}";
+        switch (componentRoot.Kind)
+        {
+            case QMComponentKind.Single:
+                switch (componentRoot.Output)
+                {
+                    case QMNodeSymbol<ITypeSymbol?> node:
+                        codeBuilder.AddPropertyAssign(property, CGenNodeValue(node));
+                        break;
+                    case QMConditionalValueSymbol<ITypeSymbol?> conditional:
+                        CGenConditionalSlot(conditional, property);
+                        break;
+                    case QMValueSymbol<ITypeSymbol?> value:
+                        codeBuilder.AddPropertyAssign(property, CGen(value));
+                        break;
+                    default:
+                        throw new NotSupportedException($"Single component root codegen does not support {componentRoot.Output.GetType().Name}.");
+                }
+                break;
+            case QMComponentKind.Fragment:
+                if (componentRoot.Output is not QMFragmentNodeSymbol fragment)
+                    throw new NotSupportedException($"Fragment component root codegen does not support {componentRoot.Output.GetType().Name}.");
+                codeBuilder.AddPropertyAssign(property, CGenFragmentBlock(fragment, componentRoot.OutputType));
+                break;
+            default:
+                throw new NotSupportedException("Component root codegen requires a component kind.");
         }
     }
 
@@ -276,6 +310,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
     {
         return child switch
         {
+            QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment } node => CGenFragmentComponentBlock(node),
             QMNodeSymbol<ITypeSymbol?> node => CGenStaticBlock(node, elementType),
             QMValueSymbol<ITypeSymbol?> value => CGenStaticBlock(value, elementType),
             QMIfNodeSymbol<ITypeSymbol?> ifNode => CGenConditionalBlock(ifNode, elementType),
@@ -283,6 +318,12 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             QMFragmentNodeSymbol fragment => CGenFragmentBlock(fragment, elementType),
             _ => throw new NotImplementedException($"Block codegen does not support {child.GetType().Name}.")
         };
+    }
+
+    string CGenFragmentComponentBlock(QMNodeSymbol<ITypeSymbol?> node)
+    {
+        var component = CGen(node);
+        return $"{component}.{node.ComponentOutputPropertyName}";
     }
 
     string CGenStaticBlock(IQMNodeChildSymbol child, ITypeSymbol? elementType)
@@ -296,7 +337,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
         var valueExpression = child switch
         {
-            QMNodeSymbol<ITypeSymbol?> node => CGenInto(node, nested),
+            QMNodeSymbol<ITypeSymbol?> node => CGenIntoValue(node, nested),
             QMValueSymbol<ITypeSymbol?> value => CGen(value),
             _ => throw new NotImplementedException()
         };
@@ -522,7 +563,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         disposableAddTarget = scope;
         var expression = child switch
         {
-            QMNodeSymbol<ITypeSymbol?> node => CGenInto(node, nested),
+            QMNodeSymbol<ITypeSymbol?> node => CGenIntoValue(node, nested),
             QMValueSymbol<ITypeSymbol?> value => CGen(value),
             QMConditionalValueSymbol<ITypeSymbol?> conditional => CGenNestedConditionalSlot(
                 conditional,
@@ -576,7 +617,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
     ITypeSymbol? GetChildValueType(IQMNodeChildSymbol child)
         => child switch
         {
-            QMNodeSymbol<ITypeSymbol?> node => node.Type,
+            QMNodeSymbol<ITypeSymbol?> node => NodeValueType(node),
             QMValueSymbol<ITypeSymbol?> value => value.Type,
             QMConditionalValueSymbol<ITypeSymbol?> conditional =>
                 GetChildValueType(conditional.ValueWhenTrue) ??
@@ -584,12 +625,33 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             _ => null
         };
 
+    ITypeSymbol? NodeValueType(QMNodeSymbol<ITypeSymbol?> node)
+        => node.ComponentKind is QMComponentKind.Single or QMComponentKind.Fragment
+            ? node.ComponentOutputType
+            : node.Type;
+
     string CGenInto(QMNodeSymbol<ITypeSymbol?> node, StringBuilder targetBuilder)
     {
         var nested = Clone(targetBuilder);
         var result = nested.CGen(node);
         counterRef = nested.counterRef;
         return result;
+    }
+
+    string CGenIntoValue(QMNodeSymbol<ITypeSymbol?> node, StringBuilder targetBuilder)
+    {
+        var nested = Clone(targetBuilder);
+        var result = nested.CGenNodeValue(node);
+        counterRef = nested.counterRef;
+        return result;
+    }
+
+    string CGenNodeValue(QMNodeSymbol<ITypeSymbol?> node)
+    {
+        var value = CGen(node);
+        return node.ComponentKind is QMComponentKind.Single
+            ? $"{value}.{node.ComponentOutputPropertyName}"
+            : value;
     }
 
     CodeGenContext Clone(StringBuilder builder)
@@ -608,7 +670,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
     {
         return valueSymbol switch
         {
-            QMNodeSymbol<ITypeSymbol?> node => CGen(node),
+            QMNodeSymbol<ITypeSymbol?> node => CGenNodeValue(node),
             QMValueSymbol<ITypeSymbol?> value => CGenValue(value),
             QMNestedValuesSymbol<ITypeSymbol?> => throw new NotImplementedException(),
             _ => throw new NotImplementedException(),
@@ -674,6 +736,17 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     static string TypeName(ITypeSymbol? type)
         => type?.FullName() ?? "object";
+
+    static string TargetPath(string path)
+        => string.IsNullOrWhiteSpace(path) ? "" : $".{path}";
+
+    static string TargetObjectForPropertyPath(string target, string propertyPath)
+    {
+        var lastDot = propertyPath.LastIndexOf('.');
+        return lastDot < 0
+            ? target
+            : $"{target}.{propertyPath[..lastDot]}";
+    }
 
     sealed record ForScope(string ItemName, string ItemRef, string? IndexName, string? IndexRef);
 }

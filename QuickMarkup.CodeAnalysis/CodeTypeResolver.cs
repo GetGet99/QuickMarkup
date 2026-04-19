@@ -15,6 +15,7 @@ class CodeTypeResolver(
     string? currentTypeName = null)
 {
     readonly QuickMarkupGeneratedMemberTable generatedMembers = generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty;
+    public const string ComponentOutputPropertyName = "MarkupNode";
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName);
     public ITypeSymbol? String => field ??= Type<string>();
     public ITypeSymbol? Int32 => field ??= Type<int>();
@@ -92,6 +93,40 @@ class CodeTypeResolver(
             return false;
 
         return true;
+    }
+
+    public QMComponentKind GetComponentKind(ITypeSymbol? symbol, out ITypeSymbol? outputType)
+    {
+        outputType = null;
+        if (symbol is null)
+            return QMComponentKind.None;
+
+        QMComponentKind kind = QMComponentKind.None;
+        foreach (var @interface in symbol.AllInterfaces)
+        {
+            if (@interface is not INamedTypeSymbol namedInterface ||
+                !namedInterface.IsGenericType ||
+                namedInterface.TypeArguments.Length is not 1)
+                continue;
+
+            var interfaceName = $"{namedInterface.ConstructedFrom.ContainingNamespace}.{namedInterface.ConstructedFrom.MetadataName}";
+            var nextKind = interfaceName switch
+            {
+                "QuickMarkup.Infra.IQuickMarkupComponent`1" => QMComponentKind.Single,
+                "QuickMarkup.Infra.IQuickMarkupFragmentComponent`1" => QMComponentKind.Fragment,
+                _ => QMComponentKind.None
+            };
+            if (nextKind is QMComponentKind.None)
+                continue;
+
+            if (kind is not QMComponentKind.None)
+                return QMComponentKind.None;
+
+            kind = nextKind;
+            outputType = namedInterface.TypeArguments[0];
+        }
+
+        return kind;
     }
 
     public ITypeSymbol? GetCollectionElementType(ITypeSymbol? collectionType)

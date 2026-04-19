@@ -6,6 +6,7 @@ namespace QuickMarkup.SourceGen.Test;
 public abstract class TestElement
 {
     public string? Name { get; set; }
+    public bool ElementExtensionApplied { get; set; }
 }
 
 public class TestRoot
@@ -138,5 +139,10 @@ public static class TestElementExtensions
     public static void MarkPanel(this TestPanel panel)
     {
         panel.ExtensionApplied = true;
+    }
+
+    public static void MarkElement(this TestElement element)
+    {
+        element.ElementExtensionApplied = true;
     }
 }

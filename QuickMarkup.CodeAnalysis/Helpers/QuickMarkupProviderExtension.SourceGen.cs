@@ -76,14 +76,14 @@ static partial class QuickMarkupProviderExtension
         {
             return new QuickMarkupParseError(x.Target, x.Error!);
         });
-    public static void AddSource(this SourceProductionContext sourceProductionContext, QuickMarkupTargetContext target, string hintNameSuffix, string code, string usings = "")
+    public static void AddSource(this SourceProductionContext sourceProductionContext, QuickMarkupTargetContext target, string hintNameSuffix, string code, string usings = "", string typeModifiers = "partial")
     {
         sourceProductionContext.AddSource($"{target.TypeNameSourceGenOutputFriendlyFileName}.{hintNameSuffix}.g.cs", $$"""
             {{usings}}
             #nullable enable
             namespace {{target.Namespace}};
             
-            partial class {{target.TypeName}} {
+            {{typeModifiers}} class {{target.TypeName}} {
                 {{code.IndentWOF()}}
             }
             """);
