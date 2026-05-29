@@ -5,7 +5,7 @@
 
 QuickMarkup is a declarative markup language that makes it easier to declare UI in C# without using XAML. Our system relies on reactivity, rather than MVVM style. Some patterns are Vue-inspired.
 
-Currently, our support is only UWP .NET 10. In the future, it is possible to decouple from WinUI specific logic and can be used in general.
+Currently, our full support is UWP and WinUI 3 .NET 10. Supports most other UI frameworks in C# but with some functionality becoming limited (bind two way, bind to source, and children/child node auto detection do not have full support against native components)
 
 ## Introduction
 
