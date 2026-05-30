@@ -12,9 +12,7 @@ namespace QuickMarkup.SourceGen.Test;
         </TestPanel>
     </root>
     """)]
-public partial class StaticTreeCase : TestRoot
-{
-}
+public partial class StaticTreeCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -26,9 +24,7 @@ public partial class StaticTreeCase : TestRoot
         <AmbiguousElement Name="ambiguous"><TestText Text="ambiguous" /></AmbiguousElement>
     </root>
     """)]
-public partial class ContentResolutionCase : TestRoot
-{
-}
+public partial class ContentResolutionCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -49,9 +45,7 @@ public partial class ContentResolutionCase : TestRoot
         </TestPanel>
     </root>
     """)]
-public partial class AlternateChildSyntaxCase : TestRoot
-{
-}
+public partial class AlternateChildSyntaxCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -60,9 +54,7 @@ public partial class AlternateChildSyntaxCase : TestRoot
         <TestText Text=`Label` />
     </root>
     """)]
-public partial class ReactiveBindingCase : TestRoot
-{
-}
+public partial class ReactiveBindingCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -73,9 +65,7 @@ public partial class ReactiveBindingCase : TestRoot
         <TestText Text=`"from" + suffix` />
     </root>
     """)]
-public partial class SetupScopeCase : TestRoot
-{
-}
+public partial class SetupScopeCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -85,9 +75,7 @@ public partial class SetupScopeCase : TestRoot
         <TestText Name="defaults" Text=null Number=default />
     </root>
     """)]
-public partial class PrimitiveValueCase : TestRoot
-{
-}
+public partial class PrimitiveValueCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -105,9 +93,7 @@ public partial class GeneratedPropertyElement : TestElement
         <GeneratedPropertyElement Text="from generated property" Kind=Secondary Flag />
     </root>
     """)]
-public partial class GeneratedPropertyConsumerCase : TestRoot
-{
-}
+public partial class GeneratedPropertyConsumerCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -129,9 +115,7 @@ public partial class StyledTestText : IQuickMarkupComponent<TestText>
         </TestPanel>
     </root>
     """)]
-public partial class SingleComponentConsumerCase : TestRoot
-{
-}
+public partial class SingleComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -154,9 +138,7 @@ public partial class TwoTextFragment : IQuickMarkupFragmentComponent<TestElement
         </TestPanel>
     </root>
     """)]
-public partial class FragmentComponentConsumerCase : TestRoot
-{
-}
+public partial class FragmentComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -164,9 +146,7 @@ public partial class FragmentComponentConsumerCase : TestRoot
         <AutoNewElement Radius=16 />
     </root>
     """)]
-public partial class AutoNewCase : TestRoot
-{
-}
+public partial class AutoNewCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -174,9 +154,7 @@ public partial class AutoNewCase : TestRoot
         <TestPanel MarkPanel `x => x.CallbackApplied = true` />
     </root>
     """)]
-public partial class CallbackCase : TestRoot
-{
-}
+public partial class CallbackCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -192,9 +170,7 @@ public partial class CallbackCase : TestRoot
         </TestButton>
     </root>
     """)]
-public partial class ConditionalContentCase : TestRoot
-{
-}
+public partial class ConditionalContentCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -203,9 +179,7 @@ public partial class ConditionalContentCase : TestRoot
         holdButton=<TestComputedHoldButton IsHolding=>`ShouldShowOriginal` />
     </root>
     """)]
-public partial class ComputedBindBackCase : TestRoot
-{
-}
+public partial class ComputedBindBackCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -214,9 +188,7 @@ public partial class ComputedBindBackCase : TestRoot
         holdButton=<TestDependencyHoldButton IsHolding=>`ShouldShowOriginal` />
     </root>
     """)]
-public partial class DependencyPropertyBindBackCase : TestRoot
-{
-}
+public partial class DependencyPropertyBindBackCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -226,9 +198,7 @@ public partial class DependencyPropertyBindBackCase : TestRoot
         <TestDependencyHoldButton IsHolding<=>`SharedHolding` />
     </root>
     """)]
-public partial class DependencyPropertyTwoWayCase : TestRoot
-{
-}
+public partial class DependencyPropertyTwoWayCase : TestRoot;
 
 [QuickMarkup("""
     using System.Collections.Generic;
@@ -238,9 +208,7 @@ public partial class DependencyPropertyTwoWayCase : TestRoot
     <root>
     </root>
     """)]
-public partial class NullableNullRefDeclarationCase : TestRoot
-{
-}
+public partial class NullableNullRefDeclarationCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -261,9 +229,7 @@ public partial class NullableNullRefDeclarationCase : TestRoot
         </TestButton>
     </root>
     """)]
-public partial class NestedConditionalContentCase : TestRoot
-{
-}
+public partial class NestedConditionalContentCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -282,9 +248,7 @@ public partial class NestedConditionalContentCase : TestRoot
         </TestPanel>
     </root>
     """)]
-public partial class CollectionIfCase : TestRoot
-{
-}
+public partial class CollectionIfCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -297,9 +261,7 @@ public partial class CollectionIfCase : TestRoot
         </TestPanel>
     </root>
     """)]
-public partial class FragmentCase : TestRoot
-{
-}
+public partial class FragmentCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -314,9 +276,7 @@ public partial class FragmentCase : TestRoot
         </TestPanel>
     </root>
     """)]
-public partial class RangeForeachCase : TestRoot
-{
-}
+public partial class RangeForeachCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -385,9 +345,7 @@ public partial class ForeachIndexKeyCase : TestRoot
         <TestText Grid.Row=`RowIndex` />
     </root>
     """)]
-public partial class AttachedPropertyAssignCase : TestRoot
-{
-}
+public partial class AttachedPropertyAssignCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -396,9 +354,7 @@ public partial class AttachedPropertyAssignCase : TestRoot
         <TestDependencyHoldButton Grid.Row=>`StoredRow` />
     </root>
     """)]
-public partial class AttachedPropertyBindBackCase : TestRoot
-{
-}
+public partial class AttachedPropertyBindBackCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -408,9 +364,7 @@ public partial class AttachedPropertyBindBackCase : TestRoot
         </TestText>
     </root>
     """)]
-public partial class AttachedPropertyChildTagAssignCase : TestRoot
-{
-}
+public partial class AttachedPropertyChildTagAssignCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -421,6 +375,4 @@ public partial class AttachedPropertyChildTagAssignCase : TestRoot
         </TestText>
     </root>
     """)]
-public partial class AttachedPropertyChildTagReactiveCase : TestRoot
-{
-}
+public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
