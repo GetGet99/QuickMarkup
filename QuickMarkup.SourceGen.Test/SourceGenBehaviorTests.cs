@@ -375,4 +375,27 @@ public sealed class SourceGenBehaviorTests
 
         Assert.AreEqual(7, page.StoredRow);
     }
+
+    [TestMethod]
+    public void AttachedPropertyChildTagSetRowAssignsNumericValue()
+    {
+        var page = new AttachedPropertyChildTagAssignCase();
+        var child = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual(1, Grid.GetRow(child));
+    }
+
+    [TestMethod]
+    public void AttachedPropertyChildTagReactiveBindingUpdatesOnTick()
+    {
+        var page = new AttachedPropertyChildTagReactiveCase();
+        var child = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual(42, Grid.GetRow(child));
+
+        page.RowIndex = 99;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(99, Grid.GetRow(child));
+    }
 }

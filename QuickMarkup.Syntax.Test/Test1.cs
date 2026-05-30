@@ -286,6 +286,87 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_AttachedPropertyChildTag_IntValue()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Grid.Row>1</Grid.Row>
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.IsInstanceOfType<QuickMarkupAttachedPropertyTagStart>(tag.TagStart);
+            var att = (QuickMarkupAttachedPropertyTagStart)tag.TagStart;
+            Assert.AreEqual("Grid", att.TypeName);
+            Assert.AreEqual("Row", att.PropertyName);
+            Assert.AreEqual(0, tag.InlineMembers.Count);
+            Assert.IsNotNull(tag.Children);
+            Assert.HasCount(1, tag.Children);
+            Assert.IsInstanceOfType<QuickMarkupInt32>(tag.Children[0]);
+            Assert.AreEqual(1, ((QuickMarkupInt32)tag.Children[0]).Value);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyChildTag_SelfClosing()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Grid.Row />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.IsInstanceOfType<QuickMarkupAttachedPropertyTagStart>(tag.TagStart);
+            Assert.IsTrue(tag.IsSelfClosing);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyChildTag_ForeignExpression()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Grid.Row>`expr`</Grid.Row>
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.IsInstanceOfType<QuickMarkupAttachedPropertyTagStart>(tag.TagStart);
+            Assert.IsNotNull(tag.Children);
+            Assert.HasCount(1, tag.Children);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(tag.Children[0]);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyChildTag_NestedChildTag()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Grid.Row>
+                        <Test />
+                    </Grid.Row>
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.IsInstanceOfType<QuickMarkupAttachedPropertyTagStart>(tag.TagStart);
+            Assert.IsNotNull(tag.Children);
+            Assert.HasCount(1, tag.Children);
+            Assert.IsInstanceOfType<QuickMarkupParsedTag>(tag.Children[0]);
+        }
+
+        [TestMethod]
         [Ignore("Current parser error recovery throws before returning handled errors.")]
         public void Parse_Ref_NamedBeforePositional_YieldsErrors()
         {

@@ -213,20 +213,45 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
 
     bool TryBindPropertyTagChild(IQMNodeChild child, QMBinderTagInfo tagInfo, List<IQMMemberSymbol> targetCollection)
     {
-        if (child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart tagStart } tag)
+        if (child is not QuickMarkupParsedTag tag)
             return false;
 
-        if (tag.HasMismatchedEndTag)
-            ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
-        if (tag.InlineMembers.Count > 0)
-            throw new NotImplementedException("Not supported now");
-        if (tag.Children is { } tagChildren)
-            Bind(new QuickMarkupParsedProperty(
-                tagStart.TagName,
-                ParsedPropertyOperator.Assign,
-                new QuickMarkupValueList(tagChildren)
-            ), tagInfo, targetCollection);
-        return true;
+        switch (tag.TagStart)
+        {
+            case QuickMarkupPropertyTagStart tagStart:
+                if (tag.HasMismatchedEndTag)
+                    ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
+                if (tag.InlineMembers.Count > 0)
+                    throw new NotImplementedException("Not supported now");
+                if (tag.Children is { } tagChildren)
+                    Bind(new QuickMarkupParsedProperty(
+                        tagStart.TagName,
+                        ParsedPropertyOperator.Assign,
+                        new QuickMarkupValueList(tagChildren)
+                    ), tagInfo, targetCollection);
+                return true;
+
+            case QuickMarkupAttachedPropertyTagStart attStart:
+                if (tag.HasMismatchedEndTag)
+                    ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
+                if (tag.InlineMembers.Count > 0)
+                    throw new NotImplementedException("Not supported now");
+                if (tag.Children is { Count: > 0 } attChildren)
+                {
+                    if (attChildren.Count > 1)
+                        ErrorChildrenTooMany(tag, tagInfo);
+                    if (attChildren[0] is QuickMarkupValue attValue)
+                        Bind(new QuickMarkupParsedProperty(
+                            $"{attStart.TypeName}.{attStart.PropertyName}",
+                            ParsedPropertyOperator.Assign,
+                            attValue
+                        ), tagInfo, targetCollection);
+                }
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     IQMNodeChildSymbol BindCollectionChild(IQMNodeChild child, QMBinderTagInfo tagInfo)

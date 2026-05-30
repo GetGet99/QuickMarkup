@@ -399,3 +399,28 @@ public partial class AttachedPropertyAssignCase : TestRoot
 public partial class AttachedPropertyBindBackCase : TestRoot
 {
 }
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText>
+            <Grid.Row>1</Grid.Row>
+        </TestText>
+    </root>
+    """)]
+public partial class AttachedPropertyChildTagAssignCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    int RowIndex = 42;
+    <root>
+        <TestText>
+            <Grid.Row>`RowIndex`</Grid.Row>
+        </TestText>
+    </root>
+    """)]
+public partial class AttachedPropertyChildTagReactiveCase : TestRoot
+{
+}

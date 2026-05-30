@@ -179,11 +179,16 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         // TAGSTART/TAGEND HELPER
         [Type<ITagStart>]
         [Rule(Terminal.Dot, Terminal.Identifier, AS, nameof(QuickMarkupPropertyTagStart.TagName), typeof(QuickMarkupPropertyTagStart))]
+        [Rule(Terminal.Identifier, AS, nameof(QuickMarkupAttachedPropertyTagStart.TypeName),
+              Terminal.Dot,
+              Terminal.Identifier, AS, nameof(QuickMarkupAttachedPropertyTagStart.PropertyName),
+              typeof(QuickMarkupAttachedPropertyTagStart))]
         [Rule(QMConstructor, AS, VALUE, IDENTITY)]
         ParsedTagStart,
         [Type<PositionedIdentifier>]
         [Rule(QMPositionedIdentifier, AS, VALUE, IDENTITY)]
         [Rule(Terminal.Dot, Terminal.Identifier, AS, "name", nameof(AddDot))]
+        [Rule(Terminal.Identifier, AS, "typeName", Terminal.Dot, Terminal.Identifier, AS, "tagName", nameof(AddDotted))]
         ParsedTagEnd,
         // PROPERTIES
         [Type<ParsedPropertyOperator>]
@@ -417,6 +422,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         => tag with { Name = name };
     static PositionedIdentifier AddDot(string name)
         => new($".{name}");
+    static PositionedIdentifier AddDotted(string typeName, string tagName)
+        => new($"{typeName}.{tagName}");
     static string CombineDottedPropertyKey(string typeName, string propName)
         => $"{typeName}.{propName}";
     static QuickMarkupParsedTag ValidateTag(QuickMarkupParsedTag tag)

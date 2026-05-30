@@ -109,6 +109,15 @@ public record class QuickMarkupPropertyTagStart(string TagName) : AST, ITagStart
     }
 }
 
+public record class QuickMarkupAttachedPropertyTagStart(string TypeName, string PropertyName) : AST, ITagStart
+{
+    public AST TagIdentifierAST => this;
+    public string TagName => $"{TypeName}.{PropertyName}";
+    public bool DoesMatch(string EndTag)
+    {
+        return EndTag == $"{TypeName}.{PropertyName}";
+    }
+}
 
 public record class QuickMarkupUsings(string RawScript) : AST, ISFCTag;
 public record class QuickMarkupScript(string RawScript) : AST, ISFCTag;
