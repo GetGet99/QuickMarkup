@@ -89,6 +89,48 @@ public partial class GeneratedPropertyElement : TestElement
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    static string StaticText = "static";
+    static int StaticInt = 42;
+    """)]
+public partial class StaticRefDeclarationCase : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    static string StaticComputedText => `"static computed"`;
+    """)]
+public partial class StaticComputedDeclarationCase : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public string PublicText = "public";
+    public int PublicInt = 42;
+    """)]
+public partial class PublicRefDeclarationCase : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public static string PublicStaticText = "public static";
+    """)]
+public partial class PublicStaticRefDeclarationCase : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public string PublicComputedText => `"public computed"`;
+    """)]
+public partial class PublicComputedDeclarationCase : TestElement
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     <root>
         <GeneratedPropertyElement Text="from generated property" Kind=Secondary Flag />
     </root>

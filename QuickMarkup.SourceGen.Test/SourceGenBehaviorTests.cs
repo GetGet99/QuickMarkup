@@ -467,6 +467,71 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void StaticRefDeclarationHasExpectedDefaultValue()
+    {
+        _ = new StaticRefDeclarationCase();
+
+        Assert.AreEqual("static", StaticRefDeclarationCase.StaticText);
+        Assert.AreEqual(42, StaticRefDeclarationCase.StaticInt);
+    }
+
+    [TestMethod]
+    public void StaticComputedDeclarationReturnsExpectedValue()
+    {
+        _ = new StaticComputedDeclarationCase();
+
+        Assert.AreEqual("static computed", StaticComputedDeclarationCase.StaticComputedText);
+    }
+
+    [TestMethod]
+    public void StaticRefValueIsSharedAcrossInstances()
+    {
+        _ = new StaticRefDeclarationCase();
+        _ = new StaticRefDeclarationCase();
+
+        StaticRefDeclarationCase.StaticInt = 99;
+
+        Assert.AreEqual(99, StaticRefDeclarationCase.StaticInt);
+    }
+
+    [TestMethod]
+    public void PublicRefDeclarationHasExpectedDefaultValue()
+    {
+        var instance = new PublicRefDeclarationCase();
+
+        Assert.AreEqual("public", instance.PublicText);
+        Assert.AreEqual(42, instance.PublicInt);
+    }
+
+    [TestMethod]
+    public void PublicRefCanSetAndGetValue()
+    {
+        var instance = new PublicRefDeclarationCase();
+
+        instance.PublicText = "changed";
+        instance.PublicInt = 99;
+
+        Assert.AreEqual("changed", instance.PublicText);
+        Assert.AreEqual(99, instance.PublicInt);
+    }
+
+    [TestMethod]
+    public void PublicStaticRefDeclarationHasExpectedDefaultValue()
+    {
+        _ = new PublicStaticRefDeclarationCase();
+
+        Assert.AreEqual("public static", PublicStaticRefDeclarationCase.PublicStaticText);
+    }
+
+    [TestMethod]
+    public void PublicComputedDeclarationReturnsExpectedValue()
+    {
+        var instance = new PublicComputedDeclarationCase();
+
+        Assert.AreEqual("public computed", instance.PublicComputedText);
+    }
+
+    [TestMethod]
     public void AttachedPropertyChildTagReactiveBindingUpdatesOnTick()
     {
         var page = new AttachedPropertyChildTagReactiveCase();

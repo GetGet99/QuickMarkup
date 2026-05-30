@@ -23,7 +23,10 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
         var defaultValue = bound.DefaultValue is null
             ? "default"
             : ValueSymbolToInitExpression(bound.DefaultValue);
-        var accessibility = bound.IsPrivate ? "private" : "public";
+        var accessibility = bound.IsStatic
+            ? (bound.IsPrivate ? "private static" : "public static")
+            : (bound.IsPrivate ? "private" : "public");
+        var thisRef = bound.IsStatic ? "" : "this.";
         if (bound.IsComputedDeclaration)
         {
             var computedType = $"global::QuickMarkup.Infra.Computed<{typeName}>";
@@ -31,7 +34,7 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
                 {{accessibility}} {{computedType}} {{bound.Name}}Comp => field ??= new {{computedType}}(() => {{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
                 {{accessibility}} {{typeName}} {{bound.Name}} {
                     get {
-                        return this.{{bound.Name}}Comp.Value;
+                        return {{thisRef}}{{bound.Name}}Comp.Value;
                     }
                 }
                 """);
@@ -43,10 +46,10 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
                 {{accessibility}} {{refType}} {{bound.Name}}Prop => field ??= new {{refType}}({{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
                 {{accessibility}} {{typeName}} {{bound.Name}} {
                     get {
-                        return this.{{bound.Name}}Prop.Value;
+                        return {{thisRef}}{{bound.Name}}Prop.Value;
                     }
                     set {
-                        this.{{bound.Name}}Prop.Value = value;
+                        {{thisRef}}{{bound.Name}}Prop.Value = value;
                     }
                 }
                 """);

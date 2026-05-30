@@ -100,6 +100,12 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"private", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         Private,
+        [Regex(@"public", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Public,
+        [Regex(@"static", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Static,
         [Regex(@"set", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         Set,

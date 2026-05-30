@@ -367,6 +367,100 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_Ref_StaticKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                static int X = 0;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("X", r.Name.Name);
+            Assert.IsTrue(r.IsStatic);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_PrivateStaticKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                private static int Y = 1;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Y", r.Name.Name);
+            Assert.IsTrue(r.IsStatic);
+            Assert.IsTrue(r.IsPrivate);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_StaticComputed()
+        {
+            var sfc = Parse("""
+                using System;
+
+                static int Z => `42`;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Z", r.Name.Name);
+            Assert.IsTrue(r.IsStatic);
+            Assert.IsTrue(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_PublicKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                public int X = 0;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("X", r.Name.Name);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsFalse(r.IsStatic);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_PublicStaticKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                public static int Y = 1;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Y", r.Name.Name);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsTrue(r.IsStatic);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_PublicComputed()
+        {
+            var sfc = Parse("""
+                using System;
+
+                public int Z => `42`;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Z", r.Name.Name);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsTrue(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
         [Ignore("Current parser error recovery throws before returning handled errors.")]
         public void Parse_Ref_NamedBeforePositional_YieldsErrors()
         {

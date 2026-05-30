@@ -156,6 +156,7 @@ public record class RefDeclaration(
     PositionedIdentifier Name,
     QuickMarkupValue? DefaultValue,
     bool IsPrivate,
+    bool IsStatic,
     bool IsComputedDeclaration,
     ListAST<QMAttribute> Attributes);
 public interface ISFCTag;

@@ -99,6 +99,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(
             RefAttributes, AS, nameof(RefDeclaration.Attributes),
             RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
+            RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             TypeDecl, AS, nameof(RefDeclaration.Type),
             QMPositionedIdentifier, AS, nameof(RefDeclaration.Name),
             RefDeclInitialValue, AS, nameof(RefDeclaration.DefaultValue),
@@ -109,6 +110,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(
             RefAttributes, AS, nameof(RefDeclaration.Attributes),
             RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
+            RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             TypeDecl, AS, nameof(RefDeclaration.Type),
             QMPositionedIdentifier, AS, nameof(RefDeclaration.Name),
             Terminal.EqualArrowRight,
@@ -125,7 +127,12 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<bool>]
         [Rule(WITHPARAM, VALUE, false, IDENTITY)]
         [Rule(Terminal.Private, WITHPARAM, VALUE, true, IDENTITY)]
+        [Rule(Terminal.Public, WITHPARAM, VALUE, false, IDENTITY)]
         RefPrivateVisibility,
+        [Type<bool>]
+        [Rule(WITHPARAM, VALUE, false, IDENTITY)]
+        [Rule(Terminal.Static, WITHPARAM, VALUE, true, IDENTITY)]
+        RefStaticVisibility,
         // TAGS
         [Type<QuickMarkupParsedTag>]
         [Rule(

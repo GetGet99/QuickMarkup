@@ -39,6 +39,7 @@ partial class QuickMarkupBinder
             r.Name.Name,
             defaultSym,
             r.IsPrivate,
+            r.IsStatic,
             r.IsComputedDeclaration,
             attrs);
     }
