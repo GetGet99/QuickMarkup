@@ -31,7 +31,7 @@ A source generator processes the attribute. If the class has at least one user-d
 
 ## Sections (in order)
 
-1. **Usings** (optional) — namespace imports for the markup scope. Global usings from C# files also apply.
+1. **Usings** (optional) — namespace imports for the markup scope. Supports aliases (`using NavigationView = Microsoft.UI.Xaml.Controls.NavigationView;`) and `using static`. Global usings from C# files also apply.
 2. **Reference/Computed declarations** (optional) — reactive variable declarations.
 3. **`<setup>`** (optional) — C# code that runs before UI creation. Variables declared here are accessible in `<root>` but not exported outside.
 4. **`<root>`** — the UI tree. This is where the markup goes.
@@ -66,14 +66,14 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 
 | Kind | Syntax | Example |
 |------|--------|---------|
-| Integer | literal | `Width=100` |
+| Integer | literal (dec/hex/binary) | `Width=100` / `Tag=0xDEADBEEF` / `Flags=0b101101` |
 | Double | literal | `FontSize=14.5` |
 | Boolean | literal | `IsChecked=true` |
 | Boolean true shorthand | property name alone | `IsEnabled` |
 | Boolean false shorthand | `!` prefix | `!IsHitTestVisible` |
 | String | double quotes | `Text="Hello"` |
 | Enum member | name alone | `HorizontalAlignment=Center` |
-| null/default | keyword | `Tag=null` |
+| null/default | keyword | `Tag=null` / `Target=default` |
 | C# expression | backticks | `` Text=`$"Count: {Counter}"` `` |
 | Alternate C# literal (backward compatability legacy syntax of above) | `/-...-/` | `Source=/-new Uri("ms-appx:///icon.png")-/` |
 
@@ -156,6 +156,28 @@ A standalone backtick expression that is `Action<T>` runs once with the created 
 <Grid `x => Grid.SetRow(x, 1)` />
 ```
 
+### Fragment Children
+
+A `{ ... }` block is a fragment. Contains any valid child nodes:
+
+```
+<StackPanel>
+    {
+        <TextBlock Text="A" />
+        <TextBlock Text="B" />
+    }
+</StackPanel>
+```
+
+### Conditional Children
+
+```
+if (`condition`) { <TextBlock Text="Visible" /> }
+else <TextBlock Text="Fallback" />
+```
+
+The `else` branch is required for single-child content positions (e.g., `Content`).
+
 ### Foreach Loops
 
 ```
@@ -163,8 +185,17 @@ A standalone backtick expression that is `Action<T>` runs once with the created 
 foreach (var i in ..3) { <TextBlock Text=/-$"Row {i}"-/ /> }
 foreach (var i in 1..4) { <TextBlock Text=/-$"Item {i}"-/ /> }
 
-// Iterable (evaluated once; not reactive to collection changes)
+// Iterable — reactive when source implements INotifyCollectionChanged
 foreach (var item in items) { <TextBlock Text=/-item-/ /> }
+
+// With key expression (for stable identity across collection changes), source still must implement INotifyCollectionChanged, but will use id as identity in case of collection reset
+foreach (var item in `animals`; `item.Id`) { <TextBlock Text=`item.Name` /> }
+
+// With index variable
+foreach (index; var item in `items`) { <TextBlock Text=`$"{index + 1}. {item}"` /> }
+
+// With both
+foreach (index; var item in `items`; `item.Id`) { <TextBlock Text=`$"{index + 1}. {item}"` /> }
 ```
 
 ### Root Tag With Properties
@@ -177,7 +208,7 @@ foreach (var item in items) { <TextBlock Text=/-item-/ /> }
 
 ## Setup & Bootstrapping
 
-The entry page must initialize the reactive scheduler so changes propagate automatically:
+For new project, for WinUI/UWP, when app is initialized, `ReactiveInitializer.InitReactiveScheduler()` must be called to setup reactivity, otherwise reactivity won't work. For other frameworks, you may refer to an example below and adapt for your framework.
 
 ```csharp
 // UWP Example
@@ -186,6 +217,33 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
     _ = Dispatcher.TryRunAsync(CoreDispatcherPriority.High, ReactiveScheduler.Tick);
 });
 ```
+
+## Components
+
+Reusable QuickMarkup components implement one of two interfaces (from `QuickMarkup.WinUI` / `QuickMarkup.UWP`):
+
+- **`IQuickMarkupComponent<T>`** — produces exactly one UI element (its `MarkupNode`). Properties set on the tag that don't exist on the component class are **forwarded** to `MarkupNode`.
+- **`IQuickMarkupFragmentComponent<T>`** — produces multiple UI elements; expands inline at the usage site.
+
+```csharp
+[QuickMarkup("""
+    string Text = "";
+    <root>
+        <TextBlock Text=`Text` FontSize=16 />
+    </root>
+    """)]
+public partial class Label : IQuickMarkupComponent<UIElement>;
+```
+
+Consuming a component:
+
+```csharp
+<Label Text="Hello" HorizontalAlignment=Center />
+```
+
+For WinUI/UWP project with platform specific package installed, Non-generic versions (`IQuickMarkupComponent`, `IQuickMarkupFragmentComponent`) default `T` to `UIElement`.
+
+For many cases, we recommend subclassing elements directly, ie. `partial class MyComponent : Grid`, but for case of sealed elements (ie. WinUI `Border`/`TextBlock` are sealed) or multiple children component/fragment, you may need these.
 
 ## Reactivity Infrastructure
 
@@ -201,12 +259,55 @@ Effect(() => { ... }, ref1, ref2);  // runs when any listed ref changes
 
 `ReferenceTracker.NoCapture(() => expr)` reads without tracking dependencies.
 
-## Best Practices From This Project
+## QuickMarkup.WinUI / QuickMarkup.UWP (NuGet Packages)
 
-- Define **global usings** for common namespaces (`Windows.UI.Xaml.Controls`, `QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`, etc.) so markup stays clean.
-- Define **C# extension methods** (`CenterH`, `CenterV`, `Center`, `Right`, `Bottom`, `StretchH`, `StretchV`) for layout shortcuts.
+These packages provide WinUI 3 / UWP helpers that consume QuickMarkup's generated code.
+
+**NuGet packages:** `QuickMarkup.WinUI` (WinUI 3) / `QuickMarkup.UWP` (UWP)
+
+Namespace `QuickMarkup.WinUI`:
+
+- **`ReactiveInitializer.InitReactiveScheduler()`** — call once on the UI thread (e.g., in `MainWindow` constructor) to initialize the reactive scheduler with the current dispatcher.
+- **`ThemeResources.Get<T>(string resourceName)`** — returns a `Reference<T?>` that re-resolves on theme change. Also `Get<T>(string, FrameworkElement)` for per-element theme resolution.
+- **`ThemeBrushes`** — static properties returning `Reference<Brush?>` for common WinUI theme brushes (`Accent`, `PrimaryText`, `SolidBackground`, `CardBackground`, `DividerStroke`, `SystemSuccess`, etc.).
+
+### Initiative And Bootstrapping
+
+The entry page must initialize the reactive scheduler. The simplest way is via `ReactiveInitializer.InitReactiveScheduler()`:
+
+```csharp
+// App.xaml.cs or MainWindow.xaml.cs
+public MainWindow()
+{
+    this.InitializeComponent();
+    QuickMarkup.WinUI.ReactiveInitializer.InitReactiveScheduler();
+    Init();
+}
+```
+
+### Using ThemeResources / ThemeBrushes in Markup
+
+```csharp
+[QuickMarkup("""
+    using QuickMarkup.WinUI;
+    <setup>
+        var theme = UseThemeBrushes(this);
+    </setup>
+    <root Background=`theme.SolidBackground`>
+        <TextBlock Foreground=`theme.PrimaryText` Text="Hello" />
+    </root>
+    """)]
+partial class MyPage : Page
+{
+    public MyPage() { Init(); }
+}
+```
+
+## Best Practices
+
+- Define **global usings** for common namespaces (`QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`, etc.) so markup stays clean.
+- Define **C# extension methods** like (`CenterH`, `CenterV`, `Center`, `Right`, `Bottom`, `StretchH`, `StretchV`) for layout shortcuts.
 - Define **C# extension properties** (e.g., `IsVisible`, `Grid_Row`, `Grid_Column`) to work around QuickMarkup not supporting attached properties directly.
-- Use `ThemeResources.Get<Brush>("ResourceKey", element).CreateReadOnlyReference()` in `<setup>` for theme-aware brushes. Requires `<PackageReference Include="Get.UI.Data.UWP.NET9" Version="1.0.8" />` and the extension below.
 - The class must be `partial` (source generator emits the other part). The base class should be a UI element (`Page`, `Grid`, `StackPanel`, etc.).
 
 ### `CreateReadOnlyReference` Extension
