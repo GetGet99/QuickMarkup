@@ -3,54 +3,91 @@ namespace QuickMarkup.WinUI;
 // The ThemeBrushes class is modified and inspired from Theme class
 // of https://github.com/microsoft/microsoft-ui-reactor/blob/main/src/Reactor/Core/Theme.cs
 
-public static class ThemeBrushes
+public class ThemeBrushes(FrameworkElement? element)
 {
+    public static ThemeBrushes Global { get; } = new(null);
     // ── Accent / Fill ────────────────────────────────────────────────
-    public static Reference<Brush?> Accent            => ThemeResources.Get<Brush>("AccentFillColorDefaultBrush");
-    public static Reference<Brush?> AccentSecondary   => ThemeResources.Get<Brush>("AccentFillColorSecondaryBrush");
-    public static Reference<Brush?> AccentTertiary    => ThemeResources.Get<Brush>("AccentFillColorTertiaryBrush");
-    public static Reference<Brush?> AccentDisabled    => ThemeResources.Get<Brush>("AccentFillColorDisabledBrush");
+    public Reference<Brush?> AccentProp               => field ??= ThemeResources.Get<Brush>("AccentFillColorDefaultBrush", element);
+    public Brush? Accent                              => AccentProp.Value;
+    public Reference<Brush?> AccentSecondaryProp      => field ??= ThemeResources.Get<Brush>("AccentFillColorSecondaryBrush", element);
+    public Brush? AccentSecondary                     => AccentSecondaryProp.Value;
+    public Reference<Brush?> AccentTertiaryProp       => field ??= ThemeResources.Get<Brush>("AccentFillColorTertiaryBrush", element);
+    public Brush? AccentTertiary                      => AccentTertiaryProp.Value;
+    public Reference<Brush?> AccentDisabledProp       => field ??= ThemeResources.Get<Brush>("AccentFillColorDisabledBrush", element);
+    public Brush? AccentDisabled                      => AccentDisabledProp.Value;
 
     // ── Text ─────────────────────────────────────────────────────────
-    public static Reference<Brush?> PrimaryText       => ThemeResources.Get<Brush>("TextFillColorPrimaryBrush");
-    public static Reference<Brush?> SecondaryText     => ThemeResources.Get<Brush>("TextFillColorSecondaryBrush");
-    public static Reference<Brush?> TertiaryText      => ThemeResources.Get<Brush>("TextFillColorTertiaryBrush");
-    public static Reference<Brush?> DisabledText      => ThemeResources.Get<Brush>("TextFillColorDisabledBrush");
-    public static Reference<Brush?> AccentText        => ThemeResources.Get<Brush>("AccentTextFillColorPrimaryBrush");
+    public Reference<Brush?> PrimaryTextProp          => field ??= ThemeResources.Get<Brush>("TextFillColorPrimaryBrush", element);
+    public Brush? PrimaryText                         => PrimaryTextProp.Value;
+    public Reference<Brush?> SecondaryTextProp        => field ??= ThemeResources.Get<Brush>("TextFillColorSecondaryBrush", element);
+    public Brush? SecondaryText                       => SecondaryTextProp.Value;
+    public Reference<Brush?> TertiaryTextProp         => field ??= ThemeResources.Get<Brush>("TextFillColorTertiaryBrush", element);
+    public Brush? TertiaryText                        => TertiaryTextProp.Value;
+    public Reference<Brush?> DisabledTextProp         => field ??= ThemeResources.Get<Brush>("TextFillColorDisabledBrush", element);
+    public Brush? DisabledText                        => DisabledTextProp.Value;
+    public Reference<Brush?> AccentTextProp           => field ??= ThemeResources.Get<Brush>("AccentTextFillColorPrimaryBrush", element);
+    public Brush? AccentText                          => AccentTextProp.Value;
 
     // ── Surfaces / Fill ──────────────────────────────────────────────
-    public static Reference<Brush?> SolidBackground   => ThemeResources.Get<Brush>("SolidBackgroundFillColorBaseBrush");
-    public static Reference<Brush?> CardBackground    => ThemeResources.Get<Brush>("CardBackgroundFillColorDefaultBrush");
-    public static Reference<Brush?> SmokeFill         => ThemeResources.Get<Brush>("SmokeFillColorDefaultBrush");
-    public static Reference<Brush?> SubtleFill        => ThemeResources.Get<Brush>("SubtleFillColorSecondaryBrush");
-    public static Reference<Brush?> LayerFill         => ThemeResources.Get<Brush>("LayerFillColorDefaultBrush");
+    public Reference<Brush?> SolidBackgroundProp   => field ??= ThemeResources.Get<Brush>("SolidBackgroundFillColorBaseBrush", element);
+    public Brush? SolidBackground                  => SolidBackgroundProp.Value;
+    public Reference<Brush?> CardBackgroundProp    => field ??= ThemeResources.Get<Brush>("CardBackgroundFillColorDefaultBrush", element);
+    public Brush? CardBackground                   => CardBackgroundProp.Value;
+    public Reference<Brush?> SmokeFillProp         => field ??= ThemeResources.Get<Brush>("SmokeFillColorDefaultBrush", element);
+    public Brush? SmokeFill                        => SmokeFillProp.Value;
+    public Reference<Brush?> SubtleFillProp        => field ??= ThemeResources.Get<Brush>("SubtleFillColorSecondaryBrush", element);
+    public Brush? SubtleFill                       => SubtleFillProp.Value;
+    public Reference<Brush?> LayerFillProp         => field ??= ThemeResources.Get<Brush>("LayerFillColorDefaultBrush", element);
+    public Brush? LayerFill                        => LayerFillProp.Value;
 
     // ── Control Fill ─────────────────────────────────────────────────
-    public static Reference<Brush?> ControlFill              => ThemeResources.Get<Brush>("ControlFillColorDefaultBrush");
-    public static Reference<Brush?> ControlFillSecondary     => ThemeResources.Get<Brush>("ControlFillColorSecondaryBrush");
-    public static Reference<Brush?> ControlFillTertiary      => ThemeResources.Get<Brush>("ControlFillColorTertiaryBrush");
-    public static Reference<Brush?> ControlFillDisabled      => ThemeResources.Get<Brush>("ControlFillColorDisabledBrush");
-    public static Reference<Brush?> ControlFillInputActive   => ThemeResources.Get<Brush>("ControlFillColorInputActiveBrush");
+    public Reference<Brush?> ControlFillProp              => field ??= ThemeResources.Get<Brush>("ControlFillColorDefaultBrush", element);
+    public Brush? ControlFill                             => ControlFillProp.Value;
+    public Reference<Brush?> ControlFillSecondaryProp     => field ??= ThemeResources.Get<Brush>("ControlFillColorSecondaryBrush", element);
+    public Brush? ControlFillSecondary                    => ControlFillSecondaryProp.Value;
+    public Reference<Brush?> ControlFillTertiaryProp      => field ??= ThemeResources.Get<Brush>("ControlFillColorTertiaryBrush", element);
+    public Brush? ControlFillTertiary                     => ControlFillTertiaryProp.Value;
+    public Reference<Brush?> ControlFillDisabledProp      => field ??= ThemeResources.Get<Brush>("ControlFillColorDisabledBrush", element);
+    public Brush? ControlFillDisabled                     => ControlFillDisabledProp.Value;
+    public Reference<Brush?> ControlFillInputActiveProp   => field ??= ThemeResources.Get<Brush>("ControlFillColorInputActiveBrush", element);
+    public Brush? ControlFillInputActive                  => ControlFillInputActiveProp.Value;
 
     // ── Stroke / Border ──────────────────────────────────────────────
-    public static Reference<Brush?> CardStroke        => ThemeResources.Get<Brush>("CardStrokeColorDefaultBrush");
-    public static Reference<Brush?> SurfaceStroke     => ThemeResources.Get<Brush>("SurfaceStrokeColorDefaultBrush");
-    public static Reference<Brush?> DividerStroke     => ThemeResources.Get<Brush>("DividerStrokeColorDefaultBrush");
-    public static Reference<Brush?> ControlStroke     => ThemeResources.Get<Brush>("ControlStrokeColorDefaultBrush");
-    public static Reference<Brush?> ControlStrokeSecondary => ThemeResources.Get<Brush>("ControlStrokeColorSecondaryBrush");
+    public Reference<Brush?> CardStrokeProp        => field ??= ThemeResources.Get<Brush>("CardStrokeColorDefaultBrush", element);
+    public Brush? CardStroke                       => CardStrokeProp.Value;
+    public Reference<Brush?> SurfaceStrokeProp     => field ??= ThemeResources.Get<Brush>("SurfaceStrokeColorDefaultBrush", element);
+    public Brush? SurfaceStroke                    => SurfaceStrokeProp.Value;
+    public Reference<Brush?> DividerStrokeProp     => field ??= ThemeResources.Get<Brush>("DividerStrokeColorDefaultBrush", element);
+    public Brush? DividerStroke                    => DividerStrokeProp.Value;
+    public Reference<Brush?> ControlStrokeProp     => field ??= ThemeResources.Get<Brush>("ControlStrokeColorDefaultBrush", element);
+    public Brush? ControlStroke                    => ControlStrokeProp.Value;
+    public Reference<Brush?> ControlStrokeSecondaryProp => field ??= ThemeResources.Get<Brush>("ControlStrokeColorSecondaryBrush", element);
+    public Brush? ControlStrokeSecondary                => ControlStrokeSecondaryProp.Value;
 
     // ── Signal ───────────────────────────────────────────────────────
-    public static Reference<Brush?> SystemAttention   => ThemeResources.Get<Brush>("SystemFillColorAttentionBrush");
-    public static Reference<Brush?> SystemSuccess     => ThemeResources.Get<Brush>("SystemFillColorSuccessBrush");
-    public static Reference<Brush?> SystemCaution     => ThemeResources.Get<Brush>("SystemFillColorCautionBrush");
-    public static Reference<Brush?> SystemCritical    => ThemeResources.Get<Brush>("SystemFillColorCriticalBrush");
-    public static Reference<Brush?> SystemNeutral     => ThemeResources.Get<Brush>("SystemFillColorNeutralBrush");
-    public static Reference<Brush?> SystemSolidNeutral => ThemeResources.Get<Brush>("SystemFillColorSolidNeutralBrush");
+    public Reference<Brush?> SystemAttentionProp   => field ??= ThemeResources.Get<Brush>("SystemFillColorAttentionBrush", element);
+    public Brush? SystemAttention                  => SystemAttentionProp.Value;
+    public Reference<Brush?> SystemSuccessProp     => field ??= ThemeResources.Get<Brush>("SystemFillColorSuccessBrush", element);
+    public Brush? SystemSuccess                    => SystemSuccessProp.Value;
+    public Reference<Brush?> SystemCautionProp     => field ??= ThemeResources.Get<Brush>("SystemFillColorCautionBrush", element);
+    public Brush? SystemCaution                    => SystemCautionProp.Value;
+    public Reference<Brush?> SystemCriticalProp    => field ??= ThemeResources.Get<Brush>("SystemFillColorCriticalBrush", element);
+    public Brush? SystemCritical                   => SystemCriticalProp.Value;
+    public Reference<Brush?> SystemNeutralProp     => field ??= ThemeResources.Get<Brush>("SystemFillColorNeutralBrush", element);
+    public Brush? SystemNeutral                    => SystemNeutralProp.Value;
+    public Reference<Brush?> SystemSolidNeutralProp => field ??= ThemeResources.Get<Brush>("SystemFillColorSolidNeutralBrush", element);
+    public Brush? SystemSolidNeutral                => SystemSolidNeutralProp.Value;
 
-    public static Reference<Brush?> SystemAttentionBackground => ThemeResources.Get<Brush>("SystemFillColorAttentionBackgroundBrush");
-    public static Reference<Brush?> SystemSuccessBackground   => ThemeResources.Get<Brush>("SystemFillColorSuccessBackgroundBrush");
-    public static Reference<Brush?> SystemCautionBackground   => ThemeResources.Get<Brush>("SystemFillColorCautionBackgroundBrush");
-    public static Reference<Brush?> SystemCriticalBackground  => ThemeResources.Get<Brush>("SystemFillColorCriticalBackgroundBrush");
-    public static Reference<Brush?> SystemNeutralBackground   => ThemeResources.Get<Brush>("SystemFillColorNeutralBackgroundBrush");
-    public static Reference<Brush?> SystemSolidAttention       => ThemeResources.Get<Brush>("SystemFillColorSolidAttentionBackgroundBrush");
+    public Reference<Brush?> SystemAttentionBackgroundProp => field ??= ThemeResources.Get<Brush>("SystemFillColorAttentionBackgroundBrush", element);
+    public Brush? SystemAttentionBackground                => SystemAttentionBackgroundProp.Value;
+    public Reference<Brush?> SystemSuccessBackgroundProp   => field ??= ThemeResources.Get<Brush>("SystemFillColorSuccessBackgroundBrush", element);
+    public Brush? SystemSuccessBackground                  => SystemSuccessBackgroundProp.Value;
+    public Reference<Brush?> SystemCautionBackgroundProp   => field ??= ThemeResources.Get<Brush>("SystemFillColorCautionBackgroundBrush", element);
+    public Brush? SystemCautionBackground                  => SystemCautionBackgroundProp.Value;
+    public Reference<Brush?> SystemCriticalBackgroundProp  => field ??= ThemeResources.Get<Brush>("SystemFillColorCriticalBackgroundBrush", element);
+    public Brush? SystemCriticalBackground                 => SystemCriticalBackgroundProp.Value;
+    public Reference<Brush?> SystemNeutralBackgroundProp   => field ??= ThemeResources.Get<Brush>("SystemFillColorNeutralBackgroundBrush", element);
+    public Brush? SystemNeutralBackground                  => SystemNeutralBackgroundProp.Value;
+    public Reference<Brush?> SystemSolidAttentionProp       => field ??= ThemeResources.Get<Brush>("SystemFillColorSolidAttentionBackgroundBrush", element);
+    public Brush? SystemSolidAttention                      => SystemSolidAttentionProp.Value;
 }

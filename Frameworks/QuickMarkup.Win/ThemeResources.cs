@@ -5,8 +5,11 @@ namespace QuickMarkup.WinUI;
 public partial class ThemeResources
 {
     static UISettings UISettings { get; } = new();
-    public static Reference<T?> Get<T>(string resourcesName, FrameworkElement element)
+    public static Reference<T?> Get<T>(string resourcesName, FrameworkElement? element)
     {
+        if (element is null)
+            return Get<T>(resourcesName);
+        
         var prop = new Reference<T?>(Resolve<T>(resourcesName, element));
         element.ActualThemeChanged += delegate
         {
