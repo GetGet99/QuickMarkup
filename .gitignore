@@ -4,3 +4,5 @@
 */.vscode
 */bin
 */obj
+Frameworks/*/bin
+Frameworks/*/obj

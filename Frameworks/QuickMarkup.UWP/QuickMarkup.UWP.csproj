@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\Win.Build.props" />
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <UseUwp>true</UseUwp>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.UI.Xaml" Version="2.8.7" />
+    <PackageReference Include="CommunityToolkit.Labs.Uwp.DependencyPropertyGenerator" Version="0.1.251217-build.2433" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

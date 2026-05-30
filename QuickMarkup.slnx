@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/Frameworks/">
+    <File Path="Frameworks/Win.Build.props" />
+    <Project Path="Frameworks/QuickMarkup.UWP/QuickMarkup.UWP.csproj" />
+    <Project Path="Frameworks/QuickMarkup.Win/QuickMarkup.Win.shproj" />
+    <Project Path="Frameworks/QuickMarkup.WinUI/QuickMarkup.WinUI.csproj" />
+  </Folder>
   <Folder Name="/Libraries/">
     <Project Path="Parser/Get.EasyCSharp.GeneratorTools/Get.EasyCSharp.GeneratorTools.csproj" />
     <Project Path="Parser/Get.LangSupport/Get.LangSupport.csproj" />
@@ -12,10 +18,10 @@
     <Project Path="Parser/Get.RegexMachine.Shared/Get.RegexMachine.Shared.shproj" />
     <Project Path="Parser/Get.RegexMachine/Get.RegexMachine.csproj" />
   </Folder>
-  <Project Path="QuickMarkup.Infra.Test/QuickMarkup.Infra.Test.csproj" Id="8ce6f563-b4da-4552-956c-beb3e51648dd" />
-  <Project Path="QuickMarkup.Infra/QuickMarkup.Infra.csproj" Id="141f36ca-c094-45e9-9559-315c38783ec9" />
+  <Project Path="QuickMarkup.Infra.Test/QuickMarkup.Infra.Test.csproj" />
+  <Project Path="QuickMarkup.Infra/QuickMarkup.Infra.csproj" />
   <Project Path="QuickMarkup.Language/QuickMarkup.Language.csproj" />
-  <Project Path="QuickMarkup.SourceGen.Test/QuickMarkup.SourceGen.Test.csproj" Id="e61a9f0e-7a5c-4a6c-99fd-e6c3e7a7e6b6" />
-  <Project Path="QuickMarkup.SourceGen/QuickMarkup.SourceGen.csproj" Id="88646990-7457-4dbf-a047-0f33c980f9c6" />
-  <Project Path="QuickMarkup.Syntax.Test/QuickMarkup.Syntax.Test.csproj" Id="5bea7f71-6078-4e0e-a96c-12098aa0a2c9" />
+  <Project Path="QuickMarkup.SourceGen.Test/QuickMarkup.SourceGen.Test.csproj" />
+  <Project Path="QuickMarkup.SourceGen/QuickMarkup.SourceGen.csproj" />
+  <Project Path="QuickMarkup.Syntax.Test/QuickMarkup.Syntax.Test.csproj" />
 </Solution>

@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.4</Version>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <Authors>Get</Authors>
+    <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/GetGet99/QuickMarkup</RepositoryUrl>
+    <PackageOutputPath>D:\Programming\VS\.LocalNugetPackages</PackageOutputPath>
+  </PropertyGroup>
+</Project>
