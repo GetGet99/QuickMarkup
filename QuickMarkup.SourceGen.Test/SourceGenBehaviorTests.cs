@@ -337,4 +337,42 @@ public sealed class SourceGenBehaviorTests
         TestTreeAssert.Texts(panel.Children, "0:two", "1:three", "2:one");
         Assert.AreSame(first, panel.Children[2]);
     }
+
+    [TestMethod]
+    public void AttachedPropertySetRowAssignsNumericValue()
+    {
+        var page = new AttachedPropertyAssignCase();
+        var first = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual(1, Grid.GetRow(first));
+    }
+
+    [TestMethod]
+    public void AttachedPropertyReactiveBindingUpdatesOnTick()
+    {
+        var page = new AttachedPropertyAssignCase();
+        var second = TestTreeAssert.Child<TestText>(page.Children, 1);
+
+        Assert.AreEqual(42, Grid.GetRow(second));
+
+        page.RowIndex = 99;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(99, Grid.GetRow(second));
+    }
+
+    [TestMethod]
+    public void AttachedPropertyBindBackTracksDependencyProperty()
+    {
+        var page = new AttachedPropertyBindBackCase();
+        var button = TestTreeAssert.Child<TestDependencyHoldButton>(page.Children, 0);
+
+        Assert.AreEqual(0, Grid.GetRow(button));
+
+        Grid.SetRow(button, 7);
+        button.IsHolding = true;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(7, page.StoredRow);
+    }
 }

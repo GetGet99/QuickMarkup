@@ -376,3 +376,26 @@ public partial class ForeachIndexKeyCase : TestRoot
         new(3, "three")
     ];
 }
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    int RowIndex = 42;
+    <root>
+        <TestText Grid.Row=1 />
+        <TestText Grid.Row=`RowIndex` />
+    </root>
+    """)]
+public partial class AttachedPropertyAssignCase : TestRoot
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    int StoredRow;
+    <root>
+        <TestDependencyHoldButton Grid.Row=>`StoredRow` />
+    </root>
+    """)]
+public partial class AttachedPropertyBindBackCase : TestRoot
+{
+}

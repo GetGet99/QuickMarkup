@@ -96,6 +96,7 @@ public record class QMAddChildMember<T>(
     T? ChildElementType = default
 ) : IQMMemberSymbol;
 public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "", string TargetName = "") : IQMMemberSymbol;
+public record class QMAttachedPropertyMember<T>(T? PropertyType, string AttachedTypeFullName, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "") : IQMMemberSymbol;
 public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand) : IQMMemberSymbol;
 public record class QMExtensionMember(string Method, string TargetPath = "") : IQMMemberSymbol;
 public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMemberSymbol;

@@ -7,6 +7,9 @@ public abstract class TestElement
 {
     public string? Name { get; set; }
     public bool ElementExtensionApplied { get; set; }
+    protected readonly List<Action<object?, object?>> propertyChangedCallbacks = [];
+    public void RegisterPropertyChangedCallback(DependencyProperty property, Action<object?, object?> callback)
+        => propertyChangedCallbacks.Add(callback);
 }
 
 public class TestRoot
@@ -37,7 +40,6 @@ public sealed class DependencyProperty;
 public sealed class TestDependencyHoldButton : TestElement
 {
     public static readonly DependencyProperty IsHoldingProperty = new();
-    readonly List<Action<object?, object?>> propertyChangedCallbacks = [];
     bool isHolding;
 
     public bool IsHolding
@@ -49,16 +51,25 @@ public sealed class TestDependencyHoldButton : TestElement
                 return;
 
             isHolding = value;
-            foreach (var callback in propertyChangedCallbacks)
-                callback(this, EventArgs.Empty);
+            propertyChangedCallbacks.ForEach(c => c(this, EventArgs.Empty));
         }
     }
+}
 
-    public void RegisterPropertyChangedCallback(DependencyProperty property, Action<object?, object?> callback)
-    {
-        if (property == IsHoldingProperty)
-            propertyChangedCallbacks.Add(callback);
-    }
+public sealed class Grid
+{
+    public static readonly DependencyProperty RowProperty = new();
+    static readonly Dictionary<TestElement, int> attachedRowValues = [];
+    public static void SetRow(TestElement element, int value)
+        => attachedRowValues[element] = value;
+    public static int GetRow(TestElement element)
+        => attachedRowValues.TryGetValue(element, out var val) ? val : 0;
+    public static readonly DependencyProperty ColumnProperty = new();
+    static readonly Dictionary<TestElement, int> attachedColumnValues = [];
+    public static void SetColumn(TestElement element, int value)
+        => attachedColumnValues[element] = value;
+    public static int GetColumn(TestElement element)
+        => attachedColumnValues.TryGetValue(element, out var val) ? val : 0;
 }
 
 public sealed class TestComputedHoldButton : TestElement

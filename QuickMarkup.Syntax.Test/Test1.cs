@@ -227,6 +227,65 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_AttachedPropertyKey()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Grid.Row=1 />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.HasCount(1, tag.InlineMembers);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Grid.Row", prop.Key);
+            Assert.AreEqual(ParsedPropertyOperator.Assign, prop.Operator);
+            Assert.IsInstanceOfType<QuickMarkupInt32>(prop.Value);
+            Assert.AreEqual(1, ((QuickMarkupInt32)prop.Value!).Value);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyWithForeignValue()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Grid.Row=`expr` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Grid.Row", prop.Key);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyBindBack()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Grid.Row=>`target` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Grid.Row", prop.Key);
+            Assert.AreEqual(ParsedPropertyOperator.BindBack, prop.Operator);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
         [Ignore("Current parser error recovery throws before returning handled errors.")]
         public void Parse_Ref_NamedBeforePositional_YieldsErrors()
         {

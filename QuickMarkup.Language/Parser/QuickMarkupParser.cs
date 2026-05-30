@@ -218,6 +218,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         InlineMember,
         [Type<string>]
+        [Rule(Terminal.Identifier, AS, "typeName", Terminal.Dot, Terminal.Identifier, AS, "propName", nameof(CombineDottedPropertyKey))]
         [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
         [Rule(Terminal.Foreign, AS, VALUE, IDENTITY)]
         ParsedPropertyKey,
@@ -416,6 +417,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         => tag with { Name = name };
     static PositionedIdentifier AddDot(string name)
         => new($".{name}");
+    static string CombineDottedPropertyKey(string typeName, string propName)
+        => $"{typeName}.{propName}";
     static QuickMarkupParsedTag ValidateTag(QuickMarkupParsedTag tag)
     {
         if (tag.HasMismatchedEndTag)

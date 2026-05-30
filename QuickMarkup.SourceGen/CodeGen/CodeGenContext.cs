@@ -74,6 +74,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                 case QMAddPropertyMember<ITypeSymbol?> addProp:
                     CGenAddProperty(addProp, target);
                     break;
+                case QMAttachedPropertyMember<ITypeSymbol?> addAttachedProp:
+                    CGenAddAttachedProperty(addAttachedProp, target);
+                    break;
                 case QMAddEventMember<ITypeSymbol?> addEvent:
                     CGenAddEvent(addEvent, target);
                     break;
@@ -206,6 +209,71 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                     property,
                     disposableAddTarget: disposableAddTarget
                 );
+        }
+    }
+
+    void CGenAddAttachedProperty(QMAttachedPropertyMember<ITypeSymbol?> addProp, string target)
+    {
+        switch (addProp.BindingMode)
+        {
+            case BindingModes.OneTime:
+                codeBuilder.AddAttachedPropertyAssign(
+                    addProp.AttachedTypeFullName,
+                    addProp.PropertyName,
+                    target,
+                    CGen(addProp.Value)
+                );
+                break;
+            case BindingModes.SourceToTarget:
+                codeBuilder.AddAttachedPropertyBindOneWay(
+                    addProp.AttachedTypeFullName,
+                    addProp.PropertyName,
+                    target,
+                    CGen(addProp.Value),
+                    disposableAddTarget: disposableAddTarget
+                );
+                break;
+            case BindingModes.TargetToSource:
+                if (addProp.IsDependencyProperty)
+                    codeBuilder.AddAttachedDependencyPropertyBindBack(
+                        addProp.AttachedTypeFullName,
+                        addProp.PropertyName,
+                        target,
+                        addProp.DependencyPropertyName,
+                        CGen(addProp.Value)
+                    );
+                else
+                    codeBuilder.AddPropertyBindOneWay(
+                        addProp.PropertyType,
+                        CGen(addProp.Value),
+                        $"{target}",
+                        disposableAddTarget: disposableAddTarget
+                    );
+                break;
+            case BindingModes.TwoWay:
+                codeBuilder.AddAttachedPropertyBindOneWay(
+                    addProp.AttachedTypeFullName,
+                    addProp.PropertyName,
+                    target,
+                    CGen(addProp.Value),
+                    disposableAddTarget: disposableAddTarget
+                );
+                if (addProp.IsDependencyProperty)
+                    codeBuilder.AddAttachedDependencyPropertyBindBack(
+                        addProp.AttachedTypeFullName,
+                        addProp.PropertyName,
+                        target,
+                        addProp.DependencyPropertyName,
+                        CGen(addProp.Value)
+                    );
+                else
+                    codeBuilder.AddPropertyBindOneWay(
+                        addProp.PropertyType,
+                        CGen(addProp.Value),
+                        $"{target}",
+                        disposableAddTarget: disposableAddTarget
+                    );
+                break;
         }
     }
 

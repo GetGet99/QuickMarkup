@@ -91,6 +91,38 @@ static class CodeSnippetsExtension
             """);
         }
 
+        public void AddAttachedPropertyAssign(string attachedTypeFullName, string propertyName, string target, string valueExpression)
+        {
+            codeBuilder.AppendLine($"""
+            {attachedTypeFullName}.Set{propertyName}({target}, {valueExpression});
+            """);
+        }
+
+        public void AddAttachedPropertyBindOneWay(string attachedTypeFullName, string propertyName, string target, string valueExpression, string disposableAddTarget = "QUICKMARKUP_DISPOSABLES")
+        {
+            codeBuilder.AppendLine($$"""
+            {{disposableAddTarget}}.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange(
+                () => {
+                    return {{valueExpression}};
+                }, QUICKMARUP_TEMPVALUE => {
+                    {{attachedTypeFullName}}.Set{{propertyName}}({{target}}, QUICKMARUP_TEMPVALUE);
+                }));
+            """);
+        }
+
+        public void AddAttachedDependencyPropertyBindBack(string attachedTypeFullName, string propertyName, string target, string dependencyPropertyName, string valueExpression)
+        {
+            codeBuilder.AppendLine($$"""
+                {{valueExpression}} = {{attachedTypeFullName}}.Get{{propertyName}}({{target}});
+                {{target}}.RegisterPropertyChangedCallback(
+                    {{dependencyPropertyName}},
+                    (_, _) => {
+                        {{valueExpression}} = {{attachedTypeFullName}}.Get{{propertyName}}({{target}});
+                    }
+                );
+                """);
+        }
+
         public void AddDependencyPropertyBindBack(string target, string targetDependencyObject, string dependencyPropertyName, string valueExpression)
         {
             codeBuilder.AppendLine($$"""

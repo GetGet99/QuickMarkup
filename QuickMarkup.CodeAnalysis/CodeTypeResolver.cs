@@ -267,6 +267,36 @@ class CodeTypeResolver(
         return false;
     }
 
+    public bool TryGetAttachedPropertyInfo(
+        ITypeSymbol? attachedType,
+        string propertyName,
+        [NotNullWhen(true)] out ITypeSymbol? valueType,
+        out bool isDependencyProperty,
+        out string dependencyPropertyName)
+    {
+        valueType = null;
+        isDependencyProperty = false;
+        dependencyPropertyName = "";
+
+        if (attachedType is null)
+            return false;
+
+        // Look for Set{PropertyName}(DependencyObject, valueType) static method
+        var setMethod = FindMethod(attachedType, $"Set{propertyName}");
+        if (setMethod is { IsStatic: true, Parameters.Length: 2 })
+        {
+            valueType = setMethod.Parameters[1].Type;
+
+            // Also check for dependency property pattern (FooProperty field)
+            isDependencyProperty = TryGetDependencyProperty(attachedType, propertyName, out var depName);
+            dependencyPropertyName = depName ?? "";
+
+            return true;
+        }
+
+        return false;
+    }
+
     public bool ShouldAutoNew(ITypeSymbol? value, ITypeSymbol target)
     {
         if (CanAssign(value, target))

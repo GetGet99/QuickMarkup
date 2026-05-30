@@ -386,6 +386,72 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         }
         if (inlineMember is not QuickMarkupParsedProperty property)
             throw new NotImplementedException();
+
+        // Check for attached property syntax: Type.Property=Value
+        var dotIndex = property.Key.IndexOf('.');
+        if (dotIndex > 0)
+        {
+            var typeName = property.Key[..dotIndex];
+            var propName = property.Key[(dotIndex + 1)..];
+            var attachedType = resolver.GetTypeSymbol(typeName);
+
+            if (attachedType is null ||
+                !resolver.TryGetAttachedPropertyInfo(attachedType, propName, out var attachedValueType, out var isDep, out var depName))
+            {
+                Error(property, $"Cannot resolve attached property '{property.Key}'. Ensure the type '{typeName}' is valid and has an attached property '{propName}'.");
+                return;
+            }
+
+            var attachedTypeFullName = attachedType.FullNameWithoutAnnotation();
+
+            switch (property.Operator)
+            {
+                case ParsedPropertyOperator.None:
+                    Error(property, $"Attached property '{property.Key}' requires a value (e.g., {property.Key}=value).");
+                    return;
+                case ParsedPropertyOperator.AddAssign:
+                    Error(property, $"Attached events are not supported for '{property.Key}'.");
+                    return;
+                case ParsedPropertyOperator.BindBack:
+                case ParsedPropertyOperator.BindTwoWay:
+                    {
+                        string target;
+                        if (property.Value is QuickMarkupForeign foreign)
+                            target = foreign.Code;
+                        else if (property.Value is QuickMarkupIdentifier identifier)
+                            target = identifier.Identifier;
+                        else
+                            throw new InvalidOperationException($"Bind back to {property.Value?.GetType().Name ?? "<null>"} is not supported for attached property");
+                        targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
+                            attachedValueType,
+                            attachedTypeFullName,
+                            propName,
+                            new QMValueSymbol<ITypeSymbol>(attachedValueType, target),
+                            property.Operator is ParsedPropertyOperator.BindBack ?
+                                BindingModes.TargetToSource :
+                                BindingModes.TwoWay,
+                            isDep,
+                            depName
+                        ));
+                        return;
+                    }
+                default:
+                    {
+                        targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
+                            attachedValueType,
+                            attachedTypeFullName,
+                            propName,
+                            Bind(property.Value, attachedValueType, tagInfo),
+                            property.Value is QuickMarkupForeign ?
+                                BindingModes.SourceToTarget : BindingModes.OneTime,
+                            isDep,
+                            depName
+                        ));
+                        return;
+                    }
+            }
+        }
+
         var targetPropSymbol = resolver.FindProperty(tagInfo.TagType, property.Key);
         var targetPropertyName = property.Key;
         var propertyTargetType = tagInfo.TagType;
