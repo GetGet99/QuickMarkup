@@ -234,6 +234,36 @@ public partial class ConditionalContentCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    bool ShowPanel = false;
+    <root>
+        <TestButton>
+            if (`ShowPanel`)
+                <TestPanel Name="panel" />
+            else
+                <TestText Text="text" />
+        </TestButton>
+    </root>
+    """)]
+public partial class ConditionalContentDifferentTypesCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    bool ShowPanel = false;
+    <root>
+        <TestButton>
+            <.Content>
+                if (`ShowPanel`)
+                    <TestPanel Name="panel" />
+                else
+                    <TestText Text="text" />
+            </.Content>
+        </TestButton>
+    </root>
+    """)]
+public partial class ConditionalSlotDifferentBranchTypesCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     bool ShouldShowOriginal;
     <root>
         holdButton=<TestComputedHoldButton IsHolding=>`ShouldShowOriginal` />

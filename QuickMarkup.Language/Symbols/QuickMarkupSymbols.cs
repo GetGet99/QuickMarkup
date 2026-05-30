@@ -88,7 +88,7 @@ public record class QMComponentRootMember<T>(
     IQMNodeChildSymbol Output,
     string OutputPropertyName = "MarkupNode"
 ) : IQMMemberSymbol;
-public record class QMAssignChildMember(string ChildPropertyPath, IQMNodeChildSymbol Child) : IQMMemberSymbol;
+public record class QMAssignChildMember<T>(string ChildPropertyPath, IQMNodeChildSymbol Child, T? ChildType = default) : IQMMemberSymbol;
 public record class QMAddChildMember<T>(
     string ChildPropertyPath,
     IQMNodeChildSymbol Child,

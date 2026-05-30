@@ -222,9 +222,10 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         foreach (var extra in contentChildren.Skip(1))
             BindSingleChildNodeForDiagnostics(extra, tagInfo);
 
-        targetCollection.Add(new QMAssignChildMember(
+        targetCollection.Add(new QMAssignChildMember<ITypeSymbol?>(
             tagInfo.ChildrenProperty!,
-            BindSingleChildNode(contentChildren[0], tagInfo)
+            BindSingleChildNode(contentChildren[0], tagInfo),
+            ChildType: tagInfo.ChildrenType
         ));
     }
 
@@ -700,7 +701,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         => member switch
         {
             QMAddChildMember<ITypeSymbol?> addChild => RequiresStructuralLowering(addChild.Child),
-            QMAssignChildMember assignChild => RequiresStructuralLowering(assignChild.Child),
+            QMAssignChildMember<ITypeSymbol?> assignChild => RequiresStructuralLowering(assignChild.Child),
             _ => false
         };
 

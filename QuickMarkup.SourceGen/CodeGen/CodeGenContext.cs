@@ -68,7 +68,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                 case QMAddChildMember<ITypeSymbol?> addChild:
                     CGenAddChildDirect(addChild, target);
                     break;
-                case QMAssignChildMember assignChild:
+                case QMAssignChildMember<ITypeSymbol?> assignChild:
                     CGenAssignChild(assignChild, target);
                     break;
                 case QMAddPropertyMember<ITypeSymbol?> addProp:
@@ -145,7 +145,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         }
     }
 
-    void CGenAssignChild(QMAssignChildMember assignChild, string target)
+    void CGenAssignChild(QMAssignChildMember<ITypeSymbol?> assignChild, string target)
     {
         switch (assignChild.Child)
         {
@@ -153,7 +153,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                 codeBuilder.AddPropertyAssign($"{target}.{assignChild.ChildPropertyPath}", CGenNodeValue(nodeChild));
                 break;
             case QMConditionalValueSymbol<ITypeSymbol?> conditional:
-                CGenConditionalSlot(conditional, $"{target}.{assignChild.ChildPropertyPath}");
+                CGenConditionalSlot(conditional, $"{target}.{assignChild.ChildPropertyPath}", assignChild.ChildType);
                 break;
             default:
                 throw new NotImplementedException();
@@ -289,7 +289,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
                         codeBuilder.AddPropertyAssign(property, CGenNodeValue(node));
                         break;
                     case QMConditionalValueSymbol<ITypeSymbol?> conditional:
-                        CGenConditionalSlot(conditional, property);
+                        CGenConditionalSlot(conditional, property, componentRoot.OutputType);
                         break;
                     case QMValueSymbol<ITypeSymbol?> value:
                         codeBuilder.AddPropertyAssign(property, CGen(value));
@@ -603,9 +603,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         }
     }
 
-    void CGenConditionalSlot(QMConditionalValueSymbol<ITypeSymbol?> conditional, string target)
+    void CGenConditionalSlot(QMConditionalValueSymbol<ITypeSymbol?> conditional, string target, ITypeSymbol? expectedType = null)
     {
-        var type = GetChildValueType(conditional);
+        var type = expectedType ?? GetChildValueType(conditional);
         var typeName = TypeName(type);
         var slot = NewVariable();
         codeBuilder.AppendLine($$"""

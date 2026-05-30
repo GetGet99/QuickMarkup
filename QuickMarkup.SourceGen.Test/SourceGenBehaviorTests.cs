@@ -290,6 +290,44 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ConditionalSingleChildWithDifferentBranchTypesCompilesAndRenders()
+    {
+        var page = new ConditionalContentDifferentTypesCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        // ShowPanel is false by default, so TestText should be the content
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("text", ((TestText)button.Content).Text);
+
+        page.ShowPanel = true;
+        ReactiveScheduler.Tick();
+
+        // Now TestPanel should be the content
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestPanel>(button.Content);
+    }
+
+    [TestMethod]
+    public void ConditionalSlotWithDifferentBranchTypesViaExplicitContentTag()
+    {
+        var page = new ConditionalSlotDifferentBranchTypesCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        // ShowPanel is false by default, so TestText should be the content
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("text", ((TestText)button.Content).Text);
+
+        page.ShowPanel = true;
+        ReactiveScheduler.Tick();
+
+        // Now TestPanel should be the content
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestPanel>(button.Content);
+    }
+
+    [TestMethod]
     public void ConditionalCollectionBlockPreservesSiblingOrder()
     {
         var page = new CollectionIfCase();
