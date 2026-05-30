@@ -33,3 +33,18 @@ record class QMBinderChildrenTooMany(AST Node, QMBinderTagInfo ParentTagInfo)
             _ => "unknown number of children"
         };
 }
+
+record class QMBinderMultipleComponentInterfacesError(AST Node, string TypeName)
+    : QMBinderError(Node, $"Type \"{TypeName}\" implements multiple QuickMarkup component interfaces. A type may implement at most one of IQuickMarkupComponent<T> or IQuickMarkupFragmentComponent<T>.");
+
+record class QMBinderAbstractComponentError(AST Node, string TypeName, string Reason)
+    : QMBinderError(Node, $"Type \"{TypeName}\" cannot be a QuickMarkup component: {Reason}");
+
+record class QMBinderComponentRootSingleNoChildrenError(AST Node, string TypeName)
+    : QMBinderError(Node, $"Single-output component \"{TypeName}\" requires exactly one content child in <root>, but none were found.");
+
+record class QMBinderFragmentComponentAsValueError(AST Node, string TypeName)
+    : QMBinderError(Node, $"Fragment component \"{TypeName}\" cannot be used as a property value. Fragment components can only appear in additive child collection contexts.");
+
+record class QMBinderResolvedComponentTypeError(AST Node, string TypeName)
+    : QMBinderError(Node, $"Component interface type parameter could not be resolved for type \"{TypeName}\".");

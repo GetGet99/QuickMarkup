@@ -120,13 +120,38 @@ class CodeTypeResolver(
                 continue;
 
             if (kind is not QMComponentKind.None)
-                return QMComponentKind.None;
+                continue;
 
             kind = nextKind;
             outputType = namedInterface.TypeArguments[0];
         }
 
         return kind;
+    }
+
+    public int CountComponentInterfaces(ITypeSymbol? symbol)
+    {
+        if (symbol is null)
+            return 0;
+
+        int count = 0;
+        foreach (var @interface in symbol.AllInterfaces)
+        {
+            if (@interface is not INamedTypeSymbol namedInterface ||
+                !namedInterface.IsGenericType ||
+                namedInterface.TypeArguments.Length is not 1)
+                continue;
+
+            var interfaceName = $"{namedInterface.ConstructedFrom.ContainingNamespace}.{namedInterface.ConstructedFrom.MetadataName}";
+            count += interfaceName switch
+            {
+                "QuickMarkup.Infra.IQuickMarkupComponent`1" => 1,
+                "QuickMarkup.Infra.IQuickMarkupFragmentComponent`1" => 1,
+                _ => 0
+            };
+        }
+
+        return count;
     }
 
     public ITypeSymbol? GetCollectionElementType(ITypeSymbol? collectionType)

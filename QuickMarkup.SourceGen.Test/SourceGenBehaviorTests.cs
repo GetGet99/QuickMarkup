@@ -121,6 +121,49 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ComponentIsSealedInGeneratedPartial()
+    {
+        Assert.IsTrue(typeof(StyledTestText).IsSealed);
+    }
+
+    [TestMethod]
+    public void ComponentCallbackTargetsComponentInstance()
+    {
+        var page = new ComponentCallbackTargetsComponentCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        var text = TestTreeAssert.Child<TestText>(panel.Children, 0);
+
+        Assert.AreEqual("from callback", text.Text);
+    }
+
+    [TestMethod]
+    public void ComponentRefPropertiesForwardToOutput()
+    {
+        var page = new ComponentNamedRefInstanceCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        var text = TestTreeAssert.Child<TestText>(panel.Children, 0);
+
+        Assert.AreEqual("named", text.Text);
+    }
+
+    [TestMethod]
+    public void ComponentInConditionalCollectionRendersConditionally()
+    {
+        var page = new ComponentInConditionalCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "conditional");
+
+        page.Show = false;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(0, panel.Children.Count);
+    }
+
+    [TestMethod]
     public void NumericLiteralAutoNewsOneParameterTargetType()
     {
         var page = new AutoNewCase();

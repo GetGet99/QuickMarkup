@@ -32,7 +32,20 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             ErrorUnknownType(tag.TagStart);
         var componentKind = resolver.GetComponentKind(type, out var componentOutputType);
         if (rootType is not null && componentKind is not QMComponentKind.None)
+        {
+            if (resolver.CountComponentInterfaces(type) > 1)
+                Error(new QMBinderMultipleComponentInterfacesError((AST.AST)tag.TagStart, type.FullNameWithoutAnnotation()));
+
+            if (type.IsStatic)
+                Error(new QMBinderAbstractComponentError((AST.AST)tag.TagStart, type.FullNameWithoutAnnotation(), "static types cannot be component roots."));
+            else if (type.IsAbstract)
+                Error(new QMBinderAbstractComponentError((AST.AST)tag.TagStart, type.FullNameWithoutAnnotation(), "abstract types cannot be component roots."));
+
+            if (componentOutputType is IErrorTypeSymbol)
+                Error(new QMBinderResolvedComponentTypeError((AST.AST)tag.TagStart, type.FullNameWithoutAnnotation()));
+
             return BindComponentRoot(tag, type, componentKind, componentOutputType);
+        }
         resolver.TryGetContentProperty(type, out var propSymbol, out var childrenMode);
         var childrenType = childrenMode is ChildrenModes.Add
             ? resolver.GetCollectionElementType(propSymbol?.Type)
@@ -80,7 +93,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             outputChildren.Add(child);
         }
 
-        if (outputChildren.Count > 0)
+        if (componentKind is QMComponentKind.Single && outputChildren.Count == 0)
+        {
+            Error(new QMBinderComponentRootSingleNoChildrenError((AST.AST)tag.TagStart, type.FullNameWithoutAnnotation()));
+        }
+        else if (outputChildren.Count > 0)
         {
             if (componentKind is QMComponentKind.Single)
             {
@@ -462,11 +479,14 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                     }
                 default:
                     {
+                        var attachedValue = Bind(property.Value, attachedValueType, tagInfo);
+                        if (attachedValue is QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment })
+                            Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
                         targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
                             attachedValueType,
                             attachedTypeFullName,
                             propName,
-                            Bind(property.Value, attachedValueType, tagInfo),
+                            attachedValue,
                             property.Value is QuickMarkupForeign ?
                                 BindingModes.SourceToTarget : BindingModes.OneTime,
                             isDep,
@@ -540,10 +560,13 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 else
                 {
                     // <QM Value=`Target` />
+                    var value = Bind(property.Value, targetType, tagInfo);
+                    if (value is QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment })
+                        Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
                         targetPropertyName,
-                        Bind(property.Value, targetType, tagInfo),
+                        value,
                         // treated as one way binding if it is foreign
                         // treated as assignment otherwise
                         property.Value is QuickMarkupForeign ?

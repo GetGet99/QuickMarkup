@@ -142,6 +142,66 @@ public partial class FragmentComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    string CallbackText = "";
+    <root>
+        <TestText Text=`CallbackText` />
+    </root>
+    """)]
+public partial class CallbackComponent : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            <CallbackComponent `x => x.CallbackText = "from callback"` />
+        </TestPanel>
+    </root>
+    """)]
+public partial class ComponentCallbackTargetsComponentCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string RefText = "";
+    <root>
+        <TestText Text=`RefText` />
+    </root>
+    """)]
+public partial class RefPropertyComponent : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            <RefPropertyComponent Name="myComp" RefText="named" />
+        </TestPanel>
+    </root>
+    """)]
+public partial class ComponentNamedRefInstanceCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string SimpleText = "";
+    <root>
+        <TestText Text=`SimpleText` />
+    </root>
+    """)]
+public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    bool Show = true;
+    <root>
+        <TestPanel>
+            if (`Show`) {
+                <SimpleTextComponent SimpleText="conditional" />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class ComponentInConditionalCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     <root>
         <AutoNewElement Radius=16 />
     </root>
