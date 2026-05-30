@@ -529,3 +529,68 @@ ObservableCollection<Animal> animals = [
 
 The key expression must be a C# literal expression in (backtick expression or legacy syntax).
 
+## QuickMarkup Components
+
+In case that you cannot subclass components, or wish to write component that returns multiple elements. QuickMarkup defines two interfaces for creating reusable UI components: `IQuickMarkupComponent<T>` and `IQuickMarkupFragmentComponent<T>`.
+
+### Single Child component
+
+Use `IQuickMarkupComponent<T>` when the component produces exactly **one** UI element.
+
+```cs
+[QuickMarkup("""
+    string Text = "";
+    <root>
+        <TextBlock Text=`Text` FontSize=16 />
+    </root>
+    """)]
+public partial class Label : IQuickMarkupComponent<TextBlock>;
+```
+
+**Consuming a single component from another QuickMarkup class:**
+
+```cs
+[QuickMarkup("""
+    <root>
+        <Label Text="Hello" HorizontalAlignment=Center />
+        <Label Text="World" FontSize=24 />
+    </root>
+    """)]
+public partial class MyPage : StackPanel;
+```
+
+Properties set on `<Label>` that don't exist on the `Label` class are **forwarded** to its `MarkupNode` (the `TextBlock`). So `HorizontalAlignment=Center` becomes `MarkupNode.HorizontalAlignment = Center`.
+
+### Multiple Child or Fragment Component
+
+Use when the component produces **multiple** UI elements.
+
+```cs
+[QuickMarkup("""
+    <root>
+        <TextBlock Text="Item A" />
+        <TextBlock Text="Item B" />
+        <TextBlock Text="Item C" />
+    </root>
+    """)]
+public partial class ItemList : IQuickMarkupFragmentComponent<TextBlock>;
+```
+
+**Consuming a fragment component from another QuickMarkup class:**
+
+```cs
+[QuickMarkup("""
+    <root>
+        <ItemList />
+        <TextBlock Text="Footer" />
+    </root>
+    """)]
+public partial class MyPage : StackPanel;
+```
+
+The `<ItemList />` expands inline — all three `TextBlock` children from the fragment component appear inside the `StackPanel` alongside the footer.
+
+### Limitations
+
+- A class may implement at most **one** of the two interfaces. Implementing both produces a compile-time error (`QMBinderMultipleComponentInterfacesError`).
+
