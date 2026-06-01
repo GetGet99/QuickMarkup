@@ -649,7 +649,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             case QuickMarkupParsedTag x:
                 return Bind(x);
             default:
-                return AddCapturedLocalNames(value, utils.Bind(value, type));
+                return AddCapturedLocalNames(value, utils.Bind(value, type, d => Warn(d)));
         }
         ;
     }
@@ -676,7 +676,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             : valueSymbol with { CapturedLocalNames = captures };
     }
     void ErrorUnknownProperty(AST.AST node, QMBinderTagInfo tagInfo, string propertyName)
-        => Error(new QMBinderPropertyUnknownError(node, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName, propertyName));
+        => Warn(new QMBinderPropertyUnknownError(node, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName, propertyName));
     void ErrorUnknownType(PositionedIdentifier identifier)
         => Error(new QMBinderTypeUnknownError(identifier, identifier.Name));
     void ErrorTagMismatched(string tagStartName, PositionedIdentifier endTag)

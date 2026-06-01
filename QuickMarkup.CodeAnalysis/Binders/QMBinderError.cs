@@ -50,7 +50,13 @@ record class QMBinderResolvedComponentTypeError(AST Node, string TypeName)
     : QMBinderError(Node, $"Component interface type parameter could not be resolved for type \"{TypeName}\".");
 
 record class QMBinderPropertyUnknownError(AST Node, string TypeName, string PropertyName)
-    : QMBinderError(Node, $"'{TypeName}' does not have a definition for '{PropertyName}'")
+    : QMBinderWarning(Node, $"'{TypeName}' does not have a definition for '{PropertyName}'")
+{
+    public override string ToString() => base.ToString();
+}
+
+record class QMBinderEnumMemberUnknownError(AST Node, string TypeName, string MemberName)
+    : QMBinderWarning(Node, $"'{TypeName}' does not contain a definition for '{MemberName}'")
 {
     public override string ToString() => base.ToString();
 }

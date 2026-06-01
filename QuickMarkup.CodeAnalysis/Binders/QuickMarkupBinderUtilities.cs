@@ -2,13 +2,14 @@ using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.AST;
+using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.CodeAnalysis;
 
 class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
 {
-    public IQMValueSymbol Bind(QuickMarkupValue? value, ITypeSymbol? type)
+    public IQMValueSymbol Bind(QuickMarkupValue? value, ITypeSymbol? type, Action<QMBinderWarning>? onError = null)
     {
         switch (value)
         {
@@ -39,6 +40,8 @@ class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
             case QuickMarkupIdentifier x:
                 if (type is null)
                     throw new NotImplementedException($"Cannot infer type for the enum member {x.Identifier}");
+                if (type.TypeKind == TypeKind.Enum && type.GetMembers().All(m => m.Name != x.Identifier))
+                    onError?.Invoke(new QMBinderEnumMemberUnknownError(x, type.FullNameWithoutAnnotation(), x.Identifier));
                 return Value(type, $"{type.FullName()}.{x.Identifier}");
             case QuickMarkupValueList:
             case QuickMarkupParsedTag:

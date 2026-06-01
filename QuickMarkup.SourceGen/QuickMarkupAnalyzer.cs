@@ -67,7 +67,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorGeneral,
         BindErrorChildrenTooMany,
         TagCloseMismatchedError,
-        BindErrorPropertyUnknown
+        BindErrorPropertyUnknown,
+        BindErrorEnumMemberUnknown
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -114,6 +115,15 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
     readonly static DiagnosticDescriptor BindErrorPropertyUnknown = new(
         "QM1006",
         "QuickMarkup unknown property",
+        "{0}",
+        "QuickMarkup",
+        DiagnosticSeverity.Warning,
+        true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]
+    );
+    readonly static DiagnosticDescriptor BindErrorEnumMemberUnknown = new(
+        "QM1007",
+        "QuickMarkup unknown enum member",
         "{0}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
@@ -287,6 +297,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                                 BindErrorPropertyUnknown,
                                 loc,
                                 propertyUnknown.Message
+                            ));
+                        }
+                        else if (error is QMBinderEnumMemberUnknownError enumMemberUnknown)
+                        {
+                            endContext.ReportDiagnostic(Diagnostic.Create(
+                                BindErrorEnumMemberUnknown,
+                                loc,
+                                enumMemberUnknown.Message
                             ));
                         }
                         else if (error is QMBinderChildrenTooMany childrenTooMany)
