@@ -45,14 +45,16 @@ double Value = 0;          // creates Reference<double>, property Value, backing
 double Output => `A + B`;  // creates Computed<double>, property Output, backing field OutputComp
 ```
 
-References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change.
+References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change. Computed variables are lazily initialized — not evaluated until first accessed.
+
+References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed.
 
 ## Markup Syntax
 
 ### Tags
 
 ```
-<TypeName Property=Value>
+<TypeName Property=Value SomeClass.AttachedPropertyName=Value>
     <Child />
 </TypeName>
 <SelfClosing Property=Value />
@@ -119,6 +121,21 @@ myButton = <Button Content="Click" />
 ```
 
 The variable `myButton` becomes a field on the partial class, usable in code-behind methods.
+
+Note that referencing this element in `<setup>` tag would return `null`. The element is only defined from its point on in the markup. (ie. you cannot use the element above), see order of operations.
+
+#### Tag Variable Capture as a reference
+
+Use keyword `ref` to generate a reference pair.
+
+```
+<TextBox AutomationProperties.LabeledBy=`InputLabel`/>
+ref InputLabel = <TextBlock AutomationProperties.AccessibilityView=Raw Text="subtitle" />
+```
+
+On the initial run `InputLabel` will be null, but after `InputLabel` is set, `` AutomationProperties.LabeledBy=`InputLabel` `` will be rerun.
+
+`ref` variable capture is a bit more expensive but does not really provide much value other than use case above, so they are only useful in minimal case where you need to reference MyButton before the element is generated. Try to avoid using `ref` tag variable capture everywhere.
 
 ### Inline Tag as Property Value
 
@@ -218,6 +235,41 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 });
 ```
 
+## Order of operations
+
+Inside the `Init()` call or implicitly created constructor,
+
+1. `<setup>` tag is run.
+2. QuickMarkup goes through each element, one by one, running in order.
+For example:
+```
+<root> // 1.
+    <StackPanel> // 2.
+        <TextBlock /> // 3.
+        <TextBox /> // 4.
+    </StackPanel>
+    stack = <StackPanel> // 5.
+        <TextBlock /> // 6.
+        <TextBox /> // 7.
+    </StackPanel>
+</root>
+```
+
+`stack` variable is assigned and is not null from point `5.` onwards only.
+
+3. For each element, properties and extension methods are evaluated from left to right.
+
+```
+// 0. StackPanel is initialized, and `sp` is set to a new stack panel
+sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
+    /* 3. */ ThirdExtension
+    /* 4. */ `x => Debug.WriteLine($"This is run on the 4th order, and this should say true: '{sp == x}'")`
+    /* 5. */ Fifth=5
+/>
+```
+
+4. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
+
 ## Components
 
 Reusable QuickMarkup components implement one of two interfaces (from `QuickMarkup.WinUI` / `QuickMarkup.UWP`):
@@ -244,6 +296,8 @@ Consuming a component:
 For WinUI/UWP project with platform specific package installed, Non-generic versions (`IQuickMarkupComponent`, `IQuickMarkupFragmentComponent`) default `T` to `UIElement`.
 
 For many cases, we recommend subclassing elements directly, ie. `partial class MyComponent : Grid`, but for case of sealed elements (ie. WinUI `Border`/`TextBlock` are sealed) or multiple children component/fragment, you may need these.
+
+A class may implement at most **one** of the two interfaces. Implementing both produces a compile-time error.
 
 ## Reactivity Infrastructure
 
@@ -285,6 +339,8 @@ public MainWindow()
 }
 ```
 
+Only relevant if you start a new project from scratch.
+
 ### Using ThemeResources / ThemeBrushes in Markup
 
 ```csharp
@@ -307,21 +363,4 @@ partial class MyPage : Page
 
 - Define **global usings** for common namespaces (`QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`, etc.) so markup stays clean.
 - Define **C# extension methods** like (`CenterH`, `CenterV`, `Center`, `Right`, `Bottom`, `StretchH`, `StretchV`) for layout shortcuts.
-- Define **C# extension properties** (e.g., `IsVisible`, `Grid_Row`, `Grid_Column`) to work around QuickMarkup not supporting attached properties directly.
-- The class must be `partial` (source generator emits the other part). The base class should be a UI element (`Page`, `Grid`, `StackPanel`, etc.).
-
-### `CreateReadOnlyReference` Extension
-
-This bridges `IReadOnlyBinding<T>` (from `Get.UI.Data`) into QuickMarkup's reactivity system:
-
-```csharp
-extension<T>(IReadOnlyBinding<T> prop)
-{
-    public Reference<T> CreateReadOnlyReference()
-    {
-        var r = new Reference<T>(prop.CurrentValue);
-        prop.ValueChanged += (_, val) => r.Value = val;
-        return r;
-    }
-}
-```
+- The class must be `partial` (source generator emits the other part). The base class should be a UI element (`Page`, `Grid`, `StackPanel`, etc.) or QuickMarkup component interface mentioned above.

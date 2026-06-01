@@ -26,7 +26,7 @@ global using static QuickMarkup.Infra.QuickRefs;
 
 ## Reference Declarations
 
-Declaring variables in QuickMarkup will create a reference variable. Declaring variables with `=>` syntax will create a computed variable.
+Declaring variables in QuickMarkup before `<setup>` tag creates reactive references. Use `=>` for computed variables — they cache and auto-re-evaluate when dependencies change.
 
 ```cs
 // Inside QUickMarkup
@@ -39,7 +39,9 @@ double SecondOperand = 2;
 double Output => `FirstOperand + SecondOperand`;
 ```
 
-Will generate the following fields:
+References get a `*Prop` backing field, computed get `*Comp` — accessible directly if needed. Computed variable is lazily initialized and caches is value until dependent references chagne.
+
+Above example will generate the following fields:
 
 ```cs
 partial class Calc {
@@ -87,12 +89,6 @@ double Output => `FirstOperand + SecondOperand`;
 </root>
 ```
 
-Original references will have `Prop` suffix and original computed variables will have `Comp` suffix. If needed, you may gather references to computed variables.
-
-### Evaluation Order
-
-Refs and computed will be lazily initialized. They will NOT be evaluated until they're accessed for the first time.
-
 ## Setup
 
 Setup is a place to define C# code to be run before UI is generated. UI will have access to any variables declared in setup tag, but these variables will not be exported outside this scope.
@@ -126,6 +122,26 @@ Self-closing tag is also supported
 
 ```xml
 <UIClassName Property1=Value Property2=Value />
+```
+
+You can also give a name, will be set as backing field.
+
+```xml
+myUIElement = <UIClassName Property1=Value Property2=Value />
+```
+
+Use `ref` when you need the variable to be a reactive reference (starts null, set after element creation):
+
+```cs
+ref InputLabel = <TextBlock Text="subtitle" />
+```
+
+Useful for cross-referencing elements (e.g., `` AutomationProperties.LabeledBy=`InputLabel` ``) backward. Without `ref`, reading the variable before the element is created returns `null`. Prefer plain capture unless cross-referencing is needed.
+
+Example:
+```cs
+<TextBox AutomationProperties.LabeledBy=`InputLabel`/>
+ref InputLabel = <TextBlock AutomationProperties.AccessibilityView=Raw Text="subtitle" />
 ```
 
 ### Comments
@@ -364,6 +380,14 @@ It will be evaluated immediately once with input being the object created. This 
 
 On object initialization, QuickMarkup properties are evaluated in order they are defined. As references change, specific properties will be reevaluated in no particular order.
 
+#### Root Tag With Properties
+
+`<root>` can carry properties that apply to the class itself (since the class inherits from a UI type):
+
+```cs
+<root Background=`bgBrush` CornerRadius=16 Margin=16 Padding=8 />
+```
+
 ### QuickMarkup Children
 
 As seen in previous examples, QuickMarkup can declare nested statemnts like HTML or XAML does.
@@ -593,4 +617,70 @@ The `<ItemList />` expands inline — all three `TextBlock` children from the fr
 ### Limitations
 
 - A class may implement at most **one** of the two interfaces. Implementing both produces a compile-time error (`QMBinderMultipleComponentInterfacesError`).
+
+## Bootstrapping
+
+For new WinUI/UWP projects, initialize the reactive scheduler once on the UI thread before any QuickMarkup page is created:
+
+```csharp
+public MainWindow()
+{
+    this.InitializeComponent();
+    QuickMarkup.WinUI.ReactiveInitializer.InitReactiveScheduler();
+    Init();
+}
+```
+
+For other frameworks, adapt the pattern — the scheduler needs a periodic tick on the UI thread:
+
+```csharp
+ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
+{
+    _ = Dispatcher.TryRunAsync(CoreDispatcherPriority.High, ReactiveScheduler.Tick);
+});
+```
+
+## Reactivity Infrastructure (C# Code-Behind)
+
+For advanced use outside markup:
+
+```csharp
+var r = Ref(0);                      // Reference<int>
+var c = Computed(() => r.Value + 1);  // Computed<int>
+r.Watch(val => { ... });             // callback on change
+r.Watch(val => { ... }, immediate: true); // also runs immediately
+Effect(() => { ... }, ref1, ref2);   // runs when any listed ref changes
+```
+
+`ReferenceTracker.NoCapture(() => expr)` reads a reference without tracking dependencies.
+
+## QuickMarkup Packages (WinUI / UWP)
+
+NuGet: `QuickMarkup.WinUI` (WinUI 3), `QuickMarkup.UWP` (UWP)
+
+- **`ReactiveInitializer.InitReactiveScheduler()`** — call once on the UI thread.
+- **`ThemeResources.Get<T>(string resourceName)`** — returns a `Reference<T?>` that re-resolves on theme change.
+- **`ThemeBrushes`** — static properties for common brushes (`Accent`, `PrimaryText`, `SolidBackground`, `CardBackground`, `DividerStroke`, `SystemSuccess`, etc.).
+
+Usage in markup:
+
+```csharp
+[QuickMarkup("""
+    using QuickMarkup.WinUI;
+    <setup>
+        var theme = UseThemeBrushes(this);
+    </setup>
+    <root Background=`theme.SolidBackground`>
+        <TextBlock Foreground=`theme.PrimaryText` Text="Hello" />
+    </root>
+    """)]
+partial class MyPage : Page { public MyPage() { Init(); } }
+```
+
+## Best Practices
+
+- Define **global usings** for common namespaces (`QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`) to keep markup clean.
+- Write **extension methods** for layout shortcuts (`CenterH`, `CenterV`, `StretchH`, etc.).
+- The class must be `partial`. Base class should be a UI element (`Page`, `Grid`, `StackPanel`) or implement `IQuickMarkupComponent<T>` / `IQuickMarkupFragmentComponent<T>`.
+- Prefer subclassing UI elements directly over component interfaces when possible (avoids property-forwarding overhead).
 
