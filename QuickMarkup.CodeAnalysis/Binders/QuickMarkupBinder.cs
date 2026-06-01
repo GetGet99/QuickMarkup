@@ -64,7 +64,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             tag.Name,
             componentKind,
             componentOutputType,
-            CodeTypeResolver.ComponentOutputPropertyName
+            CodeTypeResolver.ComponentOutputPropertyName,
+            tag.IsRef
         );
     }
 
@@ -127,7 +128,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             tag.Name,
             componentKind,
             componentOutputType,
-            CodeTypeResolver.ComponentOutputPropertyName);
+            CodeTypeResolver.ComponentOutputPropertyName,
+            tag.IsRef);
     }
     QMConstructor Bind(QuickMarkupConstructor constructor, QMBinderTagInfo tagInfo)
     {

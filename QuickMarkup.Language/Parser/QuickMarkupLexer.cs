@@ -150,6 +150,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         QMCloseTagOpen,
         [Regex(@">", nameof(QMCloseTagCloseHandler), State = LexerStates.InsideQMCloseTag)]
         QMCloseTagClose,
+        [Regex(@"ref", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        Ref,
         [Regex(@"var", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         Var,
         [Regex(@"foreach", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]

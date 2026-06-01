@@ -51,7 +51,8 @@ public record class QMNodeSymbol<T>(
     string? Name,
     QMComponentKind ComponentKind = QMComponentKind.None,
     T? ComponentOutputType = default,
-    string ComponentOutputPropertyName = "MarkupNode"
+    string ComponentOutputPropertyName = "MarkupNode",
+    bool IsRef = false
 ) : IQMNodeChildSymbol, IQMValueSymbol;
 public record class QMForNodeSymbol<T>(
     QMForKind Kind,

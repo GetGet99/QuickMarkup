@@ -500,11 +500,17 @@ public partial class AttachedPropertyChildTagAssignCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
-    int RowIndex = 42;
     <root>
-        <TestText>
-            <Grid.Row>`RowIndex`</Grid.Row>
-        </TestText>
+        ref TB = <TestText Text="ref named tag" />
     </root>
     """)]
-public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
+public partial class RefNamedTagCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Text = "ref binding";
+    <root>
+        ref TB = <TestText Text=`Text` />
+    </root>
+    """)]
+public partial class RefNamedTagBindingCase : TestRoot;

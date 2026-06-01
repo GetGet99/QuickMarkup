@@ -544,4 +544,27 @@ public sealed class SourceGenBehaviorTests
 
         Assert.AreEqual(99, Grid.GetRow(child));
     }
+
+    [TestMethod]
+    public void RefNamedTagCreatesElementInTree()
+    {
+        var page = new RefNamedTagCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("ref named tag", text.Text);
+    }
+
+    [TestMethod]
+    public void RefNamedTagElementSupportsPropertyBindings()
+    {
+        var page = new RefNamedTagBindingCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("ref binding", text.Text);
+
+        page.Text = "ref updated";
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("ref updated", text.Text);
+    }
 }

@@ -34,7 +34,8 @@ public record class QuickMarkupParsedTag(
     ListAST<IQMNodeChild>? Children,
     PositionedIdentifier? EndTagName,
     bool IsSelfClosing,
-    string? Name = null
+    string? Name = null,
+    bool IsRef = false
 ) : QuickMarkupValue, ISFCTag
 {
     public bool HasMismatchedEndTag => !(IsSelfClosing || (EndTagName is not null && TagStart.DoesMatch(EndTagName.Name)));

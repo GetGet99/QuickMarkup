@@ -168,6 +168,13 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             ParsedTag, AS, "tag",
             nameof(AttachName)
         )]
+        [Rule(
+            Terminal.Ref,
+            Terminal.Identifier, AS, "name",
+            Terminal.Equal,
+            ParsedTag, AS, "tag",
+            nameof(AttachRefName)
+        )]
         NamedTag,
         // CONSTRUCTOR
         [Type<QuickMarkupConstructor>]
@@ -427,6 +434,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         => new(header.VarType, header.VarName, header.Iterable, body, header.IndexVarName, header.Key);
     static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
         => tag with { Name = name };
+    static QuickMarkupParsedTag AttachRefName(string name, QuickMarkupParsedTag tag)
+        => tag with { Name = name, IsRef = true };
     static PositionedIdentifier AddDot(string name)
         => new($".{name}");
     static PositionedIdentifier AddDotted(string typeName, string tagName)

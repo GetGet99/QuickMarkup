@@ -28,6 +28,19 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
             varName = NewVariable();
             codeBuilder.AppendLine($"{node.Type?.FullName() ?? "QM_UnknownType"} {varName} = {constructor};");
         }
+        else if (node.IsRef)
+        {
+            var name = node.Name!;
+            var type = node.Type?.FullName() ?? "QM_UnknownType";
+            var nullableType = type + "?";
+            var fieldName = name + "Prop";
+
+            membersBuilder.AppendLine($"private readonly global::QuickMarkup.Infra.Reference<{nullableType}> {fieldName} = new(null);");
+            membersBuilder.AppendLine($"private {nullableType} {name} => {fieldName}.Value;");
+            codeBuilder.AppendLine($"{fieldName}.Value = {constructor};");
+
+            varName = $"{fieldName}.Value!";
+        }
         else
         {
             varName = node.Name!;
