@@ -67,7 +67,10 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorChildrenTooMany,
         TagCloseMismatchedError,
         BindErrorPropertyUnknown,
-        BindErrorEnumMemberUnknown
+        BindErrorEnumMemberUnknown,
+        BindErrorTypeUnknown,
+        BindErrorTagMismatched,
+        BindErrorTagUnexpected
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -123,6 +126,30 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "{0}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorTypeUnknown = new(
+        "QM1008",
+        "QuickMarkup unknown type",
+        "Unknown type '{0}'",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorTagMismatched = new(
+        "QM1009",
+        "QuickMarkup mismatched ending tag",
+        "Mismatched ending tag: <{0}>...</{1}>",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorTagUnexpected = new(
+        "QM1010",
+        "QuickMarkup unexpected tag",
+        "Expecting <{0} />, but got <{1} />",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
         true
     );
 
@@ -255,10 +282,10 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     e.Message
                 ));
             }
-            foreach (var error in binder.Diagnostics)
+            foreach (var diagnostic in binder.Diagnostics)
             {
-                var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
-                if (error is QMBinderPropertyUnknownError propertyUnknown)
+                var loc = locationProvider.GetLocation(diagnostic.Node.Start, diagnostic.Node.End);
+                if (diagnostic is QMBinderPropertyUnknownError propertyUnknown)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorPropertyUnknown,
@@ -266,7 +293,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         propertyUnknown.Message
                     ));
                 }
-                else if (error is QMBinderEnumMemberUnknownError enumMemberUnknown)
+                else if (diagnostic is QMBinderEnumMemberUnknownError enumMemberUnknown)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorEnumMemberUnknown,
@@ -274,7 +301,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         enumMemberUnknown.Message
                     ));
                 }
-                else if (error is QMBinderChildrenTooMany childrenTooMany)
+                else if (diagnostic is QMBinderChildrenTooMany childrenTooMany)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorChildrenTooMany,
@@ -283,12 +310,38 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         childrenTooMany.Expecting
                     ));
                 }
+                else if (diagnostic is QMBinderTypeUnknownError typeUnknown)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorTypeUnknown,
+                        loc,
+                        typeUnknown.TypeName
+                    ));
+                }
+                else if (diagnostic is QMBinderTagMismatchedError tagMismatched)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorTagMismatched,
+                        loc,
+                        tagMismatched.TagStart,
+                        tagMismatched.TagEnd
+                    ));
+                }
+                else if (diagnostic is QMBinderTagUnexpectedError tagUnexpected)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorTagUnexpected,
+                        loc,
+                        tagUnexpected.ExpectedTag,
+                        tagUnexpected.TagName
+                    ));
+                }
                 else
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorGeneral,
                         loc,
-                        error.ToString()
+                        diagnostic.Message
                     ));
                 }
             }
