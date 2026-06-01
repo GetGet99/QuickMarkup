@@ -66,7 +66,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         ParseErrorUnexpectedEnding,
         BindErrorGeneral,
         BindErrorChildrenTooMany,
-        TagCloseMismatchedError
+        TagCloseMismatchedError,
+        BindErrorPropertyUnknown
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -109,6 +110,15 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "QuickMarkup",
         DiagnosticSeverity.Error,
         true
+    );
+    readonly static DiagnosticDescriptor BindErrorPropertyUnknown = new(
+        "QM1006",
+        "QuickMarkup unknown property",
+        "{0}",
+        "QuickMarkup",
+        DiagnosticSeverity.Warning,
+        true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]
     );
 
     public override void Initialize(AnalysisContext context)
@@ -271,7 +281,15 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     foreach (var error in binder.Diagnostics)
                     {
                         var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
-                        if (error is QMBinderChildrenTooMany childrenTooMany)
+                        if (error is QMBinderPropertyUnknownError propertyUnknown)
+                        {
+                            endContext.ReportDiagnostic(Diagnostic.Create(
+                                BindErrorPropertyUnknown,
+                                loc,
+                                propertyUnknown.Message
+                            ));
+                        }
+                        else if (error is QMBinderChildrenTooMany childrenTooMany)
                         {
                             endContext.ReportDiagnostic(Diagnostic.Create(
                                 BindErrorChildrenTooMany,

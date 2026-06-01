@@ -509,6 +509,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             targetPropertyName = $"{CodeTypeResolver.ComponentOutputPropertyName}.{property.Key}";
             propertyTargetType = tagInfo.ComponentOutputType;
         }
+        if (targetPropSymbol is null &&
+            property.Operator is ParsedPropertyOperator.Assign or ParsedPropertyOperator.BindBack or ParsedPropertyOperator.BindTwoWay)
+        {
+            ErrorUnknownProperty(property, tagInfo, property.Key);
+        }
         var targetType = targetPropSymbol?.Type;
         switch (property.Operator)
         {
@@ -670,6 +675,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             ? symbol
             : valueSymbol with { CapturedLocalNames = captures };
     }
+    void ErrorUnknownProperty(AST.AST node, QMBinderTagInfo tagInfo, string propertyName)
+        => Error(new QMBinderPropertyUnknownError(node, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName, propertyName));
     void ErrorUnknownType(PositionedIdentifier identifier)
         => Error(new QMBinderTypeUnknownError(identifier, identifier.Name));
     void ErrorTagMismatched(string tagStartName, PositionedIdentifier endTag)
