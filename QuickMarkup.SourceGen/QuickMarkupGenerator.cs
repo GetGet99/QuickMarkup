@@ -41,7 +41,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             .Select((x, ct) =>
             {
                 var (markup, compilation) = x;
-                return BuildGeneratedTypeMembers(markup, compilation, ct);
+                return QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(markup, compilation, ct);
             })
             .Collect()
             .Select((items, _) => new QuickMarkupGeneratedMemberTable(items.Where(x => x is not null).Select(x => x!.Value)));
@@ -77,7 +77,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
                     var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
                     var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
-                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && HasComponentRootOutput(template);
+                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template);
                     if (shouldGenerateComponentOutput)
                     {
                         if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
@@ -314,97 +314,4 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             searchTypeName = searchTypeName[..idx];
         return compilation.GetTypeByMetadataName(searchTypeName);
     }
-
-    static QuickMarkupGeneratedTypeMembers? BuildGeneratedTypeMembers(
-        QuickMarkupParsedAttribute markup,
-        Compilation compilation,
-        CancellationToken ct)
-    {
-        var target = markup.Target;
-        if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out _))
-            return null;
-
-        var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, target.Namespace);
-        var binder = new QuickMarkupBinder(resolver, failFast: true);
-        var refs = binder.BindRefDeclarations(markup.AST.Refs, typeSymbol);
-        var properties = new Dictionary<string, QuickMarkupGeneratedPropertySymbol>();
-        var unknownTypes = typeSymbol.TypeParameters.Length > 0;
-        var componentKind = resolver.GetComponentKind(typeSymbol, out var componentOutputType);
-
-        foreach (var @ref in refs)
-        {
-            AddGeneratedProperty(
-                properties,
-                new(
-                    @ref.Name,
-                    unknownTypes ? null : TypeName(@ref.RefType),
-                    @ref.IsPrivate,
-                    @ref.IsComputedDeclaration
-                        ? QuickMarkupGeneratedPropertyKind.ComputedValue
-                        : QuickMarkupGeneratedPropertyKind.RefValue));
-
-            var backingName = @ref.IsComputedDeclaration
-                ? $"{@ref.Name}Comp"
-                : $"{@ref.Name}Prop";
-            var backingType = unknownTypes
-                ? null
-                : ConstructBackingTypeName(@ref.RefType, @ref.IsComputedDeclaration);
-
-            AddGeneratedProperty(
-                properties,
-                new(
-                    backingName,
-                    backingType,
-                    @ref.IsPrivate,
-                    @ref.IsComputedDeclaration
-                        ? QuickMarkupGeneratedPropertyKind.ComputedBacking
-                        : QuickMarkupGeneratedPropertyKind.RefBacking));
-
-            ct.ThrowIfCancellationRequested();
-        }
-
-        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(markup.AST.Template))
-        {
-            var outputTypeName = unknownTypes
-                ? null
-                : componentKind is QMComponentKind.Fragment
-                    ? $"global::QuickMarkup.Infra.FragmentBlock<{TypeName(componentOutputType) ?? "object"}>"
-                    : TypeName(componentOutputType);
-            AddGeneratedProperty(
-                properties,
-                new(
-                    CodeTypeResolver.ComponentOutputPropertyName,
-                    outputTypeName,
-                    false,
-                    QuickMarkupGeneratedPropertyKind.ComponentOutput));
-        }
-
-        return new(target.FullTypeName, properties);
-    }
-
-    static void AddGeneratedProperty(
-        Dictionary<string, QuickMarkupGeneratedPropertySymbol> properties,
-        QuickMarkupGeneratedPropertySymbol property)
-    {
-        if (!properties.ContainsKey(property.Name))
-            properties.Add(property.Name, property);
-    }
-
-    static string? ConstructBackingTypeName(ITypeSymbol? valueType, bool isComputed)
-    {
-        var valueTypeName = TypeName(valueType);
-        if (valueTypeName is null)
-            return null;
-
-        return isComputed
-            ? $"global::QuickMarkup.Infra.Computed<{valueTypeName}>"
-            : $"global::QuickMarkup.Infra.Reference<{valueTypeName}>";
-    }
-
-    static string? TypeName(ITypeSymbol? type)
-        => type?.FullName();
-
-    static bool HasComponentRootOutput(QuickMarkupParsedTag? template)
-        => template?.Children?.Any(static child => child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart }) ?? false;
-
 }
