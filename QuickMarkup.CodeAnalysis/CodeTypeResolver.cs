@@ -200,6 +200,22 @@ class CodeTypeResolver(
     public ResolvedProperty? FindProperty(ITypeSymbol? type, string property)
         => generatedMembers.FindProperty(type, property, currentTypeName, ResolveGeneratedPropertyType);
 
+    public HashSet<string> GetPropertyNames(ITypeSymbol type)
+    {
+        var names = new HashSet<string>();
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers())
+            {
+                if (member is IPropertySymbol prop)
+                    names.Add(prop.Name);
+            }
+        }
+        foreach (var name in generatedMembers.GetGeneratedPropertyNames(type))
+            names.Add(name);
+        return names;
+    }
+
     ITypeSymbol? ResolveGeneratedPropertyType(string typeName)
         => GetTypeSymbol(typeName);
 

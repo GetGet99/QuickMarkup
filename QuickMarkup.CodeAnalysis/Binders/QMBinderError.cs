@@ -49,14 +49,44 @@ record class QMBinderFragmentComponentAsValueError(AST Node, string TypeName)
 record class QMBinderResolvedComponentTypeError(AST Node, string TypeName)
     : QMBinderError(Node, $"Component interface type parameter could not be resolved for type \"{TypeName}\".");
 
-record class QMBinderPropertyUnknownError(AST Node, string TypeName, string PropertyName)
-    : QMBinderWarning(Node, $"'{TypeName}' does not have a definition for '{PropertyName}'")
+record class QMBinderPropertyUnknownError(AST Node, string TypeName, string PropertyName, string[]? Suggestions = null)
+    : QMBinderWarning(Node, BuildMessage(TypeName, PropertyName, Suggestions))
 {
+    static string BuildMessage(string typeName, string propertyName, string[]? suggestions)
+    {
+        var msg = $"'{typeName}' does not have a definition for '{propertyName}'";
+        return QMDiagnosticSuggestion.AppendSuggestions(msg, suggestions);
+    }
     public override string ToString() => base.ToString();
 }
 
-record class QMBinderEnumMemberUnknownError(AST Node, string TypeName, string MemberName)
-    : QMBinderWarning(Node, $"'{TypeName}' does not contain a definition for '{MemberName}'")
+record class QMBinderEnumMemberUnknownError(AST Node, string TypeName, string MemberName, string[]? Suggestions = null)
+    : QMBinderWarning(Node, BuildMessage(TypeName, MemberName, Suggestions))
 {
+    static string BuildMessage(string typeName, string memberName, string[]? suggestions)
+    {
+        var msg = $"'{typeName}' does not contain a definition for '{memberName}'";
+        return QMDiagnosticSuggestion.AppendSuggestions(msg, suggestions);
+    }
     public override string ToString() => base.ToString();
+}
+
+static class QMDiagnosticSuggestion
+{
+    public static string AppendSuggestions(string message, string[]? suggestions)
+    {
+        if (suggestions is not { Length: > 0 })
+            return message;
+
+        return suggestions.Length switch
+        {
+            1 => $"{message}. Did you mean '{suggestions[0]}'?",
+            _ => $"{message}. Did you mean {FormatMultiple(suggestions)}?"
+        };
+    }
+
+    static string FormatMultiple(string[] suggestions)
+        => suggestions.Length == 2
+            ? $"'{suggestions[0]}' or '{suggestions[1]}'"
+            : $"'{suggestions[0]}', '{suggestions[1]}', or '{suggestions[2]}'";
 }

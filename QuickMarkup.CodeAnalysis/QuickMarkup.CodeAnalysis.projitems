@@ -9,6 +9,7 @@
     <Import_RootNamespace>QuickMarkup.CodeAnalysis</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)StringSimilarity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\QMBinderError.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\QuickMarkupBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\Binder.cs" />

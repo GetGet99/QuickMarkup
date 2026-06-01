@@ -676,7 +676,21 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             : valueSymbol with { CapturedLocalNames = captures };
     }
     void ErrorUnknownProperty(AST.AST node, QMBinderTagInfo tagInfo, string propertyName)
-        => Warn(new QMBinderPropertyUnknownError(node, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName, propertyName));
+    {
+        var typeName = tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName;
+        string[]? suggestions = null;
+        if (tagInfo.TagType is not null)
+        {
+            var candidates = resolver.GetPropertyNames(tagInfo.TagType);
+            if (tagInfo.ComponentKind is QMComponentKind.Single && tagInfo.ComponentOutputType is not null)
+            {
+                foreach (var name in resolver.GetPropertyNames(tagInfo.ComponentOutputType))
+                    candidates.Add(name);
+            }
+            suggestions = StringSimilarity.GetSuggestions(propertyName, candidates);
+        }
+        Warn(new QMBinderPropertyUnknownError(node, typeName, propertyName, suggestions));
+    }
     void ErrorUnknownType(PositionedIdentifier identifier)
         => Error(new QMBinderTypeUnknownError(identifier, identifier.Name));
     void ErrorTagMismatched(string tagStartName, PositionedIdentifier endTag)

@@ -83,6 +83,18 @@ sealed class QuickMarkupGeneratedMemberTable
         return null;
     }
 
+    public IEnumerable<string> GetGeneratedPropertyNames(ITypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (TryGetTypeMembers(current, out var members, out _))
+            {
+                foreach (var name in members.Properties.Keys)
+                    yield return name;
+            }
+        }
+    }
+
     bool TryGetTypeMembers(
         ITypeSymbol type,
         out QuickMarkupGeneratedTypeMembers members,

@@ -41,7 +41,11 @@ class QuickMarkupBinderUtilities(CodeTypeResolver resolver)
                 if (type is null)
                     throw new NotImplementedException($"Cannot infer type for the enum member {x.Identifier}");
                 if (type.TypeKind == TypeKind.Enum && type.GetMembers().All(m => m.Name != x.Identifier))
-                    onError?.Invoke(new QMBinderEnumMemberUnknownError(x, type.FullNameWithoutAnnotation(), x.Identifier));
+                {
+                    var candidates = type.GetMembers().OfType<IFieldSymbol>().Where(f => f.HasConstantValue).Select(f => f.Name);
+                    var suggestions = StringSimilarity.GetSuggestions(x.Identifier, candidates);
+                    onError?.Invoke(new QMBinderEnumMemberUnknownError(x, type.FullNameWithoutAnnotation(), x.Identifier, suggestions));
+                }
                 return Value(type, $"{type.FullName()}.{x.Identifier}");
             case QuickMarkupValueList:
             case QuickMarkupParsedTag:
