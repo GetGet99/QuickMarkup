@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Get.EasyCSharp.GeneratorTools;
 using Get.Lexer;
@@ -92,8 +91,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "{0}",
         "QuickMarkup",
         DiagnosticSeverity.Error,
-        true,
-        customTags: [WellKnownDiagnosticTags.CompilationEnd]
+        true
     );
     readonly static DiagnosticDescriptor BindErrorChildrenTooMany = new(
         "QM1004",
@@ -101,8 +99,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "Too many children were provided, <{0}> expects {1}",
         "QuickMarkup",
         DiagnosticSeverity.Error,
-        true,
-        customTags: [WellKnownDiagnosticTags.CompilationEnd]
+        true
     );
     readonly static DiagnosticDescriptor TagCloseMismatchedError = new(
         "QM1005",
@@ -118,8 +115,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "{0}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
-        true,
-        customTags: [WellKnownDiagnosticTags.CompilationEnd]
+        true
     );
     readonly static DiagnosticDescriptor BindErrorEnumMemberUnknown = new(
         "QM1007",
@@ -127,8 +123,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "{0}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
-        true,
-        customTags: [WellKnownDiagnosticTags.CompilationEnd]
+        true
     );
 
     public override void Initialize(AnalysisContext context)
@@ -137,196 +132,166 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(
             GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics
         );
-        context.RegisterCompilationStartAction(compilationStartContext =>
+        context.RegisterSyntaxNodeAction(ctx =>
         {
-            var collected = new ConcurrentBag<(QuickMarkupParsedAttribute Parsed, QuickMarkupSourceCodeLocationProvider LocationProvider)>();
+            var syntaxNode = (TypeDeclarationSyntax)ctx.Node;
+            if (syntaxNode.AttributeLists.Count is 0) return;
 
-            compilationStartContext.RegisterSyntaxNodeAction(ctx =>
+            var compilation = ctx.Compilation;
+            if (ctx.SemanticModel.GetDeclaredSymbol(syntaxNode) is not ITypeSymbol typeSym)
+                return;
+
+            var quickMarkupAttrType = compilation.GetTypeByMetadataName(typeof(QuickMarkupAttribute).FullName!);
+            if (quickMarkupAttrType is null) return;
+
+            var attribute = (
+                from x in typeSym.GetAttributes()
+                where x.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false
+                select x
+            ).FirstOrDefault();
+            if (attribute is null) return;
+            if (attribute.ConstructorArguments[0].Value is not string markup) return;
+
+            var target = QuickMarkupTargetContext.FromSyntaxAndSymbol(
+                typeSym, attribute.ApplicationSyntaxReference, ctx.CancellationToken);
+            var locationProvider = new QuickMarkupSourceCodeLocationProvider(attribute, typeSym, ctx.CancellationToken);
+
+            if (!target.TryGetTypeSymbol(compilation, out var resolvedTypeSym, out var failureReason))
             {
-                var syntaxNode = (TypeDeclarationSyntax)ctx.Node;
-                if (syntaxNode.AttributeLists.Count is 0) return;
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    BindErrorGeneral,
+                    locationProvider.Fallback,
+                    $"Internal Error while trying to get type symbol: {failureReason.Message}"
+                ));
+                return;
+            }
 
-                var compilation = ctx.Compilation;
-                if (ctx.SemanticModel.GetDeclaredSymbol(syntaxNode) is not ITypeSymbol typeSym)
-                    return;
+            QuickMarkupSFC qm;
+            List<ErrorTerminalValue> errors;
+            try
+            {
+                qm = Parse(markup, out errors);
+            }
+            catch (LRParserRuntimeUnexpectedInputException e)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    ParseErrorUnexpectedInput,
+                    locationProvider.GetLocation(e.UnexpectedElement.Start, e.UnexpectedElement.End),
+                    e.UnexpectedElement
+                ));
+                return;
+            }
+            catch (LRParserRuntimeUnexpectedEndingException e)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    ParseErrorUnexpectedEnding,
+                    locationProvider.Fallback,
+                    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                ));
+                return;
+            }
+            catch (QuickMarkupTagMismatchException e)
+            {
+                var startTagName = e.FaultedTag.TagStart.TagName;
+                var endTagName = e.FaultedTag.EndTagName;
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    TagCloseMismatchedError,
+                    locationProvider.GetLocation(e.FaultedTag.TagStart.TagIdentifierAST),
+                    startTagName,
+                    endTagName
+                ));
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    TagCloseMismatchedError,
+                    locationProvider.GetLocation(e.FaultedTag.EndTagName),
+                    startTagName,
+                    endTagName
+                ));
+                return;
+            }
+            foreach (var error in errors)
+            {
+                if (error.Value is LRParserRuntimeUnexpectedInputException unexpectedInput)
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        ParseErrorUnexpectedInput,
+                        locationProvider.GetLocation(unexpectedInput.UnexpectedElement.Start, unexpectedInput.UnexpectedElement.End),
+                        unexpectedInput.UnexpectedElement
+                    ));
+                else if (error.Value is LRParserRuntimeUnexpectedEndingException unexpectedEnding)
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        ParseErrorUnexpectedEnding,
+                        locationProvider.GetLocation(error.Start, error.End),
+                        $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
+                    ));
+            }
 
-                var quickMarkupAttrType = compilation.GetTypeByMetadataName(typeof(QuickMarkupAttribute).FullName!);
-                if (quickMarkupAttrType is null) return;
+            // Bind inline for immediate diagnostic feedback
+            var resolver = new CodeTypeResolver(compilation, qm.Usings, target.Namespace);
+            var binder = new QuickMarkupBinder(resolver, failFast: false);
 
-                var attribute = (
-                    from x in typeSym.GetAttributes()
-                    where x.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false
-                    select x
-                ).FirstOrDefault();
-                if (attribute is null) return;
-                if (attribute.ConstructorArguments[0].Value is not string markup) return;
-
-                var target = QuickMarkupTargetContext.FromSyntaxAndSymbol(
-                    typeSym, attribute.ApplicationSyntaxReference, ctx.CancellationToken);
-                var locationProvider = new QuickMarkupSourceCodeLocationProvider(attribute, typeSym, ctx.CancellationToken);
-
-                if (!target.TryGetTypeSymbol(compilation, out var resolvedTypeSym, out var failureReason))
+            if (qm.Template is not null)
+            {
+                try
+                {
+                    binder.Bind(qm.Template, typeSym);
+                }
+                catch (Exception e)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorGeneral,
                         locationProvider.Fallback,
-                        $"Internal Error while trying to get type symbol: {failureReason.Message}"
+                        e.Message
                     ));
-                    return;
                 }
-
-                QuickMarkupSFC qm;
-                List<ErrorTerminalValue> errors;
-                try
-                {
-                    qm = Parse(markup, out errors);
-                }
-                catch (LRParserRuntimeUnexpectedInputException e)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        ParseErrorUnexpectedInput,
-                        locationProvider.GetLocation(e.UnexpectedElement.Start, e.UnexpectedElement.End),
-                        e.UnexpectedElement
-                    ));
-                    return;
-                }
-                catch (LRParserRuntimeUnexpectedEndingException e)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        ParseErrorUnexpectedEnding,
-                        locationProvider.Fallback,
-                        $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
-                    ));
-                    return;
-                }
-                catch (QuickMarkupTagMismatchException e)
-                {
-                    var startTagName = e.FaultedTag.TagStart.TagName;
-                    var endTagName = e.FaultedTag.EndTagName;
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        TagCloseMismatchedError,
-                        locationProvider.GetLocation(e.FaultedTag.TagStart.TagIdentifierAST),
-                        startTagName,
-                        endTagName
-                    ));
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        TagCloseMismatchedError,
-                        locationProvider.GetLocation(e.FaultedTag.EndTagName),
-                        startTagName,
-                        endTagName
-                    ));
-                    return;
-                }
-                foreach (var error in errors)
-                {
-                    if (error.Value is LRParserRuntimeUnexpectedInputException unexpectedInput)
-                        ctx.ReportDiagnostic(Diagnostic.Create(
-                            ParseErrorUnexpectedInput,
-                            locationProvider.GetLocation(unexpectedInput.UnexpectedElement.Start, unexpectedInput.UnexpectedElement.End),
-                            unexpectedInput.UnexpectedElement
-                        ));
-                    else if (error.Value is LRParserRuntimeUnexpectedEndingException unexpectedEnding)
-                        ctx.ReportDiagnostic(Diagnostic.Create(
-                            ParseErrorUnexpectedEnding,
-                            locationProvider.GetLocation(error.Start, error.End),
-                            $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
-                        ));
-                }
-
-                collected.Add((new QuickMarkupParsedAttribute(target, qm), locationProvider));
-            }, SyntaxKind.ClassDeclaration);
-
-            compilationStartContext.RegisterCompilationEndAction(endContext =>
+            }
+            try
             {
-                var compilation = endContext.Compilation;
-                var ct = endContext.CancellationToken;
-
-                var entries = new List<QuickMarkupGeneratedTypeMembers>();
-                foreach (var (parsed, _) in collected)
+                _ = binder.BindRefDeclarations(qm.Refs, typeSym);
+            }
+            catch (Exception e)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    BindErrorGeneral,
+                    locationProvider.Fallback,
+                    e.Message
+                ));
+            }
+            foreach (var error in binder.Diagnostics)
+            {
+                var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
+                if (error is QMBinderPropertyUnknownError propertyUnknown)
                 {
-                    var entry = QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(parsed, compilation, ct);
-                    if (entry is not null)
-                        entries.Add(entry.Value);
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorPropertyUnknown,
+                        loc,
+                        propertyUnknown.Message
+                    ));
                 }
-                var table = new QuickMarkupGeneratedMemberTable(entries);
-
-                foreach (var (parsed, locationProvider) in collected)
+                else if (error is QMBinderEnumMemberUnknownError enumMemberUnknown)
                 {
-                    ct.ThrowIfCancellationRequested();
-
-                    var target = parsed.Target;
-                    if (!target.TryGetTypeSymbol(compilation, out var typeSym, out _))
-                        continue;
-
-                    var resolver = new CodeTypeResolver(compilation, parsed.AST.Usings, target.Namespace, table, target.FullTypeName);
-                    var binder = new QuickMarkupBinder(resolver, failFast: false);
-
-                    if (parsed.AST.Template is not null)
-                    {
-                        try
-                        {
-                            binder.Bind(parsed.AST.Template, typeSym);
-                        }
-                        catch (Exception e)
-                        {
-                            endContext.ReportDiagnostic(Diagnostic.Create(
-                                BindErrorGeneral,
-                                locationProvider.Fallback,
-                                e.Message
-                            ));
-                        }
-                    }
-                    try
-                    {
-                        _ = binder.BindRefDeclarations(parsed.AST.Refs, typeSym);
-                    }
-                    catch (Exception e)
-                    {
-                        endContext.ReportDiagnostic(Diagnostic.Create(
-                            BindErrorGeneral,
-                            locationProvider.Fallback,
-                            e.Message
-                        ));
-                    }
-                    foreach (var error in binder.Diagnostics)
-                    {
-                        var loc = locationProvider.GetLocation(error.Node.Start, error.Node.End);
-                        if (error is QMBinderPropertyUnknownError propertyUnknown)
-                        {
-                            endContext.ReportDiagnostic(Diagnostic.Create(
-                                BindErrorPropertyUnknown,
-                                loc,
-                                propertyUnknown.Message
-                            ));
-                        }
-                        else if (error is QMBinderEnumMemberUnknownError enumMemberUnknown)
-                        {
-                            endContext.ReportDiagnostic(Diagnostic.Create(
-                                BindErrorEnumMemberUnknown,
-                                loc,
-                                enumMemberUnknown.Message
-                            ));
-                        }
-                        else if (error is QMBinderChildrenTooMany childrenTooMany)
-                        {
-                            endContext.ReportDiagnostic(Diagnostic.Create(
-                                BindErrorChildrenTooMany,
-                                loc,
-                                childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
-                                childrenTooMany.Expecting
-                            ));
-                        }
-                        else
-                        {
-                            endContext.ReportDiagnostic(Diagnostic.Create(
-                                BindErrorGeneral,
-                                loc,
-                                error.ToString()
-                            ));
-                        }
-                    }
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorEnumMemberUnknown,
+                        loc,
+                        enumMemberUnknown.Message
+                    ));
                 }
-            });
-        });
+                else if (error is QMBinderChildrenTooMany childrenTooMany)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorChildrenTooMany,
+                        loc,
+                        childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
+                        childrenTooMany.Expecting
+                    ));
+                }
+                else
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorGeneral,
+                        loc,
+                        error.ToString()
+                    ));
+                }
+            }
+        }, SyntaxKind.ClassDeclaration);
     }
 }
