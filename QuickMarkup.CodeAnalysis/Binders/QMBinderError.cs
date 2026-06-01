@@ -84,6 +84,17 @@ static class QMDiagnosticSuggestion
             _ => $"{message}. Did you mean {FormatMultiple(suggestions)}?"
         };
     }
+    public static string FormatSuggestions(string[]? suggestions)
+    {
+        if (suggestions is not { Length: > 0 })
+            return "";
+
+        return suggestions.Length switch
+        {
+            1 => $"did you mean '{suggestions[0]}'?",
+            _ => $"did you mean {FormatMultiple(suggestions)}?"
+        };
+    }
 
     static string FormatMultiple(string[] suggestions)
         => suggestions.Length == 2

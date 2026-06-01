@@ -115,7 +115,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
     readonly static DiagnosticDescriptor BindErrorPropertyUnknown = new(
         "QM1006",
         "QuickMarkup unknown property",
-        "{0}",
+        "{0} does not have a definition for '{1}', {2}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
         true
@@ -123,7 +123,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
     readonly static DiagnosticDescriptor BindErrorEnumMemberUnknown = new(
         "QM1007",
         "QuickMarkup unknown enum member",
-        "{0}",
+        "{0} does not contain a definition for '{1}', {2}",
         "QuickMarkup",
         DiagnosticSeverity.Warning,
         true
@@ -290,7 +290,9 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorPropertyUnknown,
                         loc,
-                        propertyUnknown.Message
+                        resolver.GetTypeSymbol(propertyUnknown.TypeName),
+                        propertyUnknown.PropertyName,
+                        QMDiagnosticSuggestion.FormatSuggestions(propertyUnknown.Suggestions)
                     ));
                 }
                 else if (diagnostic is QMBinderEnumMemberUnknownError enumMemberUnknown)
@@ -298,7 +300,9 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         BindErrorEnumMemberUnknown,
                         loc,
-                        enumMemberUnknown.Message
+                        resolver.GetTypeSymbol(enumMemberUnknown.TypeName),
+                        enumMemberUnknown.MemberName,
+                        QMDiagnosticSuggestion.FormatSuggestions(enumMemberUnknown.Suggestions)
                     ));
                 }
                 else if (diagnostic is QMBinderChildrenTooMany childrenTooMany)

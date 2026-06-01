@@ -508,3 +508,16 @@ public partial class AttachedPropertyChildTagAssignCase : TestRoot;
     </root>
     """)]
 public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
+
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    int RowIndex = 42;
+    <root>
+        <TestPanel>
+            // should not build. it is intended that the project cannot be built since i'm testing this
+            <TestText abf=true ></TestText>
+        </TestPanel>
+    </root>
+    """)]
+public partial class TestUnknown : TestRoot;
