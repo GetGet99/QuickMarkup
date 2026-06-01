@@ -566,6 +566,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                 else
                 {
                     // <QM Value=`Target` />
+                    if (targetType is not null)
+                        CheckTypeMismatch(property.Value, targetType);
                     var value = Bind(property.Value, targetType, tagInfo);
                     if (value is QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment })
                         Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
@@ -675,6 +677,41 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
             ? symbol
             : valueSymbol with { CapturedLocalNames = captures };
     }
+    void CheckTypeMismatch(QuickMarkupValue? value, ITypeSymbol targetType)
+    {
+        var valueType = value switch
+        {
+            QuickMarkupInt32 => resolver.Int32,
+            QuickMarkupDouble => resolver.Double,
+            QuickMarkupBoolean => resolver.Boolean,
+            QuickMarkupString => resolver.String,
+            _ => null
+        };
+        if (valueType is null) return;
+
+        // Identifiers are resolved as targetType.Identifier (for enums, etc.)
+        // Only flag when target is string, since string doesn't accept bare identifiers
+        if (value is QuickMarkupIdentifier)
+        {
+            if (SymbolEqualityComparer.Default.Equals(targetType, resolver.String))
+                Error(new QMBinderTypeMismatchError(value!, targetType.FullNameWithoutAnnotation(), "identifier"));
+            return;
+        }
+
+        if (resolver.CanAssign(valueType, targetType) || resolver.ShouldAutoNew(valueType, targetType))
+            return;
+
+        var valueTypeName = value switch
+        {
+            QuickMarkupInt32 => "int",
+            QuickMarkupDouble => "double",
+            QuickMarkupBoolean => "bool",
+            QuickMarkupString => "string",
+            _ => "unknown"
+        };
+        Error(new QMBinderTypeMismatchError(value!, targetType.FullNameWithoutAnnotation(), valueTypeName));
+    }
+
     void ErrorUnknownProperty(AST.AST node, QMBinderTagInfo tagInfo, string propertyName)
     {
         var typeName = tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName;

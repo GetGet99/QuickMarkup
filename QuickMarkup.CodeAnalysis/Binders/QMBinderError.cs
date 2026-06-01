@@ -60,6 +60,14 @@ record class QMBinderPropertyUnknownError(AST Node, string TypeName, string Prop
     public override string ToString() => base.ToString();
 }
 
+record class QMBinderTypeMismatchError(AST Node, string PropertyTypeName, string ValueTypeName)
+    : QMBinderError(Node, BuildTypeMismatchMessage(PropertyTypeName, ValueTypeName))
+{
+    static string BuildTypeMismatchMessage(string propertyTypeName, string valueTypeName)
+        => $"Cannot assign value of type '{valueTypeName}' to property of type '{propertyTypeName}'.";
+    public override string ToString() => base.ToString();
+}
+
 record class QMBinderEnumMemberUnknownError(AST Node, string TypeName, string MemberName, string[]? Suggestions = null)
     : QMBinderWarning(Node, BuildMessage(TypeName, MemberName, Suggestions))
 {

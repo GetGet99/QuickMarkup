@@ -70,7 +70,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorEnumMemberUnknown,
         BindErrorTypeUnknown,
         BindErrorTagMismatched,
-        BindErrorTagUnexpected
+        BindErrorTagUnexpected,
+        BindErrorTypeMismatch
     );
     readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -148,6 +149,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "QM1010",
         "QuickMarkup unexpected tag",
         "Expecting <{0} />, but got <{1} />",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor BindErrorTypeMismatch = new(
+        "QM1011",
+        "QuickMarkup type mismatch",
+        "Cannot assign value of type '{0}' to property of type '{1}'",
         "QuickMarkup",
         DiagnosticSeverity.Error,
         true
@@ -338,6 +347,15 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                         loc,
                         tagUnexpected.ExpectedTag,
                         tagUnexpected.TagName
+                    ));
+                }
+                else if (diagnostic is QMBinderTypeMismatchError typeMismatch)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        BindErrorTypeMismatch,
+                        loc,
+                        resolver.GetTypeSymbol(typeMismatch.ValueTypeName),
+                        resolver.GetTypeSymbol(typeMismatch.PropertyTypeName)
                     ));
                 }
                 else
