@@ -52,6 +52,25 @@ public partial class CounterPage : Page;
 
 And that's it.
 
+## Included Features Today
+
+| Area | What it does | Supported Frameworks | Maturity |
+|---|---|---|---|
+| **Core DSL & source gen** | Write UI without XAML — embed markup in `[QuickMarkup]` attributes, compile-time code generation eliminates boilerplate | Cross-platform | Preview |
+| **Reactivity system** | Reactive variables that automatically update the UI when values change; no `INotifyPropertyChanged` or manual event wiring | Cross-platform | Preview |
+| **Markup syntax** | Familiar tag syntax with direct C# integration — use any type, expression, or enum inline without value converters | Cross-platform | Preview |
+| **Events & one-way binding** | Attach event handlers concisely; bind source values to UI properties with auto-update | Cross-platform | Preview |
+| **Bindback & two-way binding** | One-way-to-source (bindback) and two-way binding for DependencyProperty-backed controls | UWP/WinUI 3/Uno Platform\* | Preview |
+| **Structural directives** | Conditionally show content with `if`/`else`, loop over data with auto-updating `foreach` on collection changes | Cross-platform | Preview |
+| **Component model** | Build reusable UI pieces that supports single-element and multi-element outputs | Cross-platform | Preview |
+| **Extension callbacks** | Call custom extension methods as markup identifiers (`CenterH`, `CenterV`); inline lambdas for one-off side effects | Cross-platform | Preview |
+| **Roslyn analyzers** | Catch errors in real time — syntax mistakes, property typos, type mismatches flagged before you build | Cross-platform | Preview |
+| **Theming** | Theme-aware brushes that react to dark/light/high-contrast changes; access resource dictionaries without boilerplate | UWP/WinUI 3 | Preview |
+| **Framework packages** | Add `QuickMarkup.WinUI` or `QuickMarkup.UWP` with one initialization call and get full platform integration | UWP/WinUI 3 | Preview |
+| **Snapshot persistence** | Save and restore UI state automatically via source-generated serialization — no manual save/load code | Cross-platform | Draft |
+
+\* Uno Platform is indirectly supported by utilizing the same namespace as WinUI 3.
+
 ## Documentation
 
 - [QuickMarkup Backend Infrastructure](./docs/infra.md)
