@@ -1,7 +1,7 @@
-# QuickMarkup (ALPHA)
+# QuickMarkup (Preview)
 
 > [!WARNING]  
-> This project is still in Alpha. Not recommended for production use yet.
+> This project is still in Preview. Not recommended for production use yet.
 
 QuickMarkup is a declarative markup language that makes it easier to declare UI in C# without using XAML. Our system relies on reactivity, rather than MVVM style. Some patterns are Vue-inspired.
 
