@@ -235,6 +235,31 @@ QuickMarkup supports:
 
 without requiring separate view model infrastructure.
 
+---
+
+### Structural UI
+
+Conditional rendering:
+
+```cs
+if (`IsLoggedIn`) {
+    <ProfilePage />
+}
+else {
+    <LoginPage />
+}
+```
+
+Reactive collection rendering:
+
+```cs
+foreach (var item in `Items`) {
+    <TextBlock Text=`item.Name` />
+}
+```
+
+---
+
 ### Ecosystem Compatibility
 
 QuickMarkup works directly with existing WinUI/UWP controls and ecosystem libraries such as CommunityToolkit.
@@ -259,29 +284,6 @@ Because QuickMarkup generates native UI elements directly, existing dependency p
     </root>
     """)]
 public partial class SettingsPage : Page;
-```
-
----
-
-### Structural UI
-
-Conditional rendering:
-
-```cs
-if (`IsLoggedIn`) {
-    <ProfilePage />
-}
-else {
-    <LoginPage />
-}
-```
-
-Reactive collection rendering:
-
-```cs
-foreach (var item in `Items`) {
-    <TextBlock Text=`item.Name` />
-}
 ```
 
 ---
