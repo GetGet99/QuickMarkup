@@ -29,7 +29,7 @@ global using static QuickMarkup.Infra.QuickRefs;
 Declaring variables in QuickMarkup before `<setup>` tag creates reactive references. Use `=>` for computed variables — they cache and auto-re-evaluate when dependencies change.
 
 ```cs
-// Inside QUickMarkup
+// Inside QuickMarkup
 
 // Declare references
 double FirstOperand = 1;
@@ -39,7 +39,7 @@ double SecondOperand = 2;
 double Output => `FirstOperand + SecondOperand`;
 ```
 
-References get a `*Prop` backing field, computed get `*Comp` — accessible directly if needed. Computed variable is lazily initialized and caches is value until dependent references chagne.
+References get a `*Prop` backing field, computed get `*Comp` — accessible directly if needed. Computed variable is lazily initialized and caches its value until dependent references chagne.
 
 Above example will generate the following fields:
 
