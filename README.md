@@ -172,6 +172,7 @@ QuickMarkup is designed for developers who prefer:
 * Compile-time tooling over runtime reflection
 * Less MVVM ceremony
 * Vue/React-style ergonomics in .NET
+* Native interoperability with existing WinUI/UWP controls and libraries
 
 QuickMarkup may *not* be the right fit if your project depends heavily on:
 
@@ -234,6 +235,32 @@ QuickMarkup supports:
 
 without requiring separate view model infrastructure.
 
+### Ecosystem Compatibility
+
+QuickMarkup works directly with existing WinUI/UWP controls and ecosystem libraries such as CommunityToolkit.
+
+Because QuickMarkup generates native UI elements directly, existing dependency properties, styles, resource dictionaries, and control behaviors continue to work normally.
+
+```cs
+[QuickMarkup("""
+    using CommunityToolkit.WinUI.Controls;
+
+    bool IsEnabled = true;
+
+    <root>
+        <SettingsCard
+            Header="Notifications"
+            Description=`IsEnabled
+                ? "Notifications are enabled"
+                : "Notifications are disabled"`
+        >
+            <ToggleSwitch IsOn<=>`IsEnabled` />
+        </SettingsCard>
+    </root>
+    """)]
+public partial class SettingsPage : Page;
+```
+
 ---
 
 ### Structural UI
@@ -270,6 +297,7 @@ foreach (var item in `Items`) {
 | Reactive bindings | One-way, bindback, and two-way bindings | WinUI 3 / UWP / Uno* | Preview |
 | Structural rendering | Reactive `if` / `else` / `foreach` rendering | Cross-platform | Preview |
 | Reusable components | Single-node and fragment-based reusable components | Cross-platform | Preview |
+| Native control interoperability | Use existing WinUI/UWP controls and component libraries directly inside QuickMarkup | WinUI 3 / UWP / Uno* | Preview |
 | Roslyn analyzers | Real-time diagnostics and compile-time validation | Cross-platform | Preview |
 | Theme integration | Reactive theme-aware brushes and resources | WinUI 3 / UWP | Preview |
 | Snapshot persistence | Source-generated state persistence | Cross-platform | Draft |
