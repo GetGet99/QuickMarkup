@@ -557,6 +557,8 @@ The key expression must be a C# literal expression in (backtick expression or le
 
 In case that you cannot subclass components, or wish to write component that returns multiple elements. QuickMarkup defines two interfaces for creating reusable UI components: `IQuickMarkupComponent<T>` and `IQuickMarkupFragmentComponent<T>`.
 
+For WinUI/UWP, instead of above recommendation to subclass, we usually prefer using `IQuickMarkupComponent<T>` instead of subclassing, since subclassing without XMAL can trigger multiple bugs, especially on top of styled or templated control.
+
 ### Single Child component
 
 Use `IQuickMarkupComponent<T>` when the component produces exactly **one** UI element.
@@ -584,6 +586,17 @@ public partial class MyPage : StackPanel;
 ```
 
 Properties set on `<Label>` that don't exist on the `Label` class are **forwarded** to its `MarkupNode` (the `TextBlock`). So `HorizontalAlignment=Center` becomes `MarkupNode.HorizontalAlignment = Center`.
+
+Note: In C# code, remaining properties are not forwarded:
+
+```csharp
+Label label = new Label();
+
+label.Text = "Hello"; // this is defined on component, can access
+label.MarkupNode.HorizontalAlignment = HorizontalAlignment.Center; // but remaining ones, you should add .MarkupNode
+
+Children.Add(label.MarkupNode); // need to manually specify markup node here
+```
 
 ### Multiple Child or Fragment Component
 

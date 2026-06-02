@@ -274,7 +274,7 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 
 Reusable QuickMarkup components implement one of two interfaces (from `QuickMarkup.WinUI` / `QuickMarkup.UWP`):
 
-- **`IQuickMarkupComponent<T>`** — produces exactly one UI element (its `MarkupNode`). Properties set on the tag that don't exist on the component class are **forwarded** to `MarkupNode`.
+- **`IQuickMarkupComponent<T>`** — produces exactly one UI element (its `MarkupNode`). Properties set on the tag that don't exist on the component class are **forwarded** to `MarkupNode` on QuickMarkup, but not on C#.
 - **`IQuickMarkupFragmentComponent<T>`** — produces multiple UI elements; expands inline at the usage site.
 
 ```csharp
@@ -289,13 +289,25 @@ public partial class Label : IQuickMarkupComponent<UIElement>;
 
 Consuming a component:
 
-```csharp
+```
+// in QuickMarkup, HorizontalAlignment=Center is forwarded automatically to `MarkupNode`
 <Label Text="Hello" HorizontalAlignment=Center />
+```
+
+```csharp
+Label label = new Label();
+
+label.Text = "Hello"; // this is defined on component, can access
+label.MarkupNode.HorizontalAlignment = HorizontalAlignment.Center; // properties accessed in C# is not automatically forwareded. .MarkupNode is needed
+
+Children.Add(label.MarkupNode); // need to manually specify markup node here, to get the underlying elmeent
 ```
 
 For WinUI/UWP project with platform specific package installed, Non-generic versions (`IQuickMarkupComponent`, `IQuickMarkupFragmentComponent`) default `T` to `UIElement`.
 
-For many cases, we recommend subclassing elements directly, ie. `partial class MyComponent : Grid`, but for case of sealed elements (ie. WinUI `Border`/`TextBlock` are sealed) or multiple children component/fragment, you may need these.
+Depending on your target UI framework, sometimes subclassing elements directly may make it easier to work with, ie. `partial class MyComponent : Grid`, but for case of sealed elements (ie. WinUI `Border`/`TextBlock` are sealed) or multiple children component/fragment, you may need these.
+
+For WinUI/UWP, we usually prefer using `IQuickMarkupComponent<T>` instead of subclassing, since subclassing without XMAL can trigger multiple bugs, especially on top of styled or templated control.
 
 A class may implement at most **one** of the two interfaces. Implementing both produces a compile-time error.
 
