@@ -112,6 +112,18 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void SingleComponentWithoutRootUnwrapsMarkupNodeAndAppliesOutputMembers()
+    {
+        var page = new StyledTestTextNoRootConsumerCase();
+        ReactiveScheduler.Tick();
+        var text = TestTreeAssert.Child<TestText>(page.MarkupNode.Children, 0);
+
+        Assert.AreEqual("Secondary:Hello", text.Text);
+        Assert.AreEqual(7, text.Number);
+        Assert.IsTrue(text.ElementExtensionApplied);
+    }
+
+    [TestMethod]
     public void FragmentComponentExpandsIntoParentCollection()
     {
         var page = new FragmentComponentConsumerCase();
@@ -121,9 +133,33 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void FragmentComponentWithoutRootExpandsIntoParentCollection()
+    {
+        var page = new SingleTextFragmentNoRootUsage();
+        var panel = page.MarkupNode;
+
+        TestTreeAssert.Texts(panel.Children, "before", "fragment A", "after");
+    }
+
+    [TestMethod]
+    public void MultipleTextFragmentWithoutRootExpandsIntoParentCollection()
+    {
+        var page = new MultiTextFragmentNoRootUsage();
+        var panel = page.MarkupNode;
+
+        TestTreeAssert.Texts(panel.Children, "before", "fragment A", "fragment B", "fragment C", "after");
+    }
+
+    [TestMethod]
     public void ComponentIsSealedInGeneratedPartial()
     {
         Assert.IsTrue(typeof(StyledTestText).IsSealed);
+    }
+
+    [TestMethod]
+    public void ComponentWithoutRootIsSealedInGeneratedPartial()
+    {
+        Assert.IsTrue(typeof(StyledTestTextNoRoot).IsSealed);
     }
 
     [TestMethod]
@@ -133,6 +169,16 @@ public sealed class SourceGenBehaviorTests
         ReactiveScheduler.Tick();
         var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
         var text = TestTreeAssert.Child<TestText>(panel.Children, 0);
+
+        Assert.AreEqual("from callback", text.Text);
+    }
+
+    [TestMethod]
+    public void ComponentCallbackWithoutRootTargetsComponentInstance()
+    {
+        var page = new ComponentCallbackNoRootConsumerCase();
+        ReactiveScheduler.Tick();
+        var text = TestTreeAssert.Child<TestText>(page.MarkupNode.Children, 0);
 
         Assert.AreEqual("from callback", text.Text);
     }
@@ -154,6 +200,21 @@ public sealed class SourceGenBehaviorTests
         var page = new ComponentInConditionalCase();
         ReactiveScheduler.Tick();
         var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "conditional");
+
+        page.Show = false;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(0, panel.Children.Count);
+    }
+
+    [TestMethod]
+    public void ComponentWithoutRootInConditionalCollectionRendersConditionally()
+    {
+        var page = new ComponentNoRootInConditionalCase();
+        ReactiveScheduler.Tick();
+        var panel = page.MarkupNode;
 
         TestTreeAssert.Texts(panel.Children, "conditional");
 

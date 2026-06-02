@@ -151,6 +151,16 @@ public partial class StyledTestText : IQuickMarkupComponent<TestText>
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    string Text = "";
+    TestKind Kind = Default;
+    <TestText Text=`$"{Kind}:{Text}"` />
+    """)]
+public partial class StyledTestTextNoRoot : IQuickMarkupComponent<TestText>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     <root>
         <TestPanel>
             <StyledTestText Text="Hello" Kind=Secondary Number=7 MarkElement />
@@ -158,6 +168,14 @@ public partial class StyledTestText : IQuickMarkupComponent<TestText>
     </root>
     """)]
 public partial class SingleComponentConsumerCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <TestPanel>
+        <StyledTestTextNoRoot Text="Hello" Kind=Secondary Number=7 MarkElement />
+    </TestPanel>
+    """)]
+public partial class StyledTestTextNoRootConsumerCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -169,6 +187,34 @@ public partial class SingleComponentConsumerCase : TestRoot;
 public partial class TwoTextFragment : IQuickMarkupFragmentComponent<TestElement>
 {
 }
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <TestText Text="fragment A" />
+    """)]
+public partial class SingleTextFragmentNoRoot : IQuickMarkupFragmentComponent<TestElement>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <TestText Text="fragment A" />
+    <TestText Text="fragment B" />
+    <TestText Text="fragment C" />
+    """)]
+public partial class MultiTextFragmentNoRoot : IQuickMarkupFragmentComponent<TestElement>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <TestPanel>
+        <TestText Text="before" />
+        <MultiTextFragmentNoRoot />
+        <TestText Text="after" />
+    </TestPanel>
+    """)]
+public partial class MultiTextFragmentNoRootUsage : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -184,12 +230,29 @@ public partial class FragmentComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    <TestPanel>
+        <TestText Text="before" />
+        <SingleTextFragmentNoRoot />
+        <TestText Text="after" />
+    </TestPanel>
+    """)]
+public partial class SingleTextFragmentNoRootUsage : IQuickMarkupComponent<TestPanel>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     string CallbackText = "";
     <root>
         <TestText Text=`CallbackText` />
     </root>
     """)]
 public partial class CallbackComponent : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string CallbackText = "";
+    <TestText Text=`CallbackText` />
+    """)]
+public partial class CallbackComponentNoRoot : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -200,6 +263,14 @@ public partial class CallbackComponent : IQuickMarkupComponent<TestText>;
     </root>
     """)]
 public partial class ComponentCallbackTargetsComponentCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <TestPanel>
+        <CallbackComponentNoRoot `x => x.CallbackText = "from callback"` />
+    </TestPanel>
+    """)]
+public partial class ComponentCallbackNoRootConsumerCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -231,6 +302,13 @@ public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    string SimpleText = "";
+    <TestText Text=`SimpleText` />
+    """)]
+public partial class SimpleTextComponentNoRoot : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     bool Show = true;
     <root>
         <TestPanel>
@@ -241,6 +319,17 @@ public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;
     </root>
     """)]
 public partial class ComponentInConditionalCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    bool Show = true;
+    <TestPanel>
+        if (`Show`) {
+            <SimpleTextComponentNoRoot SimpleText="conditional" />
+        }
+    </TestPanel>
+    """)]
+public partial class ComponentNoRootInConditionalCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
@@ -497,6 +586,17 @@ public partial class AttachedPropertyBindBackCase : TestRoot;
     </root>
     """)]
 public partial class AttachedPropertyChildTagAssignCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    int RowIndex = 42;
+    <root>
+        <TestText>
+            <Grid.Row>`RowIndex`</Grid.Row>
+        </TestText>
+    </root>
+    """)]
+public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;

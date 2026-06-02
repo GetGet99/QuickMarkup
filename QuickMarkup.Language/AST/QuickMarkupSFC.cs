@@ -11,7 +11,8 @@ public record class AST : ISpanSetter
 public record class QuickMarkupSFC(string Usings, ListAST<RefDeclaration> Refs) : AST
 {
     public QuickMarkupScript? Scirpt { get; set; } = null;
-    public QuickMarkupParsedTag? Template { get; set; } = null;
+    public ListAST<QuickMarkupParsedTag> MarkupTags { get; set; } = new();
+    public QuickMarkupParsedTag? Template => MarkupTags.Count == 0 ? null : MarkupTags[^1];
     public void Add(ISFCTag tag)
     {
         switch (tag)
@@ -19,8 +20,8 @@ public record class QuickMarkupSFC(string Usings, ListAST<RefDeclaration> Refs) 
             case QuickMarkupScript scirpt:
                 Scirpt = scirpt;
                 break;
-            case QuickMarkupParsedTag template:
-                Template = template;
+            case QuickMarkupParsedTag parsedTag:
+                MarkupTags.Add(parsedTag);
                 break;
             default:
                 throw new NotImplementedException();

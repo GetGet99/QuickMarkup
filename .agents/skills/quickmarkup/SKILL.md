@@ -274,8 +274,8 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 
 Reusable QuickMarkup components implement one of two interfaces (from `QuickMarkup.WinUI` / `QuickMarkup.UWP`):
 
-- **`IQuickMarkupComponent<T>`** — produces exactly one UI element (its `MarkupNode`). Properties set on the tag that don't exist on the component class are **forwarded** to `MarkupNode` on QuickMarkup, but not on C#.
-- **`IQuickMarkupFragmentComponent<T>`** — produces multiple UI elements; expands inline at the usage site.
+- **`IQuickMarkupComponent<T>`** — produces exactly one UI element (its `MarkupNode`). Properties set on the tag that don't exist on the component class are **forwarded** to `MarkupNode` on QuickMarkup, but not on C#. The child must be assignable to type `T`.
+- **`IQuickMarkupFragmentComponent<T>`** — produces multiple UI elements; expands inline at the usage site. All children must be assignable to type `T`.
 
 ```csharp
 [QuickMarkup("""
@@ -285,7 +285,36 @@ Reusable QuickMarkup components implement one of two interfaces (from `QuickMark
     </root>
     """)]
 public partial class Label : IQuickMarkupComponent<UIElement>;
+
+[QuickMarkup("""
+    <root>
+        <TextBlock Text="Item A" />
+        <TextBlock Text="Item B" />
+        <TextBlock Text="Item C" />
+    </root>
+    """)]
+public partial class ItemList : IQuickMarkupFragmentComponent<TextBlock>;
 ```
+
+You may also omit `<root>` tag if desired (recommended pattern), if you don't really need to put anything inside the `<root>` tag.
+
+```csharp
+[QuickMarkup("""
+    string Text = "";
+    
+    <TextBlock Text=`Text` FontSize=16 />
+    """)]
+public partial class Label : IQuickMarkupComponent<UIElement>;
+
+[QuickMarkup("""
+    <TextBlock Text="Item A" />
+    <TextBlock Text="Item B" />
+    <TextBlock Text="Item C" />
+    """)]
+public partial class ItemList : IQuickMarkupFragmentComponent<TextBlock>;
+```
+
+Note: subclassing regular UI still requires `<root>` tag if you have UI markup. Only QuickMarkup components may omit root tags and have non-root tag directly.
 
 Consuming a component:
 

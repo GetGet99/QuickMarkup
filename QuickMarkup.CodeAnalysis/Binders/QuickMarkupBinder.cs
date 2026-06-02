@@ -26,7 +26,22 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
         if (tag.HasMismatchedEndTag)
             ErrorTagMismatched(tag.TagStart.TagName, tag.EndTagName!);
         if (rootType is not null && tag.TagStart.TagName is not "root")
-            ErrorTagUnexpected(tag.TagStart, "root");
+        {
+            var implicitComponentKind = resolver.GetComponentKind(rootType, out _);
+            if (implicitComponentKind is not QMComponentKind.None)
+            {
+                tag = new QuickMarkupParsedTag(
+                    new QuickMarkupConstructor(new PositionedIdentifier("root")),
+                    new ListAST<QuickMarkupInlineMember>(),
+                    new ListAST<IQMNodeChild>([tag]),
+                    null, false, null, false
+                );
+            }
+            else
+            {
+                ErrorTagUnexpected(tag.TagStart, "root");
+            }
+        }
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
         if (type is null)
             ErrorUnknownType(tag.TagStart);

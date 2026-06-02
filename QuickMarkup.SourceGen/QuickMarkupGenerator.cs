@@ -51,7 +51,20 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var sfcs = nonErrorMarkups.Select(
                 (x, _) =>
                 {
-                    return (x.Target, x.AST.Usings, x.AST.Scirpt, x.AST.Template);
+                    var tags = x.AST.MarkupTags;
+                    QuickMarkupParsedTag? combined;
+                    if (tags.Count == 0)
+                        combined = null;
+                    else if (tags.Count == 1)
+                        combined = tags[0];
+                    else
+                        combined = new QuickMarkupParsedTag(
+                            new QuickMarkupConstructor(new PositionedIdentifier("root")),
+                            new ListAST<QuickMarkupInlineMember>(),
+                            new ListAST<IQMNodeChild>(tags.Select(static t => (IQMNodeChild)t).ToList()),
+                            null, true, null, false
+                        );
+                    return (x.Target, x.AST.Usings, x.AST.Scirpt, combined);
                 }
             );
 
@@ -77,7 +90,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
                     var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
                     var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
-                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template);
+                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template, componentKind);
                     if (shouldGenerateComponentOutput)
                     {
                         if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)

@@ -57,7 +57,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
             ct.ThrowIfCancellationRequested();
         }
 
-        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(markup.AST.Template))
+        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(markup.AST.Template, componentKind))
         {
             var outputTypeName = unknownTypes
                 ? null
@@ -98,6 +98,11 @@ static class QuickMarkupGeneratedMemberTableBuilder
     static string? TypeName(ITypeSymbol? type)
         => type?.FullName();
 
-    public static bool HasComponentRootOutput(QuickMarkupParsedTag? template)
-        => template?.Children?.Any(static child => child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart }) ?? false;
+    public static bool HasComponentRootOutput(QuickMarkupParsedTag? template, QMComponentKind componentKind = QMComponentKind.None)
+    {
+        if (template is null) return false;
+        if (componentKind is not QMComponentKind.None && template.TagStart.TagName is not "root")
+            return true;
+        return template.Children?.Any(static child => child is not QuickMarkupParsedTag { TagStart: QuickMarkupPropertyTagStart }) ?? false;
+    }
 }

@@ -571,6 +571,13 @@ Use `IQuickMarkupComponent<T>` when the component produces exactly **one** UI el
     </root>
     """)]
 public partial class Label : IQuickMarkupComponent<TextBlock>;
+
+[QuickMarkup("""
+    string Text = "";
+    // you may also omit <root> tag on components
+    <TextBlock Text=`Text` FontSize=16 />
+    """)]
+public partial class Label2 : IQuickMarkupComponent<TextBlock>;
 ```
 
 **Consuming a single component from another QuickMarkup class:**
@@ -611,7 +618,17 @@ Use when the component produces **multiple** UI elements.
     </root>
     """)]
 public partial class ItemList : IQuickMarkupFragmentComponent<TextBlock>;
+
+[QuickMarkup("""
+    // again, <root> tag can be omitted
+    <TextBlock Text="Item A" />
+    <TextBlock Text="Item B" />
+    <TextBlock Text="Item C" />
+    """)]
+public partial class ItemList2 : IQuickMarkupFragmentComponent<TextBlock>;
 ```
+
+Note: subclassing regular UI still requires `<root>` tag if you have UI markup. Only QuickMarkup components may omit root tags and have non-root tag directly.
 
 **Consuming a fragment component from another QuickMarkup class:**
 
