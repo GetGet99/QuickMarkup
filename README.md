@@ -7,6 +7,21 @@ QuickMarkup is a declarative markup language that makes it easier to declare UI 
 
 Currently, our full support is UWP and WinUI 3 .NET 10. Supports most other UI frameworks in C# but with some functionality becoming limited (bind two way, bind to source, and children/child node auto detection do not have full support against native components)
 
+## Installation
+
+QuickMarkup is now avaliable as Nuget Packages
+
+```pwsh
+# WinUI 3 https://www.nuget.org/packages/QuickMarkup.WinUI
+Install-Package QuickMarkup.WinUI
+# UWP https://www.nuget.org/packages/QuickMarkup.UWP
+Install-Package QuickMarkup.UWP
+# Cross Platform, no specific platform (Uno Platform, WPF, MAUI, etc.) https://www.nuget.org/packages/QuickMarkup
+Install-Package QuickMarkup
+```
+
+See compatability table below under [Included Features](#included-features-today)
+
 ## Introduction
 
 QuickMarkup is divided into 3 main sections: Usings, setup, and UI.
@@ -69,7 +84,7 @@ And that's it.
 | **Framework packages** | Add `QuickMarkup.WinUI` or `QuickMarkup.UWP` with one initialization call and get full platform integration | UWP/WinUI 3 | Preview |
 | **Snapshot persistence** | Save and restore UI state automatically via source-generated serialization — no manual save/load code | Cross-platform | Draft |
 
-\* Uno Platform is indirectly supported by utilizing the same namespace as WinUI 3.
+\* Uno Platform is indirectly supported by utilizing the same namespace and pattern as WinUI 3. No official support is provided for now.
 
 ## Documentation
 
