@@ -1,89 +1,249 @@
 {
   "scopeName": "source.quickmarkup",
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#tags" },
-    { "include": "#strings" }
+    {
+      "include": "#main"
+    }
   ],
   "repository": {
-    "comments": {
+    "main": {
       "patterns": [
         {
+          "name": "comment",
           "begin": "/\\*",
-          "end": "\\*/",
-          "name": "comment.block.quickmarkup"
+          "end": "\\*/"
         },
         {
-          "match": "//.*$",
-          "name": "comment.line.double-slash.quickmarkup"
-        }
-      ]
-    },
-    "strings": {
-      "patterns": [
-        {
-          "begin": "`",
-          "end": "`",
-          "name": "string.quoted.backtick.quickmarkup",
-          "patterns": [
-            {
-              "match": "\\\\.",
-              "name": "constant.character.escape.quickmarkup"
-            }
-          ]
-        }
-      ]
-    },
-    "tags": {
-      "patterns": [
-        {
-          "begin": "(<)(\\w[\\w.]*(?::\\w[\\w.]*)?)",
-          "beginCaptures": {
-            "1": { "name": "punctuation.definition.tag.begin.quickmarkup" },
-            "2": { "name": "entity.name.tag.quickmarkup" }
-          },
-          "end": "(>)",
-          "endCaptures": {
-            "1": { "name": "punctuation.definition.tag.end.quickmarkup" }
-          },
-          "name": "meta.tag.quickmarkup",
-          "patterns": [
-            { "include": "#tag-attributes" }
-          ]
+          "name": "comment",
+          "match": "//[^\\r\\n]*"
         },
         {
-          "begin": "(</)(\\w[\\w.]*)",
-          "beginCaptures": {
-            "1": { "name": "punctuation.definition.tag.begin.quickmarkup" },
-            "2": { "name": "entity.name.tag.quickmarkup" }
-          },
-          "end": "(>)",
-          "endCaptures": {
-            "1": { "name": "punctuation.definition.tag.end.quickmarkup" }
-          },
-          "name": "meta.tag.quickmarkup"
-        }
-      ]
-    },
-    "tag-attributes": {
-      "patterns": [
-        {
-          "match": "(`)((?:[^`\\\\]|\\\\.)*)(`)",
-          "captures": {
-            "1": { "name": "punctuation.definition.string.begin.quickmarkup" },
-            "2": { "name": "string.quoted.backtick.quickmarkup" },
-            "3": { "name": "punctuation.definition.string.end.quickmarkup" }
-          }
+          "name": "string.unquoted.embedded",
+          "match": "\u003Csetup\u003E[^]*\u003C/setup\u003E"
         },
         {
-          "match": "(\\w[\\.\\w]*)(?=\\s*(?:=|[+*]?=|\\s|/?>|$))",
-          "captures": {
-            "1": { "name": "entity.other.attribute-name.quickmarkup" }
-          }
+          "name": "string.quoted.double",
+          "match": "\u0022([^\\r\\n\\\u0022\\\\]|(\\\\(n|t|r|\\\u0027|\\\u0022)))*\u0022"
         },
         {
-          "match": "([+*]?=)",
-          "name": "punctuation.separator.key-value.quickmarkup"
+          "name": "string.quoted.double",
+          "match": "\u0022([^\\r\\n\\\u0022\\\\]|(\\\\(n|t|r|\\\u0027|\\\u0022)))*\u0022"
+        },
+        {
+          "name": "keyword.import",
+          "match": "using[^\u003C\\r\\n]*;"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bprivate\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bpublic\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bstatic\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bset\\b"
+        },
+        {
+          "name": "constant.language.boolean",
+          "match": "true"
+        },
+        {
+          "name": "constant.language.boolean",
+          "match": "false"
+        },
+        {
+          "name": "constant.language.boolean",
+          "match": "null"
+        },
+        {
+          "name": "constant.language.boolean",
+          "match": "default"
+        },
+        {
+          "name": "keyword.other",
+          "match": "\\bref\\b"
+        },
+        {
+          "name": "keyword.control.namespace",
+          "match": "\\bnamespace\\b"
+        },
+        {
+          "name": "keyword.control.class",
+          "match": "\\bclass\\b"
+        },
+        {
+          "name": "keyword.control.class",
+          "match": "\\bcomponent\\b"
+        },
+        {
+          "name": "keyword.control.class",
+          "match": "\\bfragment\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bvar\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bforeach\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bif\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\belse\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bin\\b"
+        },
+        {
+          "name": "punctuation.definition.tag.begin",
+          "match": "\u003C"
+        },
+        {
+          "name": "keyword.operator.assignment",
+          "match": "="
+        },
+        {
+          "name": "punctuation.terminator",
+          "match": ";"
+        },
+        {
+          "name": "keyword.operator.assignment",
+          "match": "=\u003E"
+        },
+        {
+          "name": "keyword.operator.comparison",
+          "match": "\u003C=\u003E"
+        },
+        {
+          "name": "keyword.operator.assignment",
+          "match": "\\\u002B="
+        },
+        {
+          "name": "punctuation.separator.dot",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.comma",
+          "match": ","
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\["
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\]"
+        },
+        {
+          "name": "punctuation.separator.colon",
+          "match": ":"
+        },
+        {
+          "name": "keyword.operator.ternary",
+          "match": "\\?"
+        },
+        {
+          "name": "keyword.operator.logical",
+          "match": "!"
+        },
+        {
+          "name": "constant.numeric.decimal",
+          "match": "(-|)[0-9][0-9_]*"
+        },
+        {
+          "name": "constant.numeric.hex",
+          "match": "0x[0-9a-fA-F]\u002B"
+        },
+        {
+          "name": "constant.numeric.binary",
+          "match": "0b[01]\u002B"
+        },
+        {
+          "name": "constant.numeric.decimal",
+          "match": "(-|)[0-9][0-9_]*\\.[0-9][0-9_]*"
+        },
+        {
+          "name": "punctuation.definition.tag.end",
+          "match": "\u003E"
+        },
+        {
+          "name": "punctuation.definition.tag.end",
+          "match": "/\u003E"
+        },
+        {
+          "name": "punctuation.definition.tag.begin",
+          "match": "\u003C/"
+        },
+        {
+          "name": "punctuation.definition.tag.end",
+          "match": "\u003E"
+        },
+        {
+          "name": "punctuation.separator.dot",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.terminator",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.colon",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.terminator",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.terminator",
+          "match": ";"
+        },
+        {
+          "name": "keyword.operator.arithmetic",
+          "match": "\\.\\."
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.bracket",
+          "match": "\\}"
+        },
+        {
+          "name": "variable.other.other",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+        },
+        {
+          "name": "variable.other.other",
+          "match": "@[a-zA-Z_][a-zA-Z0-9]*"
+        },
+        {
+          "name": "entity.name.type.other",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+        },
+        {
+          "name": "storage.type",
+          "match": "[^;]\u002B"
         }
       ]
     }
