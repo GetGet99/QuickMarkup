@@ -43,7 +43,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     public enum Tokens
     {
         [Regex<string>(@"using[^<\r\n]*;", nameof(Identity), State = LexerStates.Usings)]
-        [TextmateScope("keyword.import", Priority = (int)TextmateOrder.Keywords, AddBoundary = false)]
+        [TextmateScope("keyword.import", Priority = (int)TextmateOrder.Keywords, AddBoundary = false, Regexes = ["using"])]
         UsingStatement,
         [Regex(@"", nameof(GotoBeforeRefs), ShouldReturnToken = false, State = LexerStates.Usings)]
         UsingHelper,
@@ -54,7 +54,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmatePunctuationScope("definition.tag.begin", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QMOpenTagOpen,
         [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = LexerStates.BeforeRoot)]
-        [TextmateScope("string.unquoted.embedded", Priority = (int)TextmateOrder.StringChar)]
+        [TextmateScope("string.unquoted.embedded", Priority = (int)TextmateOrder.StringChar, Begin = @"<setup>", End = @"</setup>")]
         Setup,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.Props | LexerStates.BeforeRoot | LexerStates.QMTag)]
         [Regex<string>(@"@[a-zA-Z_][a-zA-Z0-9]*", nameof(Identity), State = LexerStates.InsideQMOpenTag)]
@@ -140,6 +140,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Double,
         [Regex<string>(@"-/", nameof(HandleForeignEnd), State = LexerStates.InsideForeign)]
         [Regex<string>(@"`", nameof(HandleForeignEnd), State = LexerStates.InsideTickForeign)]
+        [TextmateScope("string.unquoted.embedded", Priority = (int)TextmateOrder.StringChar, Begin = @"`", End = @"`")]
         Foreign,
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
@@ -166,16 +167,16 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Ref,
         // HEADER TOKENS (namespace, class declaration, base types)
         [Regex(@"namespace", nameof(HandleNamespaceKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [TextmateKeywordScope("control.namespace", Priority = (int)TextmateOrder.Keywords)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         NamespaceKw,
         [Regex(@"class", nameof(HandleClassKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [TextmateKeywordScope("control.class", Priority = (int)TextmateOrder.Keywords)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         ClassKw,
         [Regex(@"component", nameof(HandleComponentKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [TextmateKeywordScope("control.class", Priority = (int)TextmateOrder.Keywords)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         ComponentKw,
         [Regex(@"fragment", nameof(HandleFragmentKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
-        [TextmateKeywordScope("control.class", Priority = (int)TextmateOrder.Keywords)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         FragmentKw,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.BeforeRefsNamespace | LexerStates.BeforeRefsClassName)]
         [TextmateEntityNameTypeScope("other", Priority = (int)TextmateOrder.Identifier)]
@@ -193,7 +194,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmatePunctuationScope("terminator", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         ClassSemicolon,
         [Regex<string>(@"[^;]+", nameof(Identity), State = LexerStates.BeforeRefsBaseTypes)]
-        [TextmateScope("storage.type", Priority = (int)TextmateOrder.Identifier)]
+        // [TextmateScope("storage.type", Priority = (int)TextmateOrder.Identifier)]
         RawBaseTypes,
         [Regex(@";", nameof(HandleBaseTypesSemicolon), State = LexerStates.BeforeRefsBaseTypes)]
         [TextmatePunctuationScope("terminator", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
