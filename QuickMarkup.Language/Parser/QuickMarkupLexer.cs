@@ -1,5 +1,6 @@
 using Get.LangSupport;
 using Get.Lexer;
+using QuickMarkup.Textmate;
 using Get.PLShared;
 using Get.RegexMachine;
 using System.Diagnostics;
@@ -51,10 +52,10 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         PropsHelper,
 
         [Regex(@"<", nameof(QMOpenTagOpenHandler), State = LexerStates.BeforeRootAndInsideQMOpenTag)]
-        [TextmatePunctuationScope("definition.tag.begin", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        [TextmateTagScope(TagMatchKind.Open, Priority = (int)TextmateOrder.Tag)]
         QMOpenTagOpen,
         [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = LexerStates.BeforeRoot)]
-        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"<setup>", End = @"</setup>", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
+        [TextmateTagScope(TagMatchKind.Setup, Priority = (int)TextmateOrder.StringChar)]
         Setup,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.Props | LexerStates.BeforeRoot | LexerStates.QMTag)]
         [Regex<string>(@"@[a-zA-Z_][a-zA-Z0-9]*", nameof(Identity), State = LexerStates.InsideQMOpenTag)]
@@ -102,7 +103,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex<string>("""
             "([^\r\n\"\\]|(\\(n|t|r|\'|\")))*"
             """, nameof(StringUnescape), State = LexerStates.InsideQMOpenTag)]
-        [TextmateStringQuotedScope(StringQuotedType.Double, Priority = (int)TextmateOrder.StringChar)]
+        [QuickMarkupStringQuotedScope(StringQuotedType.Double, Priority = (int)TextmateOrder.StringChar)]
         String,
         [Regex(@"private", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
@@ -140,8 +141,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Double,
         [Regex<string>(@"-/", nameof(HandleForeignEnd), State = LexerStates.InsideForeign)]
         [Regex<string>(@"`", nameof(HandleForeignEnd), State = LexerStates.InsideTickForeign)]
-        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"`", End = @"`", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
-        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"/-", End = @"-/", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
+        [QuickMarkupEmbeddedCSharpScope(@"`", @"`", Priority = (int)TextmateOrder.StringChar)]
+        [QuickMarkupEmbeddedCSharpScope(@"/-", @"-/", Priority = (int)TextmateOrder.StringChar)]
         Foreign,
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
@@ -152,16 +153,13 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"[^`]+", nameof(AppendForeign), ShouldReturnToken = false, State = LexerStates.InsideTickForeign)]
         ForeignHelperToken,
         [Regex(@">", nameof(QMOpenTagCloseHandler), State = LexerStates.InsideQMOpenTag)]
-        [TextmatePunctuationScope("definition.tag.end", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QMOpenTagClose,
         [Regex(@"/>", nameof(QMOpenTagAutoCloseHandler), State = LexerStates.InsideQMOpenTag)]
-        [TextmatePunctuationScope("definition.tag.end", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QMOpenTagCloseAuto,
         [Regex(@"</", nameof(QMCloseTagOpenHandler), State = LexerStates.BeforeRoot)]
-        [TextmatePunctuationScope("definition.tag.begin", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        [TextmateTagScope(TagMatchKind.Close, Priority = (int)TextmateOrder.Tag)]
         QMCloseTagOpen,
         [Regex(@">", nameof(QMCloseTagCloseHandler), State = LexerStates.InsideQMCloseTag)]
-        [TextmatePunctuationScope("definition.tag.end", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QMCloseTagClose,
         [Regex(@"ref", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Other, Priority = (int)TextmateOrder.Keywords)]
@@ -247,8 +245,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"[^\*/]*", ShouldReturnToken = false, State = LexerStates.InsideBlockComment)]
         [Regex(@"[\*/]", ShouldReturnToken = false, State = LexerStates.InsideBlockComment)]
         [Regex(@"\*/", nameof(HandleBlockCommentEnd), ShouldReturnToken = false, State = LexerStates.InsideBlockComment)]
-        [TextmateCommentScope(Priority = (int)TextmateOrder.LineComment, Regexes = [@"//[^\r\n]*"])]
-        [TextmateCommentScope(Priority = (int)TextmateOrder.BlockComment, Begin = "/\\*", End = "\\*/")]
+        [QuickMarkupCommentScope(Priority = (int)TextmateOrder.LineComment, Regexes = [@"//[^\r\n]*"])]
+        [QuickMarkupCommentScope(Priority = (int)TextmateOrder.BlockComment, Begin = "/\\*", End = "\\*/")]
         Comment,
         [Regex<string>(@"[^]", nameof(Identity), State = LexerStates.CatchAllStates, Order = (int)Order.CatchAll)]
         UnexpectedCharacter,
@@ -437,8 +435,9 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Number = 2,
         OperatorsAndPunctuations = 2,
         Keywords = 3,
-        StringChar = 4,
-        LineComment = 5,
-        BlockComment = 6
+        Tag = 4,
+        StringChar = 5,
+        LineComment = 6,
+        BlockComment = 7
     }
 }

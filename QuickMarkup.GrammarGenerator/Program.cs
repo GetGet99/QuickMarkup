@@ -1,5 +1,6 @@
 using Get.LangSupport;
 using QuickMarkup.Parser;
+using QuickMarkup.Textmate;
 
 var generatorDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
 var repoRoot = Path.GetFullPath(Path.Combine(generatorDir, "..", "..", "..", ".."));
@@ -18,7 +19,7 @@ var repository = TextmateGrammarGenerator.GenerateRepository<QuickMarkupLexer>()
 var grammar = metadata.GetGrammarJSON(
     repository,
     additionalEntries: null,
-    repositoryIncludeOrder: ["comments", "strings", "main"]);
+    repositoryIncludeOrder: QuickMarkupGrammarRepositories.IncludeOrder);
 
 File.WriteAllText(outputPath, grammar);
 Console.WriteLine($"Grammar written to: {outputPath}");
