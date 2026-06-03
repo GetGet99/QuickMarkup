@@ -25,4 +25,5 @@
   <Project Path="QuickMarkup.SourceGen/QuickMarkup.SourceGen.csproj" />
   <Project Path="QuickMarkup.Syntax.Test/QuickMarkup.Syntax.Test.csproj" />
   <Project Path="QuickMarkup.LanguageServer/QuickMarkup.LanguageServer.csproj" />
+  <Project Path="QuickMarkup.LanguageServer.Test/QuickMarkup.LanguageServer.Test.csproj" />
 </Solution>

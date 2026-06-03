@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace QuickMarkup.LanguageServer.Contracts;
 
-interface IRoslynWorkspaceManager
+public interface IRoslynWorkspaceManager
 {
     bool IsLoaded { get; }
     Compilation? Compilation { get; }
