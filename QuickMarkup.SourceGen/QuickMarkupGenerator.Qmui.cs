@@ -1,11 +1,6 @@
-using System.Text;
-using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
-using QuickMarkup.SourceGen.CodeGen;
 using QuickMarkup.CodeAnalysis;
-using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.Language.Symbols;
 using QuickMarkup.AST;
@@ -53,25 +48,19 @@ partial class QuickMarkupGenerator
             var initData = validQmui.Select(
                 (x, ct) =>
                 {
-                    var tags = x.Sfc!.MarkupTags;
-                    QuickMarkupParsedTag? combined;
-                    if (tags.Count == 0)
-                        combined = null;
-                    else if (tags.Count == 1)
-                        combined = tags[0];
-                    else
-                        combined = new QuickMarkupParsedTag(
-                            new QuickMarkupConstructor(new PositionedIdentifier("root")),
-                            new ListAST<QuickMarkupInlineMember>(),
-                            new ListAST<IQMNodeChild>(tags.Select(static t => (IQMNodeChild)t).ToList()),
-                            null, true, null, false
-                        );
-                    return (x.Target, x.Sfc, Markup: combined, x.Compilation);
+                    var sfc = x.Sfc!;
+                    var combined = CombineMarkupTags(sfc.MarkupTags);
+                    var compilation = EnsureTypeSymbolInCompilation(x.Target, sfc, x.Compilation);
+                    return (x.Target, Sfc: sfc, Markup: combined, Compilation: compilation);
                 }
             );
 
             var initSources = initData.Select(
-                (x, ct) => GenerateQmuiInit(x.Target, x.Sfc, x.Markup, x.Compilation, ct)
+                (x, ct) =>
+                {
+                    var (_, usings, code, error, _) = GenerateInitSource(x.Target, x.Sfc.Usings, x.Markup, x.Sfc.Scirpt?.RawScript, x.Compilation, null, ct);
+                    return (Ctx: x.Target, Sfc: x.Sfc, usings, code, error);
+                }
             );
 
             context.RegisterSourceOutput(initSources, (spc, value) =>
@@ -97,7 +86,12 @@ partial class QuickMarkupGenerator
         // QMUI REFS
         {
             var refSources = validQmui.Select(
-                (x, ct) => GenerateQmuiRefs(x.Target, x.Sfc, x.Compilation, ct)
+                (x, ct) =>
+                {
+                    var compilation = EnsureTypeSymbolInCompilation(x.Target, x.Sfc!, x.Compilation);
+                    var (code, _) = GenerateRefsSource(x.Target, x.Sfc!.Usings, x.Sfc!.Refs, compilation, null, ct);
+                    return (x.Target, x.Sfc, x.Sfc!.Usings, code);
+                }
             );
 
             context.RegisterSourceOutput(refSources, (spc, value) =>
@@ -147,126 +141,6 @@ partial class QuickMarkupGenerator
         var parseOptions = (CSharpParseOptions)compilation.SyntaxTrees.First().Options;
         var tree = CSharpSyntaxTree.ParseText(source, parseOptions);
         return compilation.AddSyntaxTrees(tree);
-    }
-
-    static (QuickMarkupTargetContext Target, QuickMarkupSFC? Sfc, string Usings, string Code, string? Error)
-        GenerateQmuiInit(QuickMarkupTargetContext target, QuickMarkupSFC sfc, QuickMarkupParsedTag? template,
-            Compilation compilation, CancellationToken ct)
-    {
-        var usings = sfc.Usings;
-        compilation = EnsureTypeSymbolInCompilation(target, sfc, compilation);
-
-        if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
-        {
-            var error = $"""
-                Exception Occured during type resolving: {failureReason.GetType().FullName} {failureReason.Message}
-                Messsage: {failureReason.Message}
-                Stack Trace:
-                    {failureReason.StackTrace.IndentWOF(1)}
-                """;
-            return (target, sfc, usings, "", error);
-        }
-
-        StringBuilder generatedProperties = new();
-        StringBuilder codeBuilder = new();
-        generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
-        var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
-        var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace);
-        var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
-        var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template, componentKind);
-        if (shouldGenerateComponentOutput)
-        {
-            if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
-            {
-                var error = $"Type {target.FullTypeName} already declares {CodeTypeResolver.ComponentOutputPropertyName}, but QuickMarkup needs to generate it from <root> children.";
-                return (target, sfc, usings, "", error);
-            }
-
-            var outputType = componentKind is QMComponentKind.Fragment
-                ? $"global::QuickMarkup.Infra.FragmentBlock<{componentOutputType?.FullName() ?? "object"}>"
-                : componentOutputType?.FullName() ?? "object";
-            generatedProperties.AppendLine($"public {outputType} {CodeTypeResolver.ComponentOutputPropertyName} {{ get; private set; }} = null!;");
-        }
-        ct.ThrowIfCancellationRequested();
-
-        try
-        {
-            if (template is not null)
-            {
-                var analyzer = new QuickMarkupBinder(componentInfoResolver);
-                var output = analyzer.Bind(template, typeSymbol);
-                ct.ThrowIfCancellationRequested();
-                var cgen = new CodeGenContext(
-                    generatedProperties,
-                    codeBuilder,
-                    isConstructorMode
-                );
-                cgen.CGenWrite(output, "this");
-                ct.ThrowIfCancellationRequested();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-            var error = $"""
-                Exception Occured during Bindings or Codegen: {e.GetType().FullName} {e.Message}
-                Messsage: {e.Message}
-                Stack Trace:
-                    {e.StackTrace.IndentWOF(1)}
-                """;
-            return (target, sfc, usings, "", error);
-        }
-
-        string generatedMethod;
-        if (isConstructorMode)
-            generatedMethod = $$"""
-            public {{typeSymbol.Name}}() {
-                {{sfc.Scirpt?.RawScript ?? "// No raw scripts was provided"}}
-                {{codeBuilder.ToString().IndentWOF()}}
-            }
-            """;
-        else
-            generatedMethod = $$"""
-            private void Init() {
-                {
-                    foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
-                        QUICKMARKUP_DISPOSABLE.Dispose();
-                    }
-                    QUICKMARKUP_DISPOSABLES.Clear();
-                }
-                {{sfc.Scirpt?.RawScript ?? "// No raw scripts was provided"}}
-                {{codeBuilder.ToString().IndentWOF()}}
-            }
-            """;
-
-        return (target, sfc, usings, $"""
-                    {generatedProperties}
-                    {generatedMethod}
-                    """, error: default(string));
-    }
-
-    static (QuickMarkupTargetContext Target, QuickMarkupSFC? Sfc, string Usings, string Code)
-        GenerateQmuiRefs(QuickMarkupTargetContext target, QuickMarkupSFC sfc, Compilation compilation, CancellationToken ct)
-    {
-        var usings = sfc.Usings;
-        compilation = EnsureTypeSymbolInCompilation(target, sfc, compilation);
-
-        if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out _))
-        {
-            return (target, sfc, usings, "");
-        }
-
-        var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
-        var binder = new QuickMarkupBinder(resolver, failFast: true);
-        var boundRefs = binder.BindRefDeclarations(sfc.Refs, typeSymbol);
-        StringBuilder sb = new();
-        var rgen = new RefsGenContext(sb, target.FullTypeName);
-        rgen.CGenWrite(boundRefs, ct);
-
-        return (target, sfc, usings, sb.ToString());
     }
 
     static string GetBaseTypesString(ClassDeclaration classDecl)

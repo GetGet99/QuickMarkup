@@ -51,20 +51,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var sfcs = nonErrorMarkups.Select(
                 (x, _) =>
                 {
-                    var tags = x.AST.MarkupTags;
-                    QuickMarkupParsedTag? combined;
-                    if (tags.Count == 0)
-                        combined = null;
-                    else if (tags.Count == 1)
-                        combined = tags[0];
-                    else
-                        combined = new QuickMarkupParsedTag(
-                            new QuickMarkupConstructor(new PositionedIdentifier("root")),
-                            new ListAST<QuickMarkupInlineMember>(),
-                            new ListAST<IQMNodeChild>(tags.Select(static t => (IQMNodeChild)t).ToList()),
-                            null, true, null, false
-                        );
-                    return (x.Target, x.AST.Usings, x.AST.Scirpt, combined);
+                    var combined = CombineMarkupTags(x.AST.MarkupTags);
+                    return (x.Target, x.AST.Usings, x.AST.Scirpt?.RawScript, combined);
                 }
             );
 
@@ -72,95 +60,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 (x, ct) =>
                 {
                     var (((target, usings, script, template), compilation), generatedMembers) = x;
-
-                    if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
-                    {
-                        var error = $"""
-                            Exception Occured during type resolving: {failureReason.GetType().FullName} {failureReason.Message}
-                            Messsage: {failureReason.Message}
-                            Stack Trace:
-                                {failureReason.StackTrace.IndentWOF(1)}
-                            """;
-                        return (target, usings, code: "", error, isComponent: false);
-                    }
-                    
-                    StringBuilder generatedProperties = new();
-                    StringBuilder codeBuilder = new();
-                    generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
-                    var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
-                    var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
-                    var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
-                    var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template, componentKind);
-                    if (shouldGenerateComponentOutput)
-                    {
-                        if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
-                        {
-                            var error = $"Type {target.FullTypeName} already declares {CodeTypeResolver.ComponentOutputPropertyName}, but QuickMarkup needs to generate it from <root> children.";
-                            return (target, usings, code: "", error, isComponent: componentKind is not QMComponentKind.None);
-                        }
-
-                        var outputType = componentKind is QMComponentKind.Fragment
-                            ? $"global::QuickMarkup.Infra.FragmentBlock<{componentOutputType?.FullName() ?? "object"}>"
-                            : componentOutputType?.FullName() ?? "object";
-                        generatedProperties.AppendLine($"public {outputType} {CodeTypeResolver.ComponentOutputPropertyName} {{ get; private set; }} = null!;");
-                    }
-                    ct.ThrowIfCancellationRequested();
-                    try
-                    {
-                        if (template is not null)
-                        {
-                            var analyzer = new QuickMarkupBinder(componentInfoResolver);
-                            var output = analyzer.Bind(template, typeSymbol);
-                            ct.ThrowIfCancellationRequested();
-                            var cgen = new CodeGenContext(
-                                generatedProperties,
-                                codeBuilder,
-                                isConstructorMode
-                            );
-                            cgen.CGenWrite(output, "this");
-                            ct.ThrowIfCancellationRequested();
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        var error = $"""
-                            Exception Occured during Bindings or Codegen: {e.GetType().FullName} {e.Message}
-                            Messsage: {e.Message}
-                            Stack Trace:
-                                {e.StackTrace.IndentWOF(1)}
-                            """;
-                        return (target, usings, code: "", error, isComponent: componentKind is not QMComponentKind.None);
-                    }
-                    string generatedMethod;
-                    if (isConstructorMode)
-                        generatedMethod = $$"""
-                        public {{typeSymbol.Name}}() {
-                            {{script?.RawScript ?? "// No raw scripts was provided"}}
-                            {{codeBuilder.ToString().IndentWOF()}}
-                        }
-                        """;
-                    else
-                        generatedMethod = $$"""
-                        private void Init() {
-                            {
-                                // in case of re-initialize, cleanup all previous generated disposables
-                                foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
-                                    QUICKMARKUP_DISPOSABLE.Dispose();
-                                }
-                                QUICKMARKUP_DISPOSABLES.Clear();
-                            }
-                            {{script?.RawScript ?? "// No raw scripts was provided"}}
-                            {{codeBuilder.ToString().IndentWOF()}}
-                        }
-                        """;
-                    return (target, usings, code: $"""
-                                {generatedProperties}
-                                {generatedMethod}
-                                """, error: default(string), isComponent: componentKind is not QMComponentKind.None);
+                    return GenerateInitSource(target, usings, template, script, compilation, generatedMembers, ct);
                 }
             );
 
@@ -259,15 +159,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var lines = withCompilation.Select((x, tok) =>
             {
                 var (((target, usings, refs), compilation), generatedMembers) = x;
-                var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
-                var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
-                var binder = new QuickMarkupBinder(resolver, failFast: true);
-                var boundRefs = binder.BindRefDeclarations(refs, containingType);
-                StringBuilder sb = new();
-                var rgen = new RefsGenContext(sb, target.FullTypeName);
-                rgen.CGenWrite(boundRefs, tok);
-                var isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
-                return (target, usings, sb.ToString(), isComponent);
+                var (code, isComponent) = GenerateRefsSource(target, usings, refs, compilation, generatedMembers, tok);
+                return (target, usings, code, isComponent);
             });
 
             context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
@@ -329,5 +222,144 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         if (idx >= 0)
             searchTypeName = searchTypeName[..idx];
         return compilation.GetTypeByMetadataName(searchTypeName);
+    }
+
+    static QuickMarkupParsedTag? CombineMarkupTags(ListAST<QuickMarkupParsedTag> tags)
+    {
+        if (tags.Count == 0)
+            return null;
+        else if (tags.Count == 1)
+            return tags[0];
+        else
+            return new QuickMarkupParsedTag(
+                new QuickMarkupConstructor(new PositionedIdentifier("root")),
+                new ListAST<QuickMarkupInlineMember>(),
+                new ListAST<IQMNodeChild>(tags.Select(static t => (IQMNodeChild)t).ToList()),
+                null, true, null, false
+            );
+    }
+
+    static (QuickMarkupTargetContext Target, string Usings, string Code, string? Error, bool IsComponent)
+        GenerateInitSource(
+            QuickMarkupTargetContext target,
+            string usings,
+            QuickMarkupParsedTag? template,
+            string? script,
+            Compilation compilation,
+            QuickMarkupGeneratedMemberTable? generatedMembers,
+            CancellationToken ct)
+    {
+        if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
+        {
+            var error = $$"""
+                Exception Occured during type resolving: {{failureReason.GetType().FullName}} {{failureReason.Message}}
+                Messsage: {{failureReason.Message}}
+                Stack Trace:
+                    {{failureReason.StackTrace.IndentWOF(1)}}
+                """;
+            return (target, usings, "", error, false);
+        }
+
+        StringBuilder generatedProperties = new();
+        StringBuilder codeBuilder = new();
+        generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
+        var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
+        var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
+        var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
+        var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template, componentKind);
+        if (shouldGenerateComponentOutput)
+        {
+            if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
+            {
+                var error = $"Type {target.FullTypeName} already declares {CodeTypeResolver.ComponentOutputPropertyName}, but QuickMarkup needs to generate it from <root> children.";
+                return (target, usings, "", error, componentKind is not QMComponentKind.None);
+            }
+
+            var outputType = componentKind is QMComponentKind.Fragment
+                ? $"global::QuickMarkup.Infra.FragmentBlock<{componentOutputType?.FullName() ?? "object"}>"
+                : componentOutputType?.FullName() ?? "object";
+            generatedProperties.AppendLine($"public {outputType} {CodeTypeResolver.ComponentOutputPropertyName} {{ get; private set; }} = null!;");
+        }
+        ct.ThrowIfCancellationRequested();
+
+        try
+        {
+            if (template is not null)
+            {
+                var analyzer = new QuickMarkupBinder(componentInfoResolver);
+                var output = analyzer.Bind(template, typeSymbol);
+                ct.ThrowIfCancellationRequested();
+                var cgen = new CodeGenContext(
+                    generatedProperties,
+                    codeBuilder,
+                    isConstructorMode
+                );
+                cgen.CGenWrite(output, "this");
+                ct.ThrowIfCancellationRequested();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            var error = $$"""
+                Exception Occured during Bindings or Codegen: {{e.GetType().FullName}} {{e.Message}}
+                Messsage: {{e.Message}}
+                Stack Trace:
+                    {{e.StackTrace.IndentWOF(1)}}
+                """;
+            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+        }
+
+        string generatedMethod;
+        if (isConstructorMode)
+            generatedMethod = $$"""
+            public {{typeSymbol.Name}}() {
+                {{script ?? "// No raw scripts was provided"}}
+                {{codeBuilder.ToString().IndentWOF()}}
+            }
+            """;
+        else
+            generatedMethod = $$"""
+            private void Init() {
+                {
+                    // in case of re-initialize, cleanup all previous generated disposables
+                    foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
+                        QUICKMARKUP_DISPOSABLE.Dispose();
+                    }
+                    QUICKMARKUP_DISPOSABLES.Clear();
+                }
+                {{script ?? "// No raw scripts was provided"}}
+                {{codeBuilder.ToString().IndentWOF()}}
+            }
+            """;
+
+        return (target, usings, $$"""
+                    {{generatedProperties}}
+                    {{generatedMethod}}
+                    """, default(string), componentKind is not QMComponentKind.None);
+    }
+
+    static (string Code, bool IsComponent) GenerateRefsSource(
+        QuickMarkupTargetContext target,
+        string usings,
+        ListAST<RefDeclaration> refs,
+        Compilation compilation,
+        QuickMarkupGeneratedMemberTable? generatedMembers,
+        CancellationToken ct)
+    {
+        var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
+        var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
+        if (containingType is null)
+            return ("", false);
+        var binder = new QuickMarkupBinder(resolver, failFast: true);
+        var boundRefs = binder.BindRefDeclarations(refs, containingType);
+        StringBuilder sb = new();
+        var rgen = new RefsGenContext(sb, target.FullTypeName);
+        rgen.CGenWrite(boundRefs, ct);
+        var isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
+        return (sb.ToString(), isComponent);
     }
 }
