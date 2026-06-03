@@ -1,7 +1,5 @@
 .vs
-.vscode
 */.vs
-*/.vscode
 */bin
 */obj
 Frameworks/*/bin
