@@ -278,12 +278,10 @@ interface IRoslynWorkspaceManager
 // Contracts/IQmuiDiagnosticService.cs
 interface IQmuiDiagnosticService
 {
-    Task<IReadOnlyList<OmniSharpDiagnostic>> GetDiagnosticsAsync(
+    Task<IReadOnlyList<Diagnostic>> GetDiagnosticsAsync(
         string filePath, string content, CancellationToken ct
     );
-    Task PublishDiagnosticsAsync(
-        Uri documentUri, IReadOnlyList<OmniSharpDiagnostic> diagnostics
-    );
+    // Publishing is the handler's responsibility — see Agent E
 }
 ```
 
@@ -352,6 +350,9 @@ static class LspDiagnosticConverter
 
 3. **`QmuiDiagnosticService`** — orchestrates the full pipeline:
 
+   Creates a new `QuickMarkupLexer` + `QuickMarkupParser` on each call (no caching needed
+   — parser creation is negligible cost vs. Roslyn type resolution).
+
 ```csharp
 // Diagnostics/QmuiDiagnosticService.cs
 class QmuiDiagnosticService : IQmuiDiagnosticService
@@ -361,30 +362,43 @@ class QmuiDiagnosticService : IQmuiDiagnosticService
     public async Task<IReadOnlyList<Diagnostic>> GetDiagnosticsAsync(
         string filePath, string content, CancellationToken ct)
     {
-        // Step 1: Parse .qmui content
-        QuickMarkupSFC sfc = Parse(content);
+        // Step 1: Parse .qmui content (new lexer + parser per call — cheap)
+        var lexer = new QuickMarkupLexer(new StringTextSeeker(content));
+        var tokens = lexer.GetTokens();
+        QuickMarkupSFC sfc = new QuickMarkupParser().Parse(tokens, out var parseErrors);
         
         // Step 2: Get compilation from workspace
         var compilation = _workspaceManager.Compilation;
-        if (compilation is null) return await GetSyntaxOnlyDiagnostics(sfc, content);
+        if (compilation is null)
+            return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
         
-        // Step 3: Resolve target type and bind
-        var target = QuickMarkupTargetContext.FromQmuiFile(filePath, sfc);
-        if (!target.TryGetTypeSymbol(compilation, out var typeSym, out _))
-            return await GetSyntaxOnlyDiagnostics(sfc, content);
-            
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, target.Namespace);
+        // Step 3: Extract target info from parsed SFC (same logic as AnalyzeQmuiFile)
+        var ns = sfc.Namespace?.Name ?? "";
+        var typeName = sfc.ClassDeclaration?.Name ?? "";
+        if (string.IsNullOrEmpty(typeName))
+            return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
+        
+        // Step 4: Resolve type symbol in compilation
+        var fullName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
+        var typeSym = compilation.GetTypeByMetadataName(fullName);
+        if (typeSym is null)
+            return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
+        
+        // Step 5: Bind
+        var resolver = new CodeTypeResolver(compilation, sfc.Usings, ns);
         var binder = new QuickMarkupBinder(resolver, failFast: false);
         binder.Bind(sfc.Template, typeSym);
         binder.BindRefDeclarations(sfc.Refs, typeSym);
         
-        // Step 4: Convert binder diagnostics + parse errors to LSP
-        return ConvertAll(sfc, binder.Diagnostics, content);
+        // Step 6: Convert binder diagnostics + parse errors to LSP
+        return LspDiagnosticConverter.ConvertAll(
+            binder.Diagnostics, parseErrors, sfc, content
+        );
     }
 }
 ```
 
-4. **Unit tests** to verify:
+4. **Unit tests** — in a new `QuickMarkup.LanguageServer.Test/` project:
    - Parse-only diagnostics (no workspace → syntax errors only)
    - Full pipeline (with mocked `IRoslynWorkspaceManager`)
    - Error/warning severity classification
@@ -555,11 +569,15 @@ to the editor.
 
 1. **`QmuiDidOpenHandler.cs`** — implements `IDidOpenTextDocumentHandler`
 
+   Uses OmniSharp's `ITextDocumentLanguageServer` for publishing. The service only
+   returns diagnostics; publishing is purely a transport concern.
+
 ```csharp
 [Method(TextDocumentNames.DidOpen)]
 class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
+    readonly ITextDocumentLanguageServer _publisher;
     
     public async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
     {
@@ -568,7 +586,9 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
             request.TextDocument.Text,
             ct
         );
-        await _diagnostics.PublishDiagnosticsAsync(request.TextDocument.Uri, result);
+        await _publisher.PublishDiagnostics(
+            request.TextDocument.Uri, result
+        );
         return Unit.Value;
     }
 }
