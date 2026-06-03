@@ -15,7 +15,10 @@ var metadata = new TextmateGrammarMetadata
 };
 
 var repository = TextmateGrammarGenerator.GenerateRepository<QuickMarkupLexer>();
-var grammar = metadata.GetGrammarJSON(repository);
+var grammar = metadata.GetGrammarJSON(
+    repository,
+    additionalEntries: null,
+    repositoryIncludeOrder: ["comments", "strings", "main"]);
 
 File.WriteAllText(outputPath, grammar);
 Console.WriteLine($"Grammar written to: {outputPath}");

@@ -54,7 +54,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmatePunctuationScope("definition.tag.begin", Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QMOpenTagOpen,
         [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = LexerStates.BeforeRoot)]
-        [TextmateScope("string.unquoted.embedded", Priority = (int)TextmateOrder.StringChar, Begin = @"<setup>", End = @"</setup>")]
+        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"<setup>", End = @"</setup>", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
         Setup,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.Props | LexerStates.BeforeRoot | LexerStates.QMTag)]
         [Regex<string>(@"@[a-zA-Z_][a-zA-Z0-9]*", nameof(Identity), State = LexerStates.InsideQMOpenTag)]
@@ -140,7 +140,8 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Double,
         [Regex<string>(@"-/", nameof(HandleForeignEnd), State = LexerStates.InsideForeign)]
         [Regex<string>(@"`", nameof(HandleForeignEnd), State = LexerStates.InsideTickForeign)]
-        [TextmateScope("string.unquoted.embedded", Priority = (int)TextmateOrder.StringChar, Begin = @"`", End = @"`")]
+        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"`", End = @"`", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
+        [TextmateScope("meta.embedded.csharp", Priority = (int)TextmateOrder.StringChar, Begin = @"/-", End = @"-/", EmbeddedLanguage = "csharp", RepositoryKey = "strings")]
         Foreign,
         [Regex(@"/-", nameof(HandleForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         [Regex(@"`", nameof(HandleCuryForeignStart), ShouldReturnToken = false, State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
@@ -179,7 +180,6 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         FragmentKw,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.BeforeRefsNamespace | LexerStates.BeforeRefsClassName)]
-        [TextmateEntityNameTypeScope("other", Priority = (int)TextmateOrder.Identifier)]
         HeaderIdentifier,
         [Regex(@"\.", State = LexerStates.BeforeRefsNamespace)]
         [TextmatePunctuationSeparatorScope(PunctuationSeparatorType.Dot, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]

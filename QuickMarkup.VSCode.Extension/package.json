@@ -27,7 +27,10 @@
       {
         "language": "quickmarkup",
         "scopeName": "source.quickmarkup",
-        "path": "./syntaxes/qmui.tmGrammar.json"
+        "path": "./syntaxes/qmui.tmGrammar.json",
+        "embeddedLanguages": {
+          "meta.embedded.csharp": "csharp"
+        }
       }
     ]
   },

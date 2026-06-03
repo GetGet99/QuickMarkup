@@ -2,39 +2,18 @@
   "scopeName": "source.quickmarkup",
   "patterns": [
     {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
       "include": "#main"
     }
   ],
   "repository": {
     "main": {
       "patterns": [
-        {
-          "name": "comment",
-          "begin": "/\\*",
-          "end": "\\*/"
-        },
-        {
-          "name": "comment",
-          "match": "//[^\\r\\n]*"
-        },
-        {
-          "name": "string.unquoted.embedded",
-          "begin": "\u003Csetup\u003E",
-          "end": "\u003C/setup\u003E"
-        },
-        {
-          "name": "string.quoted.double",
-          "match": "\u0022([^\\r\\n\\\u0022\\\\]|(\\\\(n|t|r|\\\u0027|\\\u0022)))*\u0022"
-        },
-        {
-          "name": "string.quoted.double",
-          "match": "\u0022([^\\r\\n\\\u0022\\\\]|(\\\\(n|t|r|\\\u0027|\\\u0022)))*\u0022"
-        },
-        {
-          "name": "string.unquoted.embedded",
-          "begin": "\u0060",
-          "end": "\u0060"
-        },
         {
           "name": "keyword.import",
           "match": "using"
@@ -120,10 +99,6 @@
           "match": "="
         },
         {
-          "name": "punctuation.terminator",
-          "match": ";"
-        },
-        {
           "name": "keyword.operator.assignment",
           "match": "=\u003E"
         },
@@ -136,10 +111,6 @@
           "match": "\\\u002B="
         },
         {
-          "name": "punctuation.separator.dot",
-          "match": "\\."
-        },
-        {
           "name": "punctuation.separator.comma",
           "match": ","
         },
@@ -150,10 +121,6 @@
         {
           "name": "punctuation.bracket",
           "match": "\\]"
-        },
-        {
-          "name": "punctuation.separator.colon",
-          "match": ":"
         },
         {
           "name": "keyword.operator.ternary",
@@ -181,10 +148,6 @@
         },
         {
           "name": "punctuation.definition.tag.end",
-          "match": "\u003E"
-        },
-        {
-          "name": "punctuation.definition.tag.end",
           "match": "/\u003E"
         },
         {
@@ -200,16 +163,8 @@
           "match": "\\."
         },
         {
-          "name": "punctuation.terminator",
-          "match": ";"
-        },
-        {
           "name": "punctuation.separator.colon",
           "match": ":"
-        },
-        {
-          "name": "punctuation.terminator",
-          "match": ";"
         },
         {
           "name": "punctuation.terminator",
@@ -242,10 +197,57 @@
         {
           "name": "variable.other.other",
           "match": "@[a-zA-Z_][a-zA-Z0-9]*"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "meta.embedded.csharp",
+          "begin": "\u003Csetup\u003E",
+          "end": "\u003C/setup\u003E",
+          "patterns": [
+            {
+              "include": "source.cs"
+            }
+          ]
         },
         {
-          "name": "entity.name.type.other",
-          "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+          "name": "string.quoted.double",
+          "match": "\u0022([^\\r\\n\\\u0022\\\\]|(\\\\(n|t|r|\\\u0027|\\\u0022)))*\u0022"
+        },
+        {
+          "name": "meta.embedded.csharp",
+          "begin": "\u0060",
+          "end": "\u0060",
+          "patterns": [
+            {
+              "include": "source.cs"
+            }
+          ]
+        },
+        {
+          "name": "meta.embedded.csharp",
+          "begin": "/-",
+          "end": "-/",
+          "patterns": [
+            {
+              "include": "source.cs"
+            }
+          ]
+        }
+      ]
+    },
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment",
+          "match": "//[^\\r\\n]*"
         }
       ]
     }
