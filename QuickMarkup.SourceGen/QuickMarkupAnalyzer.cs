@@ -12,6 +12,7 @@ using QuickMarkup.Parser;
 using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
+using static QuickMarkup.SourceGen.QuickMarkupDiagnosticReporter;
 
 namespace QuickMarkup.SourceGen;
 
@@ -73,7 +74,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorTagUnexpected,
         BindErrorTypeMismatch
     );
-    readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
+    internal readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
         "QuickMarkup parse error due to unexpected token",
         "Unexpected {0}",
@@ -81,7 +82,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor ParseErrorUnexpectedEnding = new(
+    internal readonly static DiagnosticDescriptor ParseErrorUnexpectedEnding = new(
         "QM1002",
         "QuickMarkup parse error due to unexpected ending",
         "Expect {0} after the last parameter",
@@ -89,7 +90,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorGeneral = new(
+    internal readonly static DiagnosticDescriptor BindErrorGeneral = new(
         "QM1003",
         "QuickMarkup general typing error",
         "{0}",
@@ -97,7 +98,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorChildrenTooMany = new(
+    internal readonly static DiagnosticDescriptor BindErrorChildrenTooMany = new(
         "QM1004",
         "QuickMarkup typing error too many children",
         "Too many children were provided, <{0}> expects {1}",
@@ -105,7 +106,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor TagCloseMismatchedError = new(
+    internal readonly static DiagnosticDescriptor TagCloseMismatchedError = new(
         "QM1005",
         "QuickMarkup close tag mismatched",
         "Tag open and close mismatched: <{0}>...</{1}>",
@@ -113,7 +114,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorPropertyUnknown = new(
+    internal readonly static DiagnosticDescriptor BindErrorPropertyUnknown = new(
         "QM1006",
         "QuickMarkup unknown property",
         "{0} does not have a definition for '{1}', {2}",
@@ -121,7 +122,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Warning,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorEnumMemberUnknown = new(
+    internal readonly static DiagnosticDescriptor BindErrorEnumMemberUnknown = new(
         "QM1007",
         "QuickMarkup unknown enum member",
         "{0} does not contain a definition for '{1}', {2}",
@@ -129,7 +130,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Warning,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorTypeUnknown = new(
+    internal readonly static DiagnosticDescriptor BindErrorTypeUnknown = new(
         "QM1008",
         "QuickMarkup unknown type",
         "Unknown type '{0}'",
@@ -137,7 +138,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorTagMismatched = new(
+    internal readonly static DiagnosticDescriptor BindErrorTagMismatched = new(
         "QM1009",
         "QuickMarkup mismatched ending tag",
         "Mismatched ending tag: <{0}>...</{1}>",
@@ -145,7 +146,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorTagUnexpected = new(
+    internal readonly static DiagnosticDescriptor BindErrorTagUnexpected = new(
         "QM1010",
         "QuickMarkup unexpected tag",
         "Expecting <{0} />, but got <{1} />",
@@ -153,7 +154,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor BindErrorTypeMismatch = new(
+    internal readonly static DiagnosticDescriptor BindErrorTypeMismatch = new(
         "QM1011",
         "QuickMarkup type mismatch",
         "Cannot assign value of type '{0}' to property of type '{1}'",
@@ -208,57 +209,11 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
             {
                 qm = Parse(markup, out errors);
             }
-            catch (LRParserRuntimeUnexpectedInputException e)
+            catch (Exception e) when (TryHandleParseException(e, locationProvider, d => ctx.ReportDiagnostic(d)))
             {
-                ctx.ReportDiagnostic(Diagnostic.Create(
-                    ParseErrorUnexpectedInput,
-                    locationProvider.GetLocation(e.UnexpectedElement.Start, e.UnexpectedElement.End),
-                    e.UnexpectedElement
-                ));
                 return;
             }
-            catch (LRParserRuntimeUnexpectedEndingException e)
-            {
-                ctx.ReportDiagnostic(Diagnostic.Create(
-                    ParseErrorUnexpectedEnding,
-                    locationProvider.Fallback,
-                    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
-                ));
-                return;
-            }
-            catch (QuickMarkupTagMismatchException e)
-            {
-                var startTagName = e.FaultedTag.TagStart.TagName;
-                var endTagName = e.FaultedTag.EndTagName;
-                ctx.ReportDiagnostic(Diagnostic.Create(
-                    TagCloseMismatchedError,
-                    locationProvider.GetLocation(e.FaultedTag.TagStart.TagIdentifierAST),
-                    startTagName,
-                    endTagName
-                ));
-                ctx.ReportDiagnostic(Diagnostic.Create(
-                    TagCloseMismatchedError,
-                    locationProvider.GetLocation(e.FaultedTag.EndTagName),
-                    startTagName,
-                    endTagName
-                ));
-                return;
-            }
-            foreach (var error in errors)
-            {
-                if (error.Value is LRParserRuntimeUnexpectedInputException unexpectedInput)
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        ParseErrorUnexpectedInput,
-                        locationProvider.GetLocation(unexpectedInput.UnexpectedElement.Start, unexpectedInput.UnexpectedElement.End),
-                        unexpectedInput.UnexpectedElement
-                    ));
-                else if (error.Value is LRParserRuntimeUnexpectedEndingException unexpectedEnding)
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        ParseErrorUnexpectedEnding,
-                        locationProvider.GetLocation(error.Start, error.End),
-                        $"{string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
-                    ));
-            }
+            ReportErrorTerminals(errors, locationProvider, d => ctx.ReportDiagnostic(d));
 
             // Bind inline for immediate diagnostic feedback
             var resolver = new CodeTypeResolver(compilation, qm.Usings, target.Namespace);
@@ -291,82 +246,9 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     e.Message
                 ));
             }
-            foreach (var diagnostic in binder.Diagnostics)
-            {
-                var loc = locationProvider.GetLocation(diagnostic.Node.Start, diagnostic.Node.End);
-                if (diagnostic is QMBinderPropertyUnknownError propertyUnknown)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorPropertyUnknown,
-                        loc,
-                        resolver.GetTypeSymbol(propertyUnknown.TypeName),
-                        propertyUnknown.PropertyName,
-                        QMDiagnosticSuggestion.FormatSuggestions(propertyUnknown.Suggestions)
-                    ));
-                }
-                else if (diagnostic is QMBinderEnumMemberUnknownError enumMemberUnknown)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorEnumMemberUnknown,
-                        loc,
-                        resolver.GetTypeSymbol(enumMemberUnknown.TypeName),
-                        enumMemberUnknown.MemberName,
-                        QMDiagnosticSuggestion.FormatSuggestions(enumMemberUnknown.Suggestions)
-                    ));
-                }
-                else if (diagnostic is QMBinderChildrenTooMany childrenTooMany)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorChildrenTooMany,
-                        loc,
-                        childrenTooMany.ParentTagInfo.TagType as object ?? childrenTooMany.ParentTagInfo.TagName,
-                        childrenTooMany.Expecting
-                    ));
-                }
-                else if (diagnostic is QMBinderTypeUnknownError typeUnknown)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorTypeUnknown,
-                        loc,
-                        typeUnknown.TypeName
-                    ));
-                }
-                else if (diagnostic is QMBinderTagMismatchedError tagMismatched)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorTagMismatched,
-                        loc,
-                        tagMismatched.TagStart,
-                        tagMismatched.TagEnd
-                    ));
-                }
-                else if (diagnostic is QMBinderTagUnexpectedError tagUnexpected)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorTagUnexpected,
-                        loc,
-                        tagUnexpected.ExpectedTag,
-                        tagUnexpected.TagName
-                    ));
-                }
-                else if (diagnostic is QMBinderTypeMismatchError typeMismatch)
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorTypeMismatch,
-                        loc,
-                        resolver.GetTypeSymbol(typeMismatch.ValueTypeName),
-                        resolver.GetTypeSymbol(typeMismatch.PropertyTypeName)
-                    ));
-                }
-                else
-                {
-                    ctx.ReportDiagnostic(Diagnostic.Create(
-                        BindErrorGeneral,
-                        loc,
-                        diagnostic.Message
-                    ));
-                }
-            }
+            ReportBinderDiagnostics(binder.Diagnostics, locationProvider, resolver, d => ctx.ReportDiagnostic(d));
         }, SyntaxKind.ClassDeclaration);
+
+        InitializeQmuiAnalysis(context);
     }
 }

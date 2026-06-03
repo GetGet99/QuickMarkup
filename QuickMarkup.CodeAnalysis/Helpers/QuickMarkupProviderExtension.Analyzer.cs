@@ -6,6 +6,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
+using QuickMarkup.SourceGen;
+
 namespace QuickMarkup.CodeAnalysis.Helpers;
 
 delegate void QuickMarkupAnalysisActionCallback(SyntaxNodeAnalysisContext context, QuickMarkupAttributeInString markup, QuickMarkupSourceCodeLocationProvider locationProvider);
@@ -51,7 +53,7 @@ static partial class QuickMarkupProviderExtension
 }
 
 
-class QuickMarkupSourceCodeLocationProvider
+class QuickMarkupSourceCodeLocationProvider : IQuickMarkupLocationProvider
 {
     Location fallback;
     SyntaxTree? syntaxTree = null;
