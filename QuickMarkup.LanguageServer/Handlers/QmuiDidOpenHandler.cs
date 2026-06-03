@@ -26,6 +26,9 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 
     public async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
+        var workspace = _serviceProvider.GetRequiredService<IRoslynWorkspaceManager>();
+        await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
+
         var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         var results = await _diagnostics.GetDiagnosticsAsync(
             request.TextDocument.Uri.GetFileSystemPath(),

@@ -39,7 +39,7 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
             previous.Dispose();
         }
 
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var cts = new CancellationTokenSource();
         _debounceTokens.TryAdd(request.TextDocument.Uri, cts);
 
         _ = DebounceAndPublishAsync(request, cts);
@@ -52,6 +52,9 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         try
         {
             await Task.Delay(300, cts.Token);
+
+            var workspace = _serviceProvider.GetRequiredService<IRoslynWorkspaceManager>();
+            await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
 
             var server = _serviceProvider.GetRequiredService<ILanguageServer>();
             var results = await _diagnostics.GetDiagnosticsAsync(
@@ -68,6 +71,10 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         }
         catch (OperationCanceledException)
         {
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[QuickMarkup] Error in change handler for {request.TextDocument.Uri}: {ex.Message}");
         }
         finally
         {

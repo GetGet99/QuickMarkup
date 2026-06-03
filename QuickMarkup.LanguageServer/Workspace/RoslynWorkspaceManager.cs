@@ -13,8 +13,11 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
     readonly SemaphoreSlim _loadLock = new(1, 1);
     FileSystemWatcher? _watcher;
     bool _disposed;
+    string? _workspaceRoot;
+    List<string> _solutionProjects = [];
 
     public bool IsLoaded { get; private set; }
+    public string? CurrentProjectPath { get; private set; }
     public Compilation? Compilation { get; private set; }
     public event Action? CompilationChanged;
 
@@ -27,6 +30,33 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
             MSBuildLocator.RegisterDefaults();
             _msBuildRegistered = true;
         }
+    }
+
+    public async Task<bool> InitializeAsync(string workspaceRoot)
+    {
+        _workspaceRoot = workspaceRoot;
+        _solutionProjects = ProjectFinder.FindSolutionProjects(workspaceRoot);
+
+        var defaultProject = ProjectFinder.FindDefaultProject(workspaceRoot);
+        if (defaultProject is not null)
+            return await TryLoadAsync(defaultProject);
+
+        return false;
+    }
+
+    public async Task<bool> EnsureProjectForFileAsync(string qmuiFilePath)
+    {
+        if (_workspaceRoot is null)
+            return false;
+
+        var projectPath = ProjectFinder.FindProjectForFile(qmuiFilePath, _workspaceRoot, _solutionProjects);
+        if (projectPath is null)
+            return false;
+
+        if (string.Equals(CurrentProjectPath, projectPath, StringComparison.OrdinalIgnoreCase) && IsLoaded)
+            return true;
+
+        return await TryLoadAsync(projectPath);
     }
 
     public async Task<bool> TryLoadAsync(string csprojPath)
@@ -43,6 +73,7 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
                 return false;
             }
 
+            CurrentProjectPath = csprojPath;
             EnsureMSBuildRegistered();
             using var workspace = MSBuildWorkspace.Create();
             var project = await workspace.OpenProjectAsync(csprojPath);
@@ -62,6 +93,14 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
         }
     }
 
+    void OnProjectFileChanged(object sender, FileSystemEventArgs e)
+    {
+        var path = CurrentProjectPath;
+        if (path is not null)
+            _ = TryLoadAsync(path);
+        CompilationChanged?.Invoke();
+    }
+
     public void WatchProjectChanges(string csprojPath)
     {
         _watcher?.Dispose();
@@ -79,11 +118,6 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
         _watcher.Created += OnProjectFileChanged;
         _watcher.Deleted += OnProjectFileChanged;
         _watcher.Renamed += OnProjectFileChanged;
-    }
-
-    void OnProjectFileChanged(object sender, FileSystemEventArgs e)
-    {
-        CompilationChanged?.Invoke();
     }
 
     public void Dispose()

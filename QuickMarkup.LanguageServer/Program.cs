@@ -42,12 +42,10 @@ var server = await LanguageServer.From(options => options
     {
         var initOpts = request.InitializationOptions as JObject;
         var workspaceRoot = (string?)initOpts?["workspaceRoot"];
-        var csprojPath = ProjectFinder.FindCsproj(workspaceRoot);
-        if (csprojPath is not null)
+        if (!string.IsNullOrEmpty(workspaceRoot))
         {
             var workspace = server.Services.GetRequiredService<IRoslynWorkspaceManager>();
-            await workspace.TryLoadAsync(csprojPath);
-            workspace.WatchProjectChanges(csprojPath);
+            await workspace.InitializeAsync(workspaceRoot);
         }
     })
 );

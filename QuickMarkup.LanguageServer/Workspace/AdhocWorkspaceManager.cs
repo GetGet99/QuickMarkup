@@ -7,8 +7,19 @@ namespace QuickMarkup.LanguageServer.Workspace;
 public class AdhocWorkspaceManager : IRoslynWorkspaceManager, IDisposable
 {
     public bool IsLoaded { get; private set; }
+    public string? CurrentProjectPath { get; private set; }
     public Compilation? Compilation { get; private set; }
     public event Action? CompilationChanged;
+
+    public Task<bool> InitializeAsync(string workspaceRoot)
+    {
+        return TryLoadAsync("");
+    }
+
+    public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath)
+    {
+        return Task.FromResult(IsLoaded);
+    }
 
     public async Task<bool> TryLoadAsync(string projectPath)
     {
