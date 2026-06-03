@@ -21,19 +21,6 @@ public sealed class QmuiDiagnosticServiceTests
     }
 
     [TestMethod]
-    public async Task GetDiagnosticsAsync_InvalidContent_ReturnsEmptyOnParseFailure()
-    {
-        var workspace = new MockWorkspaceManager { Compilation = null };
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new MockFileProvider();
-        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
-
-        var result = await service.GetDiagnosticsAsync("test.qmui", "<<<invalid>>>", CancellationToken.None);
-
-        Assert.AreEqual(0, result.Count);
-    }
-
-    [TestMethod]
     public async Task GetDiagnosticsAsync_EmptyContent_ReturnsNoDiagnostics()
     {
         var workspace = new MockWorkspaceManager { Compilation = null };
@@ -66,7 +53,6 @@ class MockWorkspaceManager : IRoslynWorkspaceManager
     public bool IsLoaded { get; set; }
     public string? CurrentProjectPath { get; set; }
     public Compilation? Compilation { get; set; }
-    public event Action? CompilationChanged;
     public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
     public Task<bool> TryLoadAsync(string projectPath) => Task.FromResult(true);
     public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);

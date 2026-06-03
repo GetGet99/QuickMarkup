@@ -495,7 +495,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true)
                         ));
                         return;
                     }
-                default:
+                default: // Assign
                     {
                         var attachedValue = Bind(property.Value, attachedValueType, tagInfo);
                         if (attachedValue is QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment })

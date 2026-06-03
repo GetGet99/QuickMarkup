@@ -19,7 +19,6 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
     public bool IsLoaded { get; private set; }
     public string? CurrentProjectPath { get; private set; }
     public Compilation? Compilation { get; private set; }
-    public event Action? CompilationChanged;
 
     static void EnsureMSBuildRegistered()
     {
@@ -98,7 +97,6 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
         var path = CurrentProjectPath;
         if (path is not null)
             _ = TryLoadAsync(path);
-        CompilationChanged?.Invoke();
     }
 
     public void WatchProjectChanges(string csprojPath)

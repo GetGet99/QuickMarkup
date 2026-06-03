@@ -90,7 +90,9 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
+#pragma warning disable RS1037 // Add "CompilationEnd" custom tag to compilation end diagnostic descriptor
     internal readonly static DiagnosticDescriptor BindErrorGeneral = new(
+#pragma warning restore RS1037 // Add "CompilationEnd" custom tag to compilation end diagnostic descriptor
         "QM1003",
         "QuickMarkup general typing error",
         "{0}",

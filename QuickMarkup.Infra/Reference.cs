@@ -2,7 +2,9 @@ using System.Diagnostics;
 
 namespace QuickMarkup.Infra;
 
+#pragma warning disable CS9113 // Parameter is unread.
 public class Reference<T>(T defaultValue, string name = "") : IReference
+#pragma warning restore CS9113 // Parameter is unread.
 {
     int created = Thread.CurrentThread.ManagedThreadId;
     public T Value

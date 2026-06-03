@@ -6,7 +6,7 @@ using System.Linq;
 namespace Get.EasyCSharp.GeneratorTools.SyntaxCreator;
 record struct Namespace(string NamespaceString) : ISyntax
 {
-    public Namespace(INamespaceSymbol symbol) : this(symbol.ToString()) { }
+    public Namespace(INamespaceSymbol symbol) : this(symbol.ToString()!) { }
 
     public string StringRepresentaion => NamespaceString;
 }

@@ -17,7 +17,7 @@ static class AttributeHelper
     public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributes<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
         // Get Attributes
-        var Class = semanticModel.Compilation.GetTypeByMetadataName(typeof(TAttribute).FullName);
+        var Class = semanticModel.Compilation.GetTypeByMetadataName(typeof(TAttribute).FullName!);
 
         return (
             from x in symbol.GetAttributes()
@@ -44,8 +44,8 @@ static class AttributeHelper
         return (
             from x in symbol.GetAttributes()
             where allowSubclass ?
-                IsSubclassFromAnyGeneric(x.AttributeClass, attr.Namespace, name) :
-                IsTheSameAsAnyGeneric(x.AttributeClass, attr.Namespace, name)
+                IsSubclassFromAnyGeneric(x.AttributeClass, attr.Namespace!, name) :
+                IsTheSameAsAnyGeneric(x.AttributeClass, attr.Namespace!, name)
             select (RealAttr: x, WrapperAttr: attributeTransformer(x, semanticModel.Compilation))
         ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null);
 

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
 
@@ -86,7 +87,7 @@ public class QuickMarkupWorkspaceCatalog
                     Position? nameSpan = null;
 
                     var identifierToken = classDecl.Identifier;
-                    if (identifierToken != null)
+                    if (!identifierToken.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None))
                     {
                         // Simplified approach - leave span null for now
                     }
@@ -111,7 +112,7 @@ public class QuickMarkupWorkspaceCatalog
     /// <summary>
     /// Tries to find a type entry by its full type name.
     /// </summary>
-    public bool TryGetEntry(string fullTypeName, out QuickMarkupTypeEntry entry)
+    public bool TryGetEntry(string fullTypeName, [NotNullWhen(true)] out QuickMarkupTypeEntry? entry)
     {
         lock (_lock)
         {

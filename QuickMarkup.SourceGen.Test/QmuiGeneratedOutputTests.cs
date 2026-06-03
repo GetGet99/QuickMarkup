@@ -11,10 +11,10 @@ public sealed class QmuiGeneratedOutputTests
         var page = new StaticTreeCaseQmui();
 
         Assert.IsNotNull(page.Children);
-        Assert.AreEqual(1, page.Children.Count);
+        Assert.HasCount(1, page.Children);
 
         var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
-        Assert.AreEqual(2, panel.Children.Count);
+        Assert.HasCount(2, panel.Children);
 
         TestTreeAssert.Texts(panel.Children, "A", "B");
     }

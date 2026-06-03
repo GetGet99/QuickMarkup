@@ -472,7 +472,7 @@ namespace QuickMarkup.Syntax.Test
                     int X;
                     """),
                 out var errors);
-            Assert.IsTrue(errors.Count > 0, "named-then-positional in attribute args should not parse cleanly");
+            Assert.IsNotEmpty(errors, "named-then-positional in attribute args should not parse cleanly");
         }
 
         [TestMethod]

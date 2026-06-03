@@ -45,7 +45,7 @@ partial class QuickMarkupProviderExtension
     });
     static QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens)
     {
-        return ParserPerThread.Value.Parse(tokens, out _);
+        return ParserPerThread.Value!.Parse(tokens, out _);
     }
     internal static QuickMarkupSFC Parse(string code)
     {
@@ -61,7 +61,7 @@ partial class QuickMarkupProviderExtension
         try
         {
             var tokens = Lex(code);
-            var sfc = ParserPerThread.Value.Parse(tokens, out var errors);
+            var sfc = ParserPerThread.Value!.Parse(tokens, out var errors);
             return (sfc, errors);
         }
         catch

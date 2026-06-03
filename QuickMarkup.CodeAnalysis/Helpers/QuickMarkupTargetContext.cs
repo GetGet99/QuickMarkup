@@ -45,7 +45,7 @@ public readonly record struct QuickMarkupTargetContext(
         var linespan = syntaxReference?.SyntaxTree.GetLineSpan(attributeLocation, ct) ?? default;
 
         return new QuickMarkupTargetContext(
-            Namespace: type.ContainingNamespace.ToString(),
+            Namespace: type.ContainingNamespace.ToString()!,
             TypeName: type.ToDisplayString(withoutNamespace),
             FullTypeName: new FullType(type).TypeWithNamespace,
             FileName: syntaxReference?.SyntaxTree.FilePath,

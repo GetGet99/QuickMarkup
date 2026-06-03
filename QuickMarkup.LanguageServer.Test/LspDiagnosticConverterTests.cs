@@ -24,7 +24,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertParseErrors(errors, "<Button");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1001", (string)result[0].Code!);
     }
@@ -43,7 +43,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertParseErrors(errors, "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1002", (string)result[0].Code!);
     }
@@ -59,10 +59,10 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Warning, result[0].Severity!.Value);
         Assert.AreEqual("QM1006", (string)result[0].Code!);
-        Assert.IsTrue(result[0].Message.Contains("Color"));
+        Assert.Contains("Color", result[0].Message);
     }
 
     [TestMethod]
@@ -76,10 +76,10 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1008", (string)result[0].Code!);
-        Assert.IsTrue(result[0].Message.Contains("NonExistentType"));
+        Assert.Contains("NonExistentType", result[0].Message);
     }
 
     [TestMethod]
@@ -93,7 +93,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Warning, result[0].Severity!.Value);
         Assert.AreEqual("QM1007", (string)result[0].Code!);
     }
@@ -110,7 +110,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1004", (string)result[0].Code!);
     }
@@ -126,7 +126,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1009", (string)result[0].Code!);
     }
@@ -142,7 +142,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1010", (string)result[0].Code!);
     }
@@ -158,7 +158,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1011", (string)result[0].Code!);
     }
@@ -174,7 +174,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
         Assert.AreEqual("QM1003", (string)result[0].Code!);
     }
@@ -200,7 +200,7 @@ public sealed class LspDiagnosticConverterTests
 
         var result = LspDiagnosticConverter.ConvertAll(diags, parseErrors, "");
 
-        Assert.AreEqual(3, result.Count);
+        Assert.HasCount(3, result);
     }
 
     record TestAst : AstNode;

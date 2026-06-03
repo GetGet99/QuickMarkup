@@ -38,11 +38,11 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         // Update document store immediately with latest content
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
         var content = request.ContentChanges.First().Text;
-        _ = _documentStore.UpdateTextAsync(filePath, content, cancellationToken);
+        _ = _documentStore.UpdateTextAsync(filePath, content, cancellationToken).ConfigureAwait(false);
 
         if (_debounceTokens.TryRemove(request.TextDocument.Uri, out var previous))
         {
-            previous.CancelAsync();
+            _ = previous.CancelAsync();
             previous.Dispose();
         }
 
@@ -81,7 +81,7 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[QuickMarkup] Error in change handler for {request.TextDocument.Uri}: {ex.Message}");
+            await Console.Error.WriteLineAsync($"[QuickMarkup] Error in change handler for {request.TextDocument.Uri}: {ex.Message}").ConfigureAwait(false);
         }
         finally
         {

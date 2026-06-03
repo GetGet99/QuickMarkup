@@ -206,7 +206,7 @@ public sealed class SourceGenBehaviorTests
         page.Show = false;
         ReactiveScheduler.Tick();
 
-        Assert.AreEqual(0, panel.Children.Count);
+        Assert.IsEmpty(panel.Children);
     }
 
     [TestMethod]
@@ -221,7 +221,7 @@ public sealed class SourceGenBehaviorTests
         page.Show = false;
         ReactiveScheduler.Tick();
 
-        Assert.AreEqual(0, panel.Children.Count);
+        Assert.IsEmpty(panel.Children);
     }
 
     [TestMethod]

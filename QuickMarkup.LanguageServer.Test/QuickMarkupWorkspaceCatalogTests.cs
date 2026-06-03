@@ -10,7 +10,7 @@ public sealed class QuickMarkupWorkspaceCatalogTests
     public void Entries_InitiallyEmpty()
     {
         var catalog = new QuickMarkupWorkspaceCatalog();
-        Assert.AreEqual(0, catalog.Entries.Length);
+        Assert.IsEmpty(catalog.Entries);
     }
 
     [TestMethod]
@@ -26,7 +26,7 @@ public sealed class QuickMarkupWorkspaceCatalogTests
     {
         var catalog = new QuickMarkupWorkspaceCatalog();
         var results = catalog.GetEntriesByShortName("NonExistent").ToList();
-        Assert.AreEqual(0, results.Count);
+        Assert.IsEmpty(results);
     }
 
     [TestMethod]
@@ -38,6 +38,6 @@ public sealed class QuickMarkupWorkspaceCatalogTests
 
         catalog.Rebuild(compilation, "C:\\NonExistentDirectory", fileProvider);
 
-        Assert.AreEqual(0, catalog.Entries.Length);
+        Assert.IsEmpty(catalog.Entries);
     }
 }

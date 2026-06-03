@@ -115,7 +115,7 @@ public sealed class QuickMarkupFileParserTests
 
         Assert.AreEqual("MyPage", result.ClassDeclaration?.Name);
         Assert.IsNotNull(result.Scirpt);
-        Assert.IsTrue(result.Scirpt.RawScript.Contains("UseThemeBrushes"));
+        Assert.Contains("UseThemeBrushes", result.Scirpt.RawScript);
     }
 
     [TestMethod]
@@ -159,7 +159,7 @@ public sealed class QuickMarkupFileParserTests
 
         Assert.AreEqual("MyApp", result.Namespace?.Name);
         Assert.AreEqual("MyPage", result.ClassDeclaration?.Name);
-        Assert.IsTrue(result.Usings.Contains("using System.Linq;"));
+        Assert.Contains("using System.Linq;", result.Usings);
     }
 
     static QuickMarkupSFC ParseAndLex(string content)

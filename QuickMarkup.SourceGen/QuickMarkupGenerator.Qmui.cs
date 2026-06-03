@@ -114,7 +114,7 @@ partial class QuickMarkupGenerator
                 var (target, _, _, error) = value;
                 spc.AddSource(target, "INIT", $"""
                 /*
-                    {error.Replace("*/", "*_/")}
+                    {error!.Replace("*/", "*_/")}
                 */
                 """);
             });
@@ -158,7 +158,7 @@ partial class QuickMarkupGenerator
         {
             ClassKind.Component => $"global::QuickMarkup.Infra.IQuickMarkupComponent<{classDecl.BaseTypes}>",
             ClassKind.FragmentComponent => $"global::QuickMarkup.Infra.IQuickMarkupFragmentComponent<{classDecl.BaseTypes}>",
-            _ => classDecl.BaseTypes
+            _ => classDecl.BaseTypes!
         };
     }
 }

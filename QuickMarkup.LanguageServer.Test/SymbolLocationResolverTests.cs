@@ -84,6 +84,6 @@ public sealed class SymbolLocationResolverTests
 
         var result = resolver.GetDefinitionLocation(componentSymbol, "test.qmui");
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Uri.ToString().Contains("component.qmui"));
+        Assert.Contains("component.qmui", result.Uri.ToString());
     }
 }

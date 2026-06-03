@@ -67,7 +67,7 @@ static class Extension
             return $"{obj.GetType().FullName}.{Enum.GetName(obj.GetType(), obj)}";
         }
 
-        return obj.ToString();
+        return obj.ToString()!;
     }
     public static string IndentWOF(this string Original, int IndentTimes = 1, int IndentSpace = 4)
     {

@@ -25,7 +25,7 @@ readonly record struct FullType(string TypeWithNamespace, bool Nullable = false)
 
         if (type.IsGenericType)
         {
-            var name = global ? $"global::{type.FullName}" : type.FullName;
+            var name = global ? $"global::{type.FullName}" : type.FullName!;
             int typeIndex = name.IndexOf('`');
             string baseType = name[..typeIndex];
             var typeArguments = type.GetGenericArguments();
@@ -35,7 +35,7 @@ readonly record struct FullType(string TypeWithNamespace, bool Nullable = false)
         }
         else
         {
-            return global ? $"global::{type.FullName}" : type.FullName;
+            return global ? $"global::{type.FullName}" : type.FullName!;
         }
     }
 }

@@ -67,7 +67,6 @@ internal class MockWorkspaceManager : IRoslynWorkspaceManager
     public bool IsLoaded { get; set; }
     public string? CurrentProjectPath { get; set; }
     public Compilation? Compilation { get; set; }
-    public event Action? CompilationChanged;
     public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
     public Task<bool> TryLoadAsync(string projectPath) => Task.FromResult(true);
     public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);
