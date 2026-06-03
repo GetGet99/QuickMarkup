@@ -38,26 +38,24 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
             previous.Dispose();
         }
 
-        var cts = new CancellationTokenSource();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _debounceTokens.TryAdd(request.TextDocument.Uri, cts);
 
-        _ = DebounceAndPublishAsync(request, cts, cancellationToken);
+        _ = DebounceAndPublishAsync(request, cts);
 
         return Unit.Task;
     }
 
-    async Task DebounceAndPublishAsync(DidChangeTextDocumentParams request, CancellationTokenSource cts, CancellationToken ct)
+    async Task DebounceAndPublishAsync(DidChangeTextDocumentParams request, CancellationTokenSource cts)
     {
         try
         {
             await Task.Delay(300, cts.Token);
 
-            ct.ThrowIfCancellationRequested();
-
             var results = await _diagnostics.GetDiagnosticsAsync(
                 request.TextDocument.Uri.GetFileSystemPath(),
                 request.ContentChanges.First().Text,
-                ct
+                cts.Token
             );
 
             _server.PublishDiagnostics(new PublishDiagnosticsParams
