@@ -565,80 +565,177 @@ to the editor.
 **Prerequisites:** Agent B (QmuiDiagnosticService), Agent C (RoslynWorkspaceManager)
 **Cannot start until:** Both B and C are complete
 
+**Design decisions for this agent:**
+
+| Question | Decision | Rationale |
+|---|---|---|
+| SyncKind | `Full` (not Incremental) | .qmui files are small. OmniSharp sends full text on every change. No content-tracking dictionaries needed. |
+| OmniSharp API discovery | Write closest match, fix compiler errors | OmniSharp 0.19.x API is stable; iterating on compile errors is faster than researching exact signatures upfront. |
+| Debounce + close interaction | Don't cancel pending — just publish empty on close | On close, publish empty `Container<Diagnostic>` to clear squigglies. In-flight debounce tasks produce stale results but client shows latest (empty) so it's correct. |
+| Handler tests | Smoke test only | Verify server builds and starts. Handler integration tests (mock pipelines) add little value vs. effort in Phase 1. |
+
 **Deliverables:**
 
 1. **`QmuiDidOpenHandler.cs`** — implements `IDidOpenTextDocumentHandler`
 
-   Uses OmniSharp's `ITextDocumentLanguageServer` for publishing. The service only
-   returns diagnostics; publishing is purely a transport concern.
+   Inject `IQmuiDiagnosticService` and `ILanguageServer` (or `ITextDocumentLanguageServer`)
+   via constructor. On `Handle`, call the service and publish via
+   `_server.TextDocument.PublishDiagnostics(...)`.
 
 ```csharp
-[Method(TextDocumentNames.DidOpen)]
 class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
-    readonly ITextDocumentLanguageServer _publisher;
+    readonly ILanguageServer _server;
+    
+    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, ILanguageServer server)
+    {
+        _diagnostics = diagnostics;
+        _server = server;
+    }
     
     public async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken ct)
     {
-        var result = await _diagnostics.GetDiagnosticsAsync(
+        var results = await _diagnostics.GetDiagnosticsAsync(
             request.TextDocument.Uri.LocalPath,
             request.TextDocument.Text,
             ct
         );
-        await _publisher.PublishDiagnostics(
-            request.TextDocument.Uri, result
-        );
+        _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
+        {
+            Uri = request.TextDocument.Uri,
+            Diagnostics = new Container<Diagnostic>(results)
+        });
         return Unit.Value;
     }
+    
+    public TextDocumentOpenRegistrationOptions GetRegistrationOptions(
+        TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
+        => new TextDocumentOpenRegistrationOptions();
 }
 ```
 
 2. **`QmuiDidChangeHandler.cs`** — implements `IDidChangeTextDocumentHandler`
 
-   Same as open handler, but with a 300ms debounce. Stores the latest text and
-   only publishes after the user stops typing.
+   SyncKind = `Full`. Debounce via `CancellationTokenSource` per document URI.
+   On each change, cancel previous and schedule new after 300ms.
+
+```csharp
+class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
+{
+    readonly IQmuiDiagnosticService _diagnostics;
+    readonly ILanguageServer _server;
+    readonly ConcurrentDictionary<Uri, CancellationTokenSource> _debounce = new();
+    
+    public TextDocumentChangeRegistrationOptions GetRegistrationOptions(
+        TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
+        => new() { SyncKind = TextDocumentSyncKind.Full };
+    
+    public async Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken ct)
+    {
+        // Cancel previous debounce for this document
+        if (_debounce.TryRemove(request.TextDocument.Uri, out var previous))
+            previous.Cancel();
+        
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _debounce[request.TextDocument.Uri] = cts;
+        
+        try
+        {
+            await Task.Delay(300, cts.Token);
+            var results = await _diagnostics.GetDiagnosticsAsync(
+                request.TextDocument.Uri.LocalPath,
+                request.ContentChanges.First().Text,
+                cts.Token
+            );
+            _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
+            {
+                Uri = request.TextDocument.Uri,
+                Diagnostics = new Container<Diagnostic>(results)
+            });
+        }
+        catch (TaskCanceledException) { /* debounce cancelled, nothing to do */ }
+        
+        return Unit.Value;
+    }
+}
+```
 
 3. **`QmuiDidCloseHandler.cs`** — implements `IDidCloseTextDocumentHandler`
 
-   Publishes an empty diagnostics array to clear squigglies.
-
-4. **`Program.cs` (final)** — wires everything:
+   Publish empty diagnostics list to clear squigglies. Clean up any debounce state.
 
 ```csharp
-await LanguageServer.PreInit(server =>
-    server
-        .WithInput(Console.OpenStandardInput())
-        .WithOutput(Console.OpenStandardOutput())
-        .WithHandler<QmuiDidOpenHandler>()
-        .WithHandler<QmuiDidChangeHandler>()
-        .WithHandler<QmuiDidCloseHandler>()
-        .OnInitialize(async (server, request, ct) =>
+class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
+{
+    readonly ILanguageServer _server;
+    
+    public QmuiDidCloseHandler(ILanguageServer server) => _server = server;
+    
+    public async Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken ct)
+    {
+        _server.TextDocument.PublishDiagnostics(new PublishDiagnosticsParams
         {
-            var workspaceRoot = request.InitializationOptions?.WorkspaceRoot;
-            var csprojPath = ProjectFinder.FindCsproj(workspaceRoot);
-            if (csprojPath is not null)
-                await RoslynWorkspaceManager.TryLoadAsync(csprojPath);
-        })
+            Uri = request.TextDocument.Uri,
+            Diagnostics = new Container<Diagnostic>()
+        });
+        return Unit.Value;
+    }
+    
+    public TextDocumentCloseRegistrationOptions GetRegistrationOptions(
+        TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
+        => new TextDocumentCloseRegistrationOptions();
+}
+```
+
+4. **`Program.cs` (final)** — DI registration + workspace init
+
+```csharp
+using OmniSharp.Extensions.LanguageServer.Server;
+using QuickMarkup.LanguageServer.Contracts;
+using QuickMarkup.LanguageServer.Diagnostics;
+using QuickMarkup.LanguageServer.Handlers;
+using QuickMarkup.LanguageServer.Workspace;
+
+await LanguageServer.From(options => options
+    .WithInput(Console.OpenStandardInput())
+    .WithOutput(Console.OpenStandardOutput())
+    .WithHandler<QmuiDidOpenHandler>()
+    .WithHandler<QmuiDidChangeHandler>()
+    .WithHandler<QmuiDidCloseHandler>()
+    .WithServices(services =>
+    {
+        services.AddSingleton<IRoslynWorkspaceManager, RoslynWorkspaceManager>();
+        services.AddSingleton<IQmuiDiagnosticService, QmuiDiagnosticService>();
+    })
+    .OnInitialize(async (server, request, ct) =>
+    {
+        var initOpts = request.InitializationOptions as Newtonsoft.Json.Linq.JObject;
+        var workspaceRoot = (string?)initOpts?["workspaceRoot"];
+        var csprojPath = ProjectFinder.FindCsproj(workspaceRoot);
+        if (csprojPath is not null)
+        {
+            var workspace = server.Services.GetRequiredService<IRoslynWorkspaceManager>();
+            await workspace.TryLoadAsync(csprojPath);
+            workspace.WatchProjectChanges(csprojPath);
+        }
+    })
 );
 ```
 
-5. **Integration test** — end-to-end verification:
-   - Build the LSP server and VS Code extension
-   - Open a `.qmui` file with known errors
-   - Verify diagnostics appear in Problems panel
-   - Fix errors and verify squigglies clear
-   - Open a file with no `.csproj` → verify syntax-only diagnostics work
+5. **Integration check** — minimum verification:
+   - `dotnet build QuickMarkup.LanguageServer` compiles
+   - `dotnet test QuickMarkup.LanguageServer.Test` passes (existing converter/service tests)
+   - Manual smoke test: launch VS Code extension, open a `.qmui` file, verify errors appear
 
-**Files created/modified by this agent:**
+**Files modified by this agent:**
 ```
 QuickMarkup.LanguageServer/
-├── Program.cs                    (replaces Agent A's stub)
+├── Program.cs                    ← Add DI, OnInitialize
 ├── Handlers/
-│   ├── QmuiDidOpenHandler.cs    (replaces Agent A's stub)
-│   ├── QmuiDidChangeHandler.cs  (replaces Agent A's stub)
-│   └── QmuiDidCloseHandler.cs   (replaces Agent A's stub)
-├── QuickMarkup.LanguageServer.csproj  (may add DI registration config)
+│   ├── QmuiDidOpenHandler.cs    ← Real implementation
+│   ├── QmuiDidChangeHandler.cs  ← Full sync + debounce
+│   └── QmuiDidCloseHandler.cs   ← Clear diagnostics
 ```
 
 ---
