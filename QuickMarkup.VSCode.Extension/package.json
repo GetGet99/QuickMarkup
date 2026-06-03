@@ -37,7 +37,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "gen:textmate": "dotnet run --project ../QuickMarkup.GrammarGenerator/QuickMarkup.GrammarGenerator.csproj"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
