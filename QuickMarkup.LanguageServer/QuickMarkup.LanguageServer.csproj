@@ -16,6 +16,12 @@
   <Import Project="..\QuickMarkup.CodeAnalysis.props" />
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>QuickMarkup.LanguageServer.Test</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="..\QuickMarkup.CodeAnalysis\Helpers\QuickMarkupProviderExtension.Analyzer.cs" />
     <Compile Remove="..\QuickMarkup.CodeAnalysis\Helpers\QuickMarkupProviderExtension.SourceGen.cs" />
   </ItemGroup>
