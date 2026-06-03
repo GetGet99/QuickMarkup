@@ -1,0 +1,6 @@
+namespace QuickMarkup.SourceGen.Test;
+component ComponentCaseQmui : TestPanel;
+<TestPanel>
+    <TestText Text="A" />
+    <TestText Text="B" />
+</TestPanel>

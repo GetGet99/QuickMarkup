@@ -1,0 +1,6 @@
+namespace QuickMarkup.SourceGen.Test;
+fragment component FragmentComponentCaseQmui : TestElement;
+<root>
+    <TestText Text="A" />
+    <TestText Text="B" />
+</root>

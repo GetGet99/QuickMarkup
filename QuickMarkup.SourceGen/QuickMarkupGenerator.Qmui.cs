@@ -130,7 +130,13 @@ partial class QuickMarkupGenerator
         if (classDecl is null)
             return compilation;
 
-        var baseClause = string.IsNullOrEmpty(classDecl.BaseTypes) ? "" : $" : {classDecl.BaseTypes}";
+        var effectiveBaseTypes = classDecl.Kind switch
+        {
+            ClassKind.Component => $"global::QuickMarkup.Infra.IQuickMarkupComponent<{classDecl.BaseTypes}>",
+            ClassKind.FragmentComponent => $"global::QuickMarkup.Infra.IQuickMarkupFragmentComponent<{classDecl.BaseTypes}>",
+            _ => classDecl.BaseTypes ?? ""
+        };
+        var baseClause = string.IsNullOrEmpty(effectiveBaseTypes) ? "" : $" : {effectiveBaseTypes}";
         var ns = string.IsNullOrEmpty(target.Namespace) ? "" : $"namespace {target.Namespace};";
         var source = $$"""
             #nullable enable
