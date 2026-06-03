@@ -10,7 +10,11 @@
   <ItemGroup>
     <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.6.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.6.0" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.7.8" />
+    <PackageReference Include="Microsoft.Build.Framework" Version="17.12.6" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.Build" Version="17.12.6" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <Import Project="..\QuickMarkup.CodeAnalysis.props" />

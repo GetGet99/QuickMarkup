@@ -10,15 +10,12 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
+				"--extensionDevelopmentPath=${workspaceFolder}/QuickMarkup.VSCode.Extension"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/QuickMarkup.VSCode.Extension/out/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}",
-			"env": {
-				"QMUI_LSP_DEBUG": "8765"
-			}
+			"preLaunchTask": "${defaultBuildTask}"
 		}
 	]
 }

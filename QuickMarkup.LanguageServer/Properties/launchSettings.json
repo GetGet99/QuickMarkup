@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "QuickMarkup.LanguageServer": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "QMUI_LSP_DEBUG": "8765"
+      }
+    }
+  }
+}
