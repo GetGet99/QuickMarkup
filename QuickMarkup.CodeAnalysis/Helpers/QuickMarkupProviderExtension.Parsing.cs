@@ -1,4 +1,5 @@
 using Get.Lexer;
+using Get.Parser;
 using Get.PLShared;
 using QuickMarkup.AST;
 using QuickMarkup.Parser;
@@ -49,5 +50,23 @@ partial class QuickMarkupProviderExtension
     internal static QuickMarkupSFC Parse(string code)
     {
         return Parse(Lex(code));
+    }
+
+    /// <summary>
+    /// Parses QuickMarkup code and returns both the result and any parse errors.
+    /// Used by the Language Server for diagnostic conversion.
+    /// </summary>
+    internal static (QuickMarkupSFC? sfc, List<ErrorTerminalValue> errors) ParseWithErrors(string code)
+    {
+        try
+        {
+            var tokens = Lex(code);
+            var sfc = ParserPerThread.Value.Parse(tokens, out var errors);
+            return (sfc, errors);
+        }
+        catch
+        {
+            return (null, []);
+        }
     }
 }

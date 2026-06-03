@@ -4,15 +4,18 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
+using QuickMarkup.LanguageServer.Contracts;
 
 namespace QuickMarkup.LanguageServer.Handlers;
 
 class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
 {
+    readonly IQmuiDocumentStore _documentStore;
     readonly IServiceProvider _serviceProvider;
 
-    public QmuiDidCloseHandler(IServiceProvider serviceProvider)
+    public QmuiDidCloseHandler(IQmuiDocumentStore documentStore, IServiceProvider serviceProvider)
     {
+        _documentStore = documentStore;
         _serviceProvider = serviceProvider;
     }
 
@@ -21,8 +24,11 @@ class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
         return new TextDocumentCloseRegistrationOptions();
     }
 
-    public Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
+    public async Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
     {
+        var filePath = request.TextDocument.Uri.GetFileSystemPath();
+        await _documentStore.RemoveAsync(filePath, cancellationToken);
+
         var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         server.PublishDiagnostics(new PublishDiagnosticsParams
         {
@@ -30,6 +36,6 @@ class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
             Diagnostics = new Container<Diagnostic>()
         });
 
-        return Unit.Task;
+        return Unit.Value;
     }
 }

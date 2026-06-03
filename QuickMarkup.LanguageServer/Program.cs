@@ -3,9 +3,13 @@ using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Server;
+using QuickMarkup.CodeAnalysis.Helpers;
+using QuickMarkup.LanguageServer;
 using QuickMarkup.LanguageServer.Contracts;
 using QuickMarkup.LanguageServer.Diagnostics;
 using QuickMarkup.LanguageServer.Handlers;
+using QuickMarkup.LanguageServer.Navigation;
+using QuickMarkup.LanguageServer.SemanticService;
 using QuickMarkup.LanguageServer.Workspace;
 
 var debugPortEnv = Environment.GetEnvironmentVariable("QMUI_LSP_DEBUG");
@@ -33,10 +37,18 @@ var server = await LanguageServer.From(options => options
     .WithHandler<QmuiDidOpenHandler>()
     .WithHandler<QmuiDidChangeHandler>()
     .WithHandler<QmuiDidCloseHandler>()
+    .WithHandler<QmuiHoverHandler>()
+    .WithHandler<QmuiDefinitionHandler>()
     .WithServices(services =>
     {
         services.AddSingleton<IRoslynWorkspaceManager, RoslynWorkspaceManager>();
         services.AddSingleton<IQmuiDiagnosticService, QmuiDiagnosticService>();
+        services.AddSingleton<IQmuiDocumentStore, QmuiDocumentStore>();
+        services.AddSingleton<QuickMarkupWorkspaceCatalog>();
+        services.AddSingleton<IQmuiSemanticService, QmuiSemanticService>();
+        services.AddSingleton<MarkupCursorResolver>();
+        services.AddSingleton<SymbolLocationResolver>();
+        services.AddSingleton<IFileProvider, FileSystemProvider>();
     })
     .OnInitialize(async (server, request, ct) =>
     {
@@ -46,6 +58,15 @@ var server = await LanguageServer.From(options => options
         {
             var workspace = server.Services.GetRequiredService<IRoslynWorkspaceManager>();
             await workspace.InitializeAsync(workspaceRoot);
+            
+            // Rebuild the catalog after workspace is initialized
+            var catalog = server.Services.GetRequiredService<QuickMarkupWorkspaceCatalog>();
+            var fileProvider = server.Services.GetRequiredService<IFileProvider>();
+            var compilation = workspace.Compilation;
+            if (compilation is not null)
+            {
+                catalog.Rebuild(compilation, workspaceRoot, fileProvider);
+            }
         }
     })
 );

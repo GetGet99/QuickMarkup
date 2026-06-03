@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.LanguageServer.Contracts;
 
 namespace QuickMarkup.LanguageServer.Diagnostics.Test;
@@ -10,7 +11,9 @@ public sealed class QmuiDiagnosticServiceTests
     public async Task GetDiagnosticsAsync_NoCompilation_ReturnsSyntaxOnly()
     {
         var workspace = new MockWorkspaceManager { Compilation = null };
-        var service = new QmuiDiagnosticService(workspace);
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider();
+        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
 
         var result = await service.GetDiagnosticsAsync("test.qmui", "<Button />", CancellationToken.None);
 
@@ -21,7 +24,9 @@ public sealed class QmuiDiagnosticServiceTests
     public async Task GetDiagnosticsAsync_InvalidContent_ReturnsEmptyOnParseFailure()
     {
         var workspace = new MockWorkspaceManager { Compilation = null };
-        var service = new QmuiDiagnosticService(workspace);
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider();
+        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
 
         var result = await service.GetDiagnosticsAsync("test.qmui", "<<<invalid>>>", CancellationToken.None);
 
@@ -32,7 +37,9 @@ public sealed class QmuiDiagnosticServiceTests
     public async Task GetDiagnosticsAsync_EmptyContent_ReturnsNoDiagnostics()
     {
         var workspace = new MockWorkspaceManager { Compilation = null };
-        var service = new QmuiDiagnosticService(workspace);
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider();
+        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
 
         var result = await service.GetDiagnosticsAsync("test.qmui", "", CancellationToken.None);
 
@@ -43,7 +50,9 @@ public sealed class QmuiDiagnosticServiceTests
     public async Task GetDiagnosticsAsync_NoClassDeclaration_ReturnsSyntaxOnly()
     {
         var workspace = new MockWorkspaceManager { Compilation = null };
-        var service = new QmuiDiagnosticService(workspace);
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider();
+        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
 
         var result = await service.GetDiagnosticsAsync(
             "test.qmui", "<Button x:Name=\"test\" />", CancellationToken.None);
@@ -55,8 +64,17 @@ public sealed class QmuiDiagnosticServiceTests
 class MockWorkspaceManager : IRoslynWorkspaceManager
 {
     public bool IsLoaded { get; set; }
+    public string? CurrentProjectPath { get; set; }
     public Compilation? Compilation { get; set; }
     public event Action? CompilationChanged;
+    public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
     public Task<bool> TryLoadAsync(string projectPath) => Task.FromResult(true);
-    public void WatchProjectChanges(string csprojPath) { }
+    public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);
+}
+
+class MockFileProvider : IFileProvider
+{
+    public string ReadAllText(string path) => "";
+    public string[] GetFiles(string directory, string pattern, bool recursive) => [];
+    public bool DirectoryExists(string path) => false;
 }

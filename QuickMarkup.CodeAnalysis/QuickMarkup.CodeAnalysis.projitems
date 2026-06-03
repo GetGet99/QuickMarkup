@@ -41,6 +41,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.SourceGen.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)helpers\QuickMarkupProviderExtension.Parsing.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupTargetContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\IFileProvider.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupCompilationEnricher.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupWorkspaceCatalog.cs" />
 
   </ItemGroup>
 </Project>

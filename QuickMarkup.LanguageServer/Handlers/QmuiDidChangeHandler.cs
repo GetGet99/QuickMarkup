@@ -14,12 +14,14 @@ namespace QuickMarkup.LanguageServer.Handlers;
 class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
+    readonly IQmuiDocumentStore _documentStore;
     readonly IServiceProvider _serviceProvider;
     readonly ConcurrentDictionary<DocumentUri, CancellationTokenSource> _debounceTokens = new();
 
-    public QmuiDidChangeHandler(IQmuiDiagnosticService diagnostics, IServiceProvider serviceProvider)
+    public QmuiDidChangeHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IServiceProvider serviceProvider)
     {
         _diagnostics = diagnostics;
+        _documentStore = documentStore;
         _serviceProvider = serviceProvider;
     }
 
@@ -33,6 +35,11 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
 
     public Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
+        // Update document store immediately with latest content
+        var filePath = request.TextDocument.Uri.GetFileSystemPath();
+        var content = request.ContentChanges.First().Text;
+        _ = _documentStore.UpdateTextAsync(filePath, content, cancellationToken);
+
         if (_debounceTokens.TryRemove(request.TextDocument.Uri, out var previous))
         {
             previous.CancelAsync();

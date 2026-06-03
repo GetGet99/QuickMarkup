@@ -16,7 +16,7 @@ namespace QuickMarkup.CodeAnalysis.Helpers;
 /// <param name="FileName"></param>
 /// <param name="AttributeLocation"></param>
 /// <param name="AttributeLineSpan"></param>
-readonly record struct QuickMarkupTargetContext(
+public readonly record struct QuickMarkupTargetContext(
     string Namespace,
     string TypeName,
     string FullTypeName,

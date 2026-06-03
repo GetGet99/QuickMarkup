@@ -1,13 +1,9 @@
-using Get.Lexer;
-using Get.Parser;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Binders;
+using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.LanguageServer.Contracts;
-using QuickMarkup.Parser;
 using LspDiagnostic = OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic;
 
 namespace QuickMarkup.LanguageServer.Diagnostics;
@@ -15,17 +11,24 @@ namespace QuickMarkup.LanguageServer.Diagnostics;
 public class QmuiDiagnosticService : IQmuiDiagnosticService
 {
     readonly IRoslynWorkspaceManager _workspaceManager;
+    readonly QuickMarkupWorkspaceCatalog _catalog;
+    readonly IFileProvider _fileProvider;
 
-    public QmuiDiagnosticService(IRoslynWorkspaceManager workspaceManager)
+    public QmuiDiagnosticService(
+        IRoslynWorkspaceManager workspaceManager,
+        QuickMarkupWorkspaceCatalog catalog,
+        IFileProvider fileProvider)
     {
         _workspaceManager = workspaceManager;
+        _catalog = catalog;
+        _fileProvider = fileProvider;
     }
 
     public Task<IReadOnlyList<LspDiagnostic>> GetDiagnosticsAsync(
         string filePath, string content, CancellationToken ct)
     {
-        var (sfc, parseErrors) = ParseContent(content);
-        var compilation = _workspaceManager.Compilation;
+        var (sfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
+        var compilation = GetEnrichedCompilation(ct);
 
         if (sfc is null)
             return Task.FromResult<IReadOnlyList<LspDiagnostic>>([]);
@@ -50,31 +53,17 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
         }
         if (sfc.ClassDeclaration is { } classDecl)
         {
-            var effectiveBaseTypes = classDecl.Kind switch
-            {
-                ClassKind.Component => $"global::QuickMarkup.Infra.IQuickMarkupComponent<{classDecl.BaseTypes}>",
-                ClassKind.FragmentComponent => $"global::QuickMarkup.Infra.IQuickMarkupFragmentComponent<{classDecl.BaseTypes}>",
-                _ => classDecl.BaseTypes ?? ""
-            };
-            var baseClause = string.IsNullOrEmpty(effectiveBaseTypes) ? "" : $" : {effectiveBaseTypes}";
+            // Use the shared enricher to create a dummy class with file-scoped namespace
+            var target = new QuickMarkupTargetContext(
+                Namespace: ns,
+                TypeName: typeName,
+                FullTypeName: fullName,
+                FileName: filePath,
+                AttributeLocation: default,
+                AttributeLineSpan: default);
 
-            // Type not found: create a dummy class and add it to the compilation
-            var dummySource = $$"""
-            #nullable enable
-            {{sfc.Usings}}
-            namespace {{ns}} {
-                partial class {{typeName}}{{baseClause}} { }
-            }
-            """;
+            var compilationWithDummy = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
 
-            // Parse the dummy source
-            var parseOptions = (CSharpParseOptions)compilation.SyntaxTrees.First().Options;
-            var dummyTree = CSharpSyntaxTree.ParseText(dummySource, parseOptions);
-
-            // Add the dummy syntax tree to the compilation
-            var compilationWithDummy = compilation.AddSyntaxTrees(dummyTree);
-
-            // Get the type symbol from the new compilation
             var dummyTypeSym = compilationWithDummy.GetTypeByMetadataName(fullName);
             if (dummyTypeSym is null)
             {
@@ -91,42 +80,52 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
             LspDiagnosticConverter.ConvertParseErrors(parseErrors, content));
     }
 
-    static (QuickMarkupSFC? sfc, List<ErrorTerminalValue> errors) ParseContent(string content)
+    private Compilation? GetEnrichedCompilation(CancellationToken ct)
     {
-        QuickMarkupLexer? lexer = null;
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                lexer = new QuickMarkupLexer(new StringTextSeeker(content));
-                break;
-            }
-            catch { }
-        }
-        lexer ??= new QuickMarkupLexer(new StringTextSeeker(content));
+        var compilation = _workspaceManager.Compilation;
+        if (compilation is null)
+            return null;
 
-        QuickMarkupParser? parser = null;
-        for (int i = 0; i < 10; i++)
+        // If catalog is empty and we have a workspace root, rebuild it
+        if (_catalog.Entries.Length == 0 && _workspaceManager.CurrentProjectPath is not null)
         {
-            try
+            var workspaceRoot = Path.GetDirectoryName(_workspaceManager.CurrentProjectPath);
+            if (workspaceRoot is not null)
             {
-                parser = new QuickMarkupParser();
-                break;
+                _catalog.Rebuild(compilation, workspaceRoot, _fileProvider);
             }
-            catch { }
         }
-        parser ??= new QuickMarkupParser();
 
-        try
+        // Enrich compilation with all catalog .qmui entries
+        foreach (var entry in _catalog.Entries)
         {
-            var tokens = lexer.GetTokens();
-            var sfc = parser.Parse(tokens, out var errors);
-            return (sfc, errors);
+            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
+            {
+                try
+                {
+                    var content = _fileProvider.ReadAllText(entry.FilePath);
+                    var sfc = QuickMarkupProviderExtension.Parse(content);
+                    if (sfc is not null && sfc.ClassDeclaration is not null)
+                    {
+                        var target = new QuickMarkupTargetContext(
+                            Namespace: entry.Namespace,
+                            TypeName: entry.ShortName,
+                            FullTypeName: entry.FullTypeName,
+                            FileName: entry.FilePath,
+                            AttributeLocation: default,
+                            AttributeLineSpan: default);
+
+                        compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Skip problematic files
+                }
+            }
         }
-        catch
-        {
-            return (null, []);
-        }
+
+        return compilation;
     }
 
     static QuickMarkupBinder Bind(

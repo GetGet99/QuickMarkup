@@ -11,11 +11,13 @@ namespace QuickMarkup.LanguageServer.Handlers;
 class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
+    readonly IQmuiDocumentStore _documentStore;
     readonly IServiceProvider _serviceProvider;
 
-    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, IServiceProvider serviceProvider)
+    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IServiceProvider serviceProvider)
     {
         _diagnostics = diagnostics;
+        _documentStore = documentStore;
         _serviceProvider = serviceProvider;
     }
 
@@ -26,8 +28,13 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 
     public async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
+        var filePath = request.TextDocument.Uri.GetFileSystemPath();
+        
+        // Update document store
+        await _documentStore.UpdateTextAsync(filePath, request.TextDocument.Text, cancellationToken);
+
         var workspace = _serviceProvider.GetRequiredService<IRoslynWorkspaceManager>();
-        await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
+        await workspace.EnsureProjectForFileAsync(filePath);
 
         var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         var results = await _diagnostics.GetDiagnosticsAsync(

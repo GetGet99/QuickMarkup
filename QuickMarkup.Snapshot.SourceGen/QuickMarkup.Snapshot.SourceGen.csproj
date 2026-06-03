@@ -24,5 +24,9 @@
 		</PackageReference>
 		<PackageReference Include="System.Text.Json" Version="10.0.1" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="..\QuickMarkup.CodeAnalysis\Helpers\QuickMarkupProviderExtension.Analyzer.cs" />
+	</ItemGroup>
 </Project>
 
