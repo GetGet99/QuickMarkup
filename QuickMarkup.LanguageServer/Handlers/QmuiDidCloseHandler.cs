@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -8,11 +9,11 @@ namespace QuickMarkup.LanguageServer.Handlers;
 
 class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
 {
-    readonly ILanguageServer _server;
+    readonly IServiceProvider _serviceProvider;
 
-    public QmuiDidCloseHandler(ILanguageServer server)
+    public QmuiDidCloseHandler(IServiceProvider serviceProvider)
     {
-        _server = server;
+        _serviceProvider = serviceProvider;
     }
 
     public TextDocumentCloseRegistrationOptions GetRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
@@ -22,7 +23,8 @@ class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
 
     public Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
     {
-        _server.PublishDiagnostics(new PublishDiagnosticsParams
+        var server = _serviceProvider.GetRequiredService<ILanguageServer>();
+        server.PublishDiagnostics(new PublishDiagnosticsParams
         {
             Uri = request.TextDocument.Uri,
             Diagnostics = new Container<Diagnostic>()

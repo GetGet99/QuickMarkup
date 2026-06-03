@@ -1,9 +1,11 @@
+import * as net from 'net';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
+	StreamInfo,
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient | undefined;
@@ -15,10 +17,18 @@ export function activate(context: vscode.ExtensionContext) {
 		'QuickMarkup.LanguageServer'
 	);
 
-	const serverOptions: ServerOptions = {
-		command: 'dotnet',
-		args: ['run', '--project', serverDir],
-	};
+	const debugPort = process.env.QMUI_LSP_DEBUG;
+	const serverOptions: ServerOptions = debugPort
+		? () => {
+				const socket = net.createConnection({ port: Number(debugPort) });
+				return new Promise<StreamInfo>((resolve) => {
+					socket.on('connect', () => resolve({ reader: socket, writer: socket }));
+				});
+		  }
+		: {
+				command: 'dotnet',
+				args: ['run', '--project', serverDir],
+		  };
 
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'quickmarkup' }],

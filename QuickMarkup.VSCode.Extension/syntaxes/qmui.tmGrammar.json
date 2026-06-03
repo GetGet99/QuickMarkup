@@ -2,16 +2,20 @@
   "scopeName": "source.quickmarkup",
   "patterns": [
     { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#tags" }
+    { "include": "#tags" },
+    { "include": "#strings" }
   ],
   "repository": {
     "comments": {
       "patterns": [
         {
-          "begin": "<!--",
-          "end": "-->",
+          "begin": "/\\*",
+          "end": "\\*/",
           "name": "comment.block.quickmarkup"
+        },
+        {
+          "match": "//.*$",
+          "name": "comment.line.double-slash.quickmarkup"
         }
       ]
     },
@@ -33,7 +37,7 @@
     "tags": {
       "patterns": [
         {
-          "begin": "(?x)(<)(\\w[\\w.]*(?::\\w[\\w.]*)?)",
+          "begin": "(<)(\\w[\\w.]*(?::\\w[\\w.]*)?)",
           "beginCaptures": {
             "1": { "name": "punctuation.definition.tag.begin.quickmarkup" },
             "2": { "name": "entity.name.tag.quickmarkup" }
@@ -58,32 +62,28 @@
             "1": { "name": "punctuation.definition.tag.end.quickmarkup" }
           },
           "name": "meta.tag.quickmarkup"
-        },
-        {
-          "match": "<([/!?])?([a-zA-Z][\\w.]*)([^>]*?)(/?)>",
-          "name": "invalid.illegal.tag.quickmarkup"
         }
       ]
     },
     "tag-attributes": {
       "patterns": [
         {
-          "match": "(\\w[\\.\\w]*)(?=\\s*(=))",
-          "captures": {
-            "1": { "name": "entity.other.attribute-name.quickmarkup" }
-          }
-        },
-        {
-          "match": "([=])",
-          "name": "punctuation.separator.key-value.quickmarkup"
-        },
-        {
-          "match": "(`)([^`]*)(`)",
+          "match": "(`)((?:[^`\\\\]|\\\\.)*)(`)",
           "captures": {
             "1": { "name": "punctuation.definition.string.begin.quickmarkup" },
             "2": { "name": "string.quoted.backtick.quickmarkup" },
             "3": { "name": "punctuation.definition.string.end.quickmarkup" }
           }
+        },
+        {
+          "match": "(\\w[\\.\\w]*)(?=\\s*(?:=|[+*]?=|\\s|/?>|$))",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.quickmarkup" }
+          }
+        },
+        {
+          "match": "([+*]?=)",
+          "name": "punctuation.separator.key-value.quickmarkup"
         }
       ]
     }

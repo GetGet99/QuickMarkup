@@ -1,3 +1,4 @@
+using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using QuickMarkup.LanguageServer.Contracts;
@@ -6,6 +7,9 @@ namespace QuickMarkup.LanguageServer.Workspace;
 
 public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
 {
+    static readonly object _msBuildLock = new();
+    static bool _msBuildRegistered;
+
     readonly SemaphoreSlim _loadLock = new(1, 1);
     FileSystemWatcher? _watcher;
     bool _disposed;
@@ -13,6 +17,17 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
     public bool IsLoaded { get; private set; }
     public Compilation? Compilation { get; private set; }
     public event Action? CompilationChanged;
+
+    static void EnsureMSBuildRegistered()
+    {
+        if (_msBuildRegistered) return;
+        lock (_msBuildLock)
+        {
+            if (_msBuildRegistered) return;
+            MSBuildLocator.RegisterDefaults();
+            _msBuildRegistered = true;
+        }
+    }
 
     public async Task<bool> TryLoadAsync(string csprojPath)
     {
@@ -28,6 +43,7 @@ public class RoslynWorkspaceManager : IRoslynWorkspaceManager, IDisposable
                 return false;
             }
 
+            EnsureMSBuildRegistered();
             using var workspace = MSBuildWorkspace.Create();
             var project = await workspace.OpenProjectAsync(csprojPath);
             Compilation = await project.GetCompilationAsync();

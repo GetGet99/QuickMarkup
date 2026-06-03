@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -10,12 +11,12 @@ namespace QuickMarkup.LanguageServer.Handlers;
 class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
-    readonly ILanguageServer _server;
+    readonly IServiceProvider _serviceProvider;
 
-    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, ILanguageServer server)
+    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, IServiceProvider serviceProvider)
     {
         _diagnostics = diagnostics;
-        _server = server;
+        _serviceProvider = serviceProvider;
     }
 
     public TextDocumentOpenRegistrationOptions GetRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
@@ -25,13 +26,14 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 
     public async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
+        var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         var results = await _diagnostics.GetDiagnosticsAsync(
             request.TextDocument.Uri.GetFileSystemPath(),
             request.TextDocument.Text,
             cancellationToken
         );
 
-        _server.PublishDiagnostics(new PublishDiagnosticsParams
+        server.PublishDiagnostics(new PublishDiagnosticsParams
         {
             Uri = request.TextDocument.Uri,
             Diagnostics = new Container<Diagnostic>(results)
