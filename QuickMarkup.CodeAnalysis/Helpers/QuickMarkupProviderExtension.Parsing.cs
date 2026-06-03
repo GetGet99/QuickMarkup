@@ -46,7 +46,7 @@ partial class QuickMarkupProviderExtension
     {
         return ParserPerThread.Value.Parse(tokens, out _);
     }
-    static QuickMarkupSFC Parse(string code)
+    internal static QuickMarkupSFC Parse(string code)
     {
         return Parse(Lex(code));
     }

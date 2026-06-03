@@ -290,6 +290,9 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 """);
             });
         }
+
+        // .QMUI ADDITIONALFILES PIPELINE
+        InitializeQmuiPipeline(context);
     }
     public static string? GetExpandedLineText(Location location)
     {

@@ -26,6 +26,10 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         InsideBlockComment = 1 << 7,
         InsideLineComment = 1 << 8,
         End = 1 << 9,
+        BeforeRefs = 1 << 10,
+        BeforeRefsNamespace = 1 << 11,
+        BeforeRefsClassName = 1 << 12,
+        BeforeRefsBaseTypes = 1 << 13,
 
         PropsAndBeforeRoot = Props | BeforeRoot,
         PropsAndInsideQMOpenTag = Props | InsideQMOpenTag,
@@ -40,7 +44,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     {
         [Regex<string>(@"using[^<\r\n]*;", nameof(Identity), State = LexerStates.Usings)]
         UsingStatement,
-        [Regex(@"", nameof(GotoProps), ShouldReturnToken = false, State = LexerStates.Usings)]
+        [Regex(@"", nameof(GotoBeforeRefs), ShouldReturnToken = false, State = LexerStates.Usings)]
         UsingHelper,
         [Regex(@"", nameof(GotoBeforeRoot), ShouldReturnToken = false, State = LexerStates.Props)]
         PropsHelper,
@@ -152,6 +156,34 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         QMCloseTagClose,
         [Regex(@"ref", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         Ref,
+        // HEADER TOKENS (namespace, class declaration, base types)
+        [Regex(@"namespace", nameof(HandleNamespaceKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
+        NamespaceKw,
+        [Regex(@"class", nameof(HandleClassKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
+        ClassKw,
+        [Regex(@"component", nameof(HandleComponentKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
+        ComponentKw,
+        [Regex(@"fragment", nameof(HandleFragmentKeyword), State = LexerStates.BeforeRefs, Order = (int)Order.KeywordAndSpecialSyntax)]
+        FragmentKw,
+        [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.BeforeRefsNamespace | LexerStates.BeforeRefsClassName)]
+        HeaderIdentifier,
+        [Regex(@"\.", State = LexerStates.BeforeRefsNamespace)]
+        HeaderDot,
+        [Regex(@";", nameof(HandleNamespaceSemicolon), State = LexerStates.BeforeRefsNamespace)]
+        NamespaceSemicolon,
+        [Regex(@":", nameof(HandleClassColon), State = LexerStates.BeforeRefsClassName)]
+        ClassColon,
+        [Regex(@";", nameof(HandleClassSemicolon), State = LexerStates.BeforeRefsClassName)]
+        ClassSemicolon,
+        [Regex<string>(@"[^;]+", nameof(Identity), State = LexerStates.BeforeRefsBaseTypes)]
+        RawBaseTypes,
+        [Regex(@";", nameof(HandleBaseTypesSemicolon), State = LexerStates.BeforeRefsBaseTypes)]
+        BaseTypesSemicolon,
+        [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = LexerStates.BeforeRefsNamespace | LexerStates.BeforeRefsClassName | LexerStates.BeforeRefs)]
+        HeaderWhitespace,
+        [Regex(@"", nameof(GotoProps), ShouldReturnToken = false, State = LexerStates.BeforeRefs)]
+        BeforeRefsHelper,
+
         [Regex(@"var", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         Var,
         [Regex(@"foreach", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
@@ -193,6 +225,45 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"do_not_match", ShouldReturnToken = false, State = LexerStates.End)]
         EndHelpder
     }
+    private partial IToken<Tokens> HandleNamespaceKeyword()
+    {
+        GoTo(LexerStates.BeforeRefsNamespace);
+        return Make(Tokens.NamespaceKw);
+    }
+    private partial IToken<Tokens> HandleClassKeyword()
+    {
+        GoTo(LexerStates.BeforeRefsClassName);
+        return Make(Tokens.ClassKw);
+    }
+    private partial IToken<Tokens> HandleComponentKeyword()
+    {
+        GoTo(LexerStates.BeforeRefsClassName);
+        return Make(Tokens.ComponentKw);
+    }
+    private partial IToken<Tokens> HandleFragmentKeyword()
+    {
+        return Make(Tokens.FragmentKw);
+    }
+    private partial IToken<Tokens> HandleNamespaceSemicolon()
+    {
+        GoTo(LexerStates.BeforeRefs);
+        return Make(Tokens.NamespaceSemicolon);
+    }
+    private partial IToken<Tokens> HandleClassColon()
+    {
+        GoTo(LexerStates.BeforeRefsBaseTypes);
+        return Make(Tokens.ClassColon);
+    }
+    private partial IToken<Tokens> HandleClassSemicolon()
+    {
+        GoTo(LexerStates.Props);
+        return Make(Tokens.ClassSemicolon);
+    }
+    private partial IToken<Tokens> HandleBaseTypesSemicolon()
+    {
+        GoTo(LexerStates.Props);
+        return Make(Tokens.BaseTypesSemicolon);
+    }
     private partial void CatchAllHandler()
     {
         if (!HasReachedEOF)
@@ -208,6 +279,10 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     private partial void GotoProps()
     {
         GoTo(LexerStates.Props);
+    }
+    private partial void GotoBeforeRefs()
+    {
+        GoTo(LexerStates.BeforeRefs);
     }
     private partial void GotoBeforeRoot()
     {

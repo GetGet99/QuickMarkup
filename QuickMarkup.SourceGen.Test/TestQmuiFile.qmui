@@ -1,0 +1,8 @@
+namespace QuickMarkup.SourceGen.Test;
+class StaticTreeCaseQmui : TestRoot;
+<root>
+    <TestPanel>
+        <TestText Text="A" />
+        <TestText Text="B" />
+    </TestPanel>
+</root>

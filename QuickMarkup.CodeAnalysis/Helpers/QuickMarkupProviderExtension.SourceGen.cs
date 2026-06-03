@@ -88,5 +88,18 @@ static partial class QuickMarkupProviderExtension
             }
             """);
     }
+    public static void AddSource(this SourceProductionContext sourceProductionContext, QuickMarkupTargetContext target, string hintNameSuffix, string code, string usings, string typeModifiers, string? baseTypes)
+    {
+        var baseClause = string.IsNullOrEmpty(baseTypes) ? "" : $" : {baseTypes}";
+        sourceProductionContext.AddSource($"{target.TypeNameSourceGenOutputFriendlyFileName}.{hintNameSuffix}.g.cs", $$"""
+            {{usings}}
+            #nullable enable
+            namespace {{target.Namespace}};
+            
+            {{typeModifiers}} class {{target.TypeName}}{{baseClause}} {
+                {{code.IndentWOF()}}
+            }
+            """);
+    }
 }
 

@@ -18,10 +18,46 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<QuickMarkupSFC>]
         [Rule(
             UsingStatementsOrEmpty, AS, nameof(QuickMarkupSFC.Usings),
+            NamespaceDecl, AS, nameof(QuickMarkupSFC.Namespace),
+            ClassDecl, AS, nameof(QuickMarkupSFC.ClassDeclaration),
             RefsDecl, AS, nameof(QuickMarkupSFC.Refs),
             typeof(QuickMarkupSFC))]
         [Rule(SFC, AS, LIST, SFCTag, AS, VALUE, APPENDLIST)]
         SFC,
+        // HEADER: Namespace declaration
+        [Type<PositionedIdentifier>]
+        [Rule(NamespaceDeclInner, AS, VALUE, IDENTITY)]
+        [Rule(WITHPARAM, VALUE, null, IDENTITY)]
+        NamespaceDecl,
+        [Type<PositionedIdentifier>]
+        [Rule(Terminal.NamespaceKw, NsIdentifier, AS, VALUE, Terminal.NamespaceSemicolon, IDENTITY)]
+        NamespaceDeclInner,
+        [Type<PositionedIdentifier>]
+        [Rule(Terminal.HeaderIdentifier, AS, nameof(PositionedIdentifier.Name), typeof(PositionedIdentifier))]
+        [Rule(NsIdentifier, AS, "prev", Terminal.HeaderDot, Terminal.HeaderIdentifier, AS, "id", nameof(AppendNs))]
+        NsIdentifier,
+        // HEADER: Class declaration
+        [Type<ClassDeclaration>]
+        [Rule(ClassDeclInner, AS, VALUE, IDENTITY)]
+        [Rule(WITHPARAM, VALUE, null, IDENTITY)]
+        ClassDecl,
+        [Type<ClassDeclaration>]
+        [Rule(ClassKindPrefix, AS, "kind",
+            Terminal.HeaderIdentifier, AS, "name",
+            Terminal.ClassSemicolon,
+            nameof(MakeClassDeclNoBase))]
+        [Rule(ClassKindPrefix, AS, "kind",
+            Terminal.HeaderIdentifier, AS, "name",
+            Terminal.ClassColon,
+            Terminal.RawBaseTypes, AS, "baseTypes",
+            Terminal.BaseTypesSemicolon,
+            nameof(MakeClassDeclWithBase))]
+        ClassDeclInner,
+        [Type<ClassKind>]
+        [Rule(Terminal.ClassKw, WITHPARAM, VALUE, ClassKind.Subclass, IDENTITY)]
+        [Rule(Terminal.ComponentKw, WITHPARAM, VALUE, ClassKind.Component, IDENTITY)]
+        [Rule(Terminal.FragmentKw, Terminal.ComponentKw, WITHPARAM, VALUE, ClassKind.FragmentComponent, IDENTITY)]
+        ClassKindPrefix,
         [Type<ISFCTag>]
         [Rule(Terminal.Setup, AS, nameof(QuickMarkupScript.RawScript), typeof(QuickMarkupScript))]
         [Rule(ParsedTag, AS, VALUE, IDENTITY)]
@@ -450,6 +486,12 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         }
         return tag;
     }
+    static PositionedIdentifier AppendNs(PositionedIdentifier prev, string id)
+        => new($"{prev.Name}.{id}");
+    static ClassDeclaration MakeClassDeclNoBase(ClassKind kind, string name)
+        => new(name, kind, null);
+    static ClassDeclaration MakeClassDeclWithBase(ClassKind kind, string name, string baseTypes)
+        => new(name, kind, baseTypes.TrimStart());
     static string CombineUsings(string A, string B)
     {
         return $"""

@@ -8,7 +8,12 @@ public record class AST : ISpanSetter
     public Position Start { get; set; }
     public Position End { get; set; }
 }
-public record class QuickMarkupSFC(string Usings, ListAST<RefDeclaration> Refs) : AST
+public record class QuickMarkupSFC(
+    string Usings,
+    ListAST<RefDeclaration> Refs,
+    PositionedIdentifier? Namespace = null,
+    ClassDeclaration? ClassDeclaration = null
+) : AST
 {
     public QuickMarkupScript? Scirpt { get; set; } = null;
     public ListAST<QuickMarkupParsedTag> MarkupTags { get; set; } = new();
@@ -163,6 +168,19 @@ public record class RefDeclaration(
     ListAST<QMAttribute> Attributes);
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
+
+public enum ClassKind
+{
+    Subclass,
+    Component,
+    FragmentComponent
+}
+
+public record ClassDeclaration(
+    string Name,
+    ClassKind Kind,
+    string? BaseTypes
+);
 public record class QuickMarkupRange(int RangeStart, int RangeEnd) : QuickMarkupValue();
 public record class QuickMarkupInt32(int Value) : QuickMarkupValue();
 public record class QuickMarkupDouble(double Value) : QuickMarkupValue();
