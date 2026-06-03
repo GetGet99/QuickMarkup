@@ -1,0 +1,91 @@
+{
+  "scopeName": "source.quickmarkup",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#tags" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "begin": "<!--",
+          "end": "-->",
+          "name": "comment.block.quickmarkup"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "begin": "`",
+          "end": "`",
+          "name": "string.quoted.backtick.quickmarkup",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.quickmarkup"
+            }
+          ]
+        }
+      ]
+    },
+    "tags": {
+      "patterns": [
+        {
+          "begin": "(?x)(<)(\\w[\\w.]*(?::\\w[\\w.]*)?)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.quickmarkup" },
+            "2": { "name": "entity.name.tag.quickmarkup" }
+          },
+          "end": "(>)",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.tag.end.quickmarkup" }
+          },
+          "name": "meta.tag.quickmarkup",
+          "patterns": [
+            { "include": "#tag-attributes" }
+          ]
+        },
+        {
+          "begin": "(</)(\\w[\\w.]*)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.tag.begin.quickmarkup" },
+            "2": { "name": "entity.name.tag.quickmarkup" }
+          },
+          "end": "(>)",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.tag.end.quickmarkup" }
+          },
+          "name": "meta.tag.quickmarkup"
+        },
+        {
+          "match": "<([/!?])?([a-zA-Z][\\w.]*)([^>]*?)(/?)>",
+          "name": "invalid.illegal.tag.quickmarkup"
+        }
+      ]
+    },
+    "tag-attributes": {
+      "patterns": [
+        {
+          "match": "(\\w[\\.\\w]*)(?=\\s*(=))",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.quickmarkup" }
+          }
+        },
+        {
+          "match": "([=])",
+          "name": "punctuation.separator.key-value.quickmarkup"
+        },
+        {
+          "match": "(`)([^`]*)(`)",
+          "captures": {
+            "1": { "name": "punctuation.definition.string.begin.quickmarkup" },
+            "2": { "name": "string.quoted.backtick.quickmarkup" },
+            "3": { "name": "punctuation.definition.string.end.quickmarkup" }
+          }
+        }
+      ]
+    }
+  }
+}
