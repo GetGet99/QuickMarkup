@@ -17,7 +17,7 @@
 			],
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
-				"QMUI_LSP_DEBUG": "8765"
+				// "QMUI_LSP_DEBUG": "8765"
 			}
 		}
 	]
