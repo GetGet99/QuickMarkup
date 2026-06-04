@@ -2,7 +2,7 @@
 
 If you already know Vue 3, QuickMarkup will feel surprisingly familiar.
 
-QuickMarkup is a reactive UI language for .NET native desktop apps (WinUI/UWP) that brings many of Vue's ideas — reactive state, computed values, declarative UI, and dependency tracking — into C# and compile-time source generation.
+QuickMarkup is a reactive UI language for WinUI/UWP that brings Vue-style reactive programming into native C# UI development.
 
 Instead of writing:
 
@@ -14,7 +14,7 @@ Instead of writing:
 
 ...you write reactive UI directly in C#-based markup.
 
-The mental model is much closer to Vue's Composition API than traditional XAML/MVVM.
+The developer experience is often closer to Vue's Composition API than traditional XAML/MVVM.
 
 However, QuickMarkup is *not* a web framework and it does *not* work like a virtual DOM renderer. The UI updates individual properties directly instead of rerendering component trees.
 
@@ -102,7 +102,7 @@ Changing:
 Count++;
 ```
 
-does not rerun the whole component. Only expressions depending on `Count` are reevaluated.
+does not rerender the entire component tree. Only expressions depending on `Count` are reevaluated.
 
 ---
 
@@ -186,7 +186,7 @@ int Count = 0;
 | --------------- | ---------------------------------------- |
 | `ref(0)`        | `int Count = 0;`                         |
 | `count.value`   | `Count`                                  |
-| `computed(...)` | `Type => \`expr``                        |
+| `computed(...)` | `` ComputedName => `expr` ``             |
 | `v-model`       | `<=>` (two-way binding)                  |
 | template        | markup inside `[QuickMarkup("""...""")]` |
 
@@ -393,7 +393,7 @@ ref InputLabel = <TextBlock Text="Subtitle" />
 
 Without `ref`, the variable remains `null` until the element has been created.
 
-The `ref` keyword creates a reactive reference that updates once initialization completes.
+The `ref` keyword creates a reactive reference that updates once initialization completes. Unlike Vue's `ref()`, this `ref` keyword is specifically for forward element references.
 
 Since initialization happens top-to-bottom, declaration order matters.
 
@@ -491,7 +491,7 @@ Additional properties placed on the component tag are forwarded to the component
 />
 ```
 
-This behaves similarly to Vue's fallthrough attributes.
+Conceptually similar to Vue's fallthrough attributes.
 
 ## Mental model comparison
 

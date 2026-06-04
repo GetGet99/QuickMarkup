@@ -1,48 +1,60 @@
 # QuickMarkup for XAML Developers
 
-If you already know XAML, QuickMarkup will feel both familiar and strangely freeing.
+If you already know XAML and MVVM, QuickMarkup should feel familiar — just with a more direct reactive model.
 
-QuickMarkup is a reactive UI language for .NET native desktop apps (WinUI/UWP) that replaces much of the traditional XAML + MVVM stack with reactive C#-based markup and compile-time code generation.
+QuickMarkup is a reactive UI language for WinUI/UWP that lets you build UI using declarative C# markup instead of relying heavily on XAML bindings, converters, and `INotifyPropertyChanged`.
 
-Instead of writing:
+You still work with:
 
-* XAML views
-* `INotifyPropertyChanged`
-* converters
+* native WinUI/UWP controls
+* panels and layouts
+* dependency properties
+* styles and resources
+* existing control libraries
+
+Your existing knowledge of WinUI/UWP still applies directly.
+
+What changes is how UI is authored.
+
+Instead of splitting UI between:
+
+* XAML
 * view models
-* dependency-property glue
-* binding-path strings
+* converters
+* `INotifyPropertyChanged`
+* binding strings
 
-...you write reactive UI directly in C# markup.
+QuickMarkup keeps UI, state, and logic together in reactive C# markup.
 
-The underlying UI platform is still native WinUI/UWP, so your existing knowledge of controls, layouts, panels, dependency properties, styling, and platform APIs still applies.
+Reactive expressions automatically track the state they use and refresh when that state changes.
 
-What changes is the authoring model.
+QuickMarkup may not be ideal if your workflow depends heavily on:
 
-If you think of it as:
-
-> “XAML reimagined with reactive C# instead of MVVM bindings”
-
-...you'll be very close to the intended mental model.
+* visual designers
+* strict MVVM separation
+* XAML-specific tooling workflows
 
 ---
 
-## A complete minimal example
+# Quick Start
 
-A QuickMarkup component usually looks like this:
+A minimal QuickMarkup page looks like this:
 
 ```csharp
 [QuickMarkup("""
-    // reactive state
     int Count = 0;
 
-    <StackPanel Spacing=12>
-        <TextBlock Text=`$"Count: {Count}"` />
+    <StackPanel Spacing=12 Padding=24>
 
         <Button
             Content="Increment"
             @Click+=`Count++`
         />
+
+        <TextBlock
+            Text=`$"Count: {Count}"`
+        />
+
     </StackPanel>
     """)]
 public partial class CounterPage : Page
@@ -54,136 +66,91 @@ public partial class CounterPage : Page
 }
 ```
 
-Things to notice immediately:
+When `Count` changes, the `TextBlock` automatically updates.
 
-* UI is written directly inside a C# attribute
-* Variables declared at the top become reactive automatically
-* Backticks `` `...` `` contain reactive C# expressions
-* Updating `Count` automatically refreshes dependent UI
-* The UI still uses native WinUI/UWP controls
-* No `{Binding}`
-* No `INotifyPropertyChanged`
-* No view model boilerplate
+No:
+
+* `INotifyPropertyChanged`
+* view model
+* binding strings
+* converters
 
 The generated code handles the reactive infrastructure automatically.
 
-QuickMarkup intentionally resembles a mix of:
+---
 
-* XAML-style UI declaration
-* reactive bindings
-* direct C# expressions
-* declarative rendering
+# Before Continuing
 
-However, unlike XAML, the syntax is fundamentally C#-oriented.
+If you already know XAML, these are the most important syntax mappings:
 
-For example, comments use normal C-style syntax:
+| XAML                  | QuickMarkup             |
+| --------------------- | ----------------------- |
+| `{Binding Name}`      | `` `Name` ``            |
+| `Mode=TwoWay`         | `<=>`                   |
+| `Mode=OneWayToSource` | `=>`                    |
+| `Click="OnClick"`     | `` @Click+=`...` ``     |
+| Item templates        | `foreach` blocks        |
+| `IValueConverter`     | inline C#               |
+| `x:Name`              | `myButton = <Button />` |
 
-```csharp
-// single-line comment
+Most QuickMarkup code is just:
 
-/* multi-line
-   comment */
-```
-
-Unlike XML/XAML, `<!-- -->` comments are not supported inside QuickMarkup markup.
+* normal WinUI controls
+* familiar C# properties and expressions
+* normal C#
+* reactive expressions
 
 ---
 
-## Important differences from XAML
+# Reactive State
 
-Although QuickMarkup uses native WinUI/UWP controls, the programming model is very different from traditional XAML + MVVM.
+Variables declared at the top of a QuickMarkup block automatically become reactive state.
 
-### No binding-path strings
+```csharp
+string Name = "Alice";
 
-XAML bindings are string-based:
+<TextBlock Text=`Name` />
+```
+
+Expressions inside `` `backticks` `` automatically track the reactive values they use and refresh when those values change.
+
+Updating the value:
+
+```csharp
+// C#
+Name = "Bob";
+```
+
+automatically refreshes any UI using it.
+
+QuickMarkup generates the reactive backing infrastructure automatically, so there is no need for:
+
+* `INotifyPropertyChanged`
+* manual property notification code
+* binding strings for simple state updates
+
+---
+
+# Binding Values
+
+In XAML:
 
 ```xml
 <TextBlock Text="{Binding User.Name}" />
 ```
 
-QuickMarkup bindings are direct C# expressions:
+In QuickMarkup:
 
 ```csharp
 <TextBlock Text=`User.Name` />
 ```
 
-This means:
-
-<!-- * full IntelliSense/refactoring - not true for now -->
-* compile-time checking
-* normal C# semantics
-* no runtime binding-path lookup
-
-Bindings are expressions, not strings interpreted by a runtime binding engine.
-
----
-
-### No `INotifyPropertyChanged`
-
-In XAML MVVM, state usually looks like this:
+Bindings are normal C# expressions inside `` `backticks` `` syntax. You can use any valid C# expression:
 
 ```csharp
-private string _name;
-
-public string Name
-{
-    get => _name;
-    set
-    {
-        _name = value;
-        OnPropertyChanged();
-    }
-}
-```
-
-In QuickMarkup:
-
-```csharp
-// QuickMarkup
-string Name = "";
-<TextBlock Text=`Name` />
-```
-
-That generates a property that automatically becomes a reactive reference.
-
-Changing value:
-
-```csharp
-Name = "QuickMarkup";
-```
-
-automatically updates dependent UI.
-
-No manual setter implementation.
-No property-changed boilerplate.
-No base view model classes.
-
----
-
-### No converters for most cases
-
-XAML often requires converter classes for simple transformations:
-
-```xml
 <TextBlock
-    Text="{Binding Price,
-        StringFormat={}{0:C}}"
+    Text=`$"{Price:C}"`
 />
-```
-
-Or:
-
-```xml
-<TextBlock
-    Visibility="{Binding IsVisible,
-        Converter={StaticResource BoolToVis}}"
-/>
-```
-
-QuickMarkup usually just uses inline C#:
-
-```csharp
-<TextBlock Text=`$"{Price:C}"` />
 ```
 
 ```csharp
@@ -194,207 +161,93 @@ QuickMarkup usually just uses inline C#:
 />
 ```
 
-Because bindings are expressions rather than string paths, most lightweight conversions no longer need dedicated converter types.
+Any expression inside backticks automatically tracks the reactive values it reads and re-runs when those values change.
+<!-- For many scenarios, this removes the need for converters entirely. -->
 
 ---
 
-### No `DataContext` mental overhead
+# Two-Way Binding
 
-XAML heavily relies on inherited `DataContext` scopes.
-
-QuickMarkup does not.
-
-Bindings directly reference properties in lexical scope:
+QuickMarkup supports one-way, one-way-to-source (bindback), and two-way binding.
 
 ```csharp
-string Name = "Alice";
+string SearchText = "";
 
-<TextBlock Text=`Name` />
+<TextBox Text<=>`SearchText` />
 ```
 
-Inside loops:
-
-```csharp
-foreach (var item in `Items`) {
-    <TextBlock Text=`item.Name` />
-}
-```
-
-There is no implicit binding-context switching happening behind the scenes.
-
-The scoping rules behave much more like normal C# code.
-
----
-
-### No visual designer or hot reload
-
-QuickMarkup relies heavily on compile-time source generation.
-
-The tradeoff is:
-
-* less runtime overhead
-* fewer reflection-based systems
-* direct generated UI code
-* tighter integration with C#
-
-...but currently without the mature visual designer workflow traditionally associated with XAML tooling.
-
----
-
-## Reactive state → References
-
-QuickMarkup variables map conceptually to reactive references.
+Equivalent XAML:
 
 ```xml
-<!-- XAML -->
-<TextBlock Text="{Binding Count}" />
-```
-
-```csharp
-// QuickMarkup
-int Count = 0;
-
-<TextBlock Text=`$"Count: {Count}"` />
-```
-
-| XAML / MVVM                      | QuickMarkup      |
-| -------------------------------- | ---------------- |
-| property + `OnPropertyChanged()` | `int Count = 0;` |
-| `{Binding Name}`                 | `` `Name` ``     |
-| `IValueConverter`                | inline C#        |
-| `Mode=TwoWay`                    | `<=>`            |
-| `Mode=OneWayToSource`            | `=>`             |
-| `DataTemplate`                   | `foreach`        |
-<!-- | `x:Name`                         | variable capture | -->
-
-Under the hood, QuickMarkup generates reactive backing infrastructure automatically.
-
-A declaration like:
-
-```csharp
-int Count = 0;
-```
-
-roughly generates a reactive backing reference and property accessors behind the scenes.
-
-This means:
-
-```csharp
-Count++;
-```
-
-would trigger updates propagation to dependent bindings and computed values.
-
-No `DependencyProperty`.
-No `INotifyPropertyChanged`.
-No manual notification wiring.
-
----
-
-## Computed values
-
-QuickMarkup computed values behave similarly to derived properties in MVVM — except dependency tracking is automatic.
-
-```csharp
-double Total => `Price * Quantity`;
-```
-
-Computed values:
-
-* cache their results
-* automatically track dependencies
-* reevaluate only when dependencies change
-
-```csharp
-<TextBlock Text=`$"{Total:C}"` />
-```
-
-Unlike XAML bindings, there is no runtime binding engine parsing property paths and observing dependencies dynamically.
-
-The generated infrastructure tracks dependencies directly through reactive references and computed values.
-
----
-
-## Binding directions
-
-XAML exposes several binding modes.
-
-QuickMarkup makes them explicit in the syntax.
-
-```xml
-<!-- XAML -->
-<TextBox Text="{Binding Name}" />
-
-<TextBox Text="{Binding Name, Mode=TwoWay}" />
-
-<TextBox Text="{Binding Name, Mode=OneWayToSource}" />
-```
-
-```csharp
-// QuickMarkup
-
-// source → UI
-<TextBox Text=`Name` />
-
-// two-way binding
-<TextBox Text<=>`Name` />
-
-// UI → source
-<TextBox Text=>`Name` />
-```
-
-Unlike XAML bindings, these are still just reactive C# expressions — not binding-path strings.
-
-You can also preprocess values inline:
-
-```csharp
-<NumberBox
-    Value=`Math.Round(Value, 2)`
-    Value=>`Value`
+<TextBox
+    Text="{Binding SearchText, Mode=TwoWay}"
 />
 ```
 
-This allows one direction to transform values differently from the reverse direction without requiring converters or custom binding classes.
+The `<=>` operator keeps both values synchronized.
 
 ---
 
-## Conditional rendering
+# Event Handling
 
-XAML has no direct equivalent to inline structural conditional rendering.
+XAML:
 
-QuickMarkup uses actual control flow syntax:
+```xml
+<Button Click="OnIncrementClick" />
+```
+
+```csharp
+void OnIncrementClick(object sender, RoutedEventArgs e)
+{
+    Count++;
+}
+```
+
+QuickMarkup:
+
+
+```csharp
+<Button
+    Click+=`(sender, args) => {
+        Count++;
+    }`
+/>
+```
+
+The `@` shorthand automatically wraps the expression in a delegate, allowing concise inline expressions without manually writing the lambda.
+
+```csharp
+<Button @Click+=`Count++` />
+```
+
+---
+
+# Conditional UI
+
+QuickMarkup uses normal control flow syntax.
 
 ```csharp
 if (`IsLoggedIn`) {
     <TextBlock Text="Welcome back" />
 }
 else {
-    <Button
-        Content="Log in"
-        @Click+=`Login()`
-    />
+    <Button Content="Log in" />
 }
 ```
 
-This behaves much more like normal C# code than XAML triggers or template switching.
+This often replaces simple visibility converters and conditional template selection patterns.
 
-Whenever dependencies change, QuickMarkup updates only the affected generated UI blocks.
+The UI updates automatically whenever reactive dependencies change.
 
 ---
 
-## List rendering
+# Rendering Lists
 
-XAML list rendering usually requires:
+Instead of `ItemsControl` + `DataTemplate`, QuickMarkup uses `foreach`.
 
-* `ItemsControl`
-* `ItemsSource`
-* `DataTemplate`
-* binding contexts
-
-QuickMarkup instead uses `foreach`.
+XAML:
 
 ```xml
-<!-- XAML -->
 <ItemsControl ItemsSource="{Binding Items}">
     <ItemsControl.ItemTemplate>
         <DataTemplate>
@@ -404,30 +257,15 @@ QuickMarkup instead uses `foreach`.
 </ItemsControl>
 ```
 
+QuickMarkup:
+
 ```csharp
-// QuickMarkup
 foreach (var item in `Items`) {
     <TextBlock Text=`item.Name` />
 }
 ```
 
-No `DataTemplate`.
-No implicit `DataContext`.
-No binding-path strings.
-
-Just a loop.
-
-When the collection implements `INotifyCollectionChanged` (such as `ObservableCollection<T>`), QuickMarkup incrementally reconciles the generated UI as items are added, removed, or moved.
-
-You can also provide stable keys:
-
-```csharp
-foreach (var item in `Items`; `item.Id`) {
-    <TextBlock Text=`item.Name` />
-}
-```
-
-And optional indices:
+You can also access indices:
 
 ```csharp
 foreach (index; var item in `Items`) {
@@ -437,47 +275,38 @@ foreach (index; var item in `Items`) {
 }
 ```
 
+When using collections like `ObservableCollection<T>`, QuickMarkup automatically updates the generated UI when items are added or removed.
+
 ---
 
-## Event handling
+# Computed Values
 
-XAML events:
-
-```xml
-<Button Click="OnClick" />
-```
-```csharp
-private void OnClick(object? sender, RoutedEventArgs e)
-{
-    Count++;
-}
-```
-
-QuickMarkup event syntax:
+Use `=>` to declare computed values.
 
 ```csharp
-// QuickMarkup
-<Button @Click+=`Count++` />
+double Price = 10;
+int Quantity = 3;
+
+double Total => `Price * Quantity`;
 ```
 
-Or explicitly:
+Use them directly in UI:
 
 ```csharp
-// QuickMarkup
-<Button
-    Click+=`(sender, args) => Count++`
+<TextBlock
+    Text=`$"{Total:C}"`
 />
 ```
 
-The `@` shorthand automatically wraps the expression in a delegate.
+Computed values:
 
-This keeps inline event expressions concise while still compiling to normal .NET events.
-
-Because QuickMarkup targets native WinUI/UWP controls directly, these are regular platform events — not synthetic framework abstractions like many web frameworks.
+* cache automatically
+* track dependencies automatically
+* re-evaluate only when needed
 
 ---
 
-## Element references
+# Element References
 
 XAML uses `x:Name`:
 
@@ -485,72 +314,25 @@ XAML uses `x:Name`:
 <Button x:Name="myButton" />
 ```
 
-QuickMarkup captures the element into a variable:
+QuickMarkup captures elements into variables:
 
 ```csharp
-// QuickMarkup
 myButton = <Button />
 ```
 
-The captured variable becomes a field on the generated class and is available from code-behind after initialization.
+You can access the element later from code-behind:
 
 ```csharp
 myButton.Content = "Updated";
 ```
 
-For forward or cross references, use `ref`:
-
-```csharp
-// QuickMarkup
-<TextBox
-    AutomationProperties.LabeledBy=`InputLabel`
-/>
-
-ref InputLabel =
-    <TextBlock Text="Subtitle" />
-```
-
-The variable remains `null` until the element has been created. `ref` creates a backing `Reference<TextBlock>`, ensuring `` AutomationProperties.LabeledBy=`InputLabel` `` updated the value once the elment is created.
-
-Initialization order matters because UI is generated top-to-bottom.
-
 ---
 
-## Watchers and effects
+# Components
 
-Sometimes you want reactive side effects outside the UI itself.
-
-QuickMarkup exposes low-level reactive APIs directly:
+QuickMarkup supports reusable components.
 
 ```csharp
-// C#
-CountProp.Watch(v =>
-    Console.WriteLine(v));
-```
-
-Or multiple dependencies:
-
-```csharp
-// C#
-Effect(
-    () => Console.WriteLine($"{First} {Last}"),
-    FirstProp,
-    LastProp
-);
-```
-
-Unlike XAML bindings, these are not part of a separate binding engine.
-
-They are direct reactive subscriptions over generated references and computed values.
-
----
-
-## Components
-
-QuickMarkup supports reusable declarative components.
-
-```csharp
-// QuickMarkup
 [QuickMarkup("""
     string Text = "";
 
@@ -569,53 +351,32 @@ Usage:
 <Label Text="Hello" />
 ```
 
-Properties declared at the top automatically become reactive component properties.
-
-Additional properties on the component tag are forwarded to the root markup node:
-
-```csharp
-<Label
-    Text="Hello"
-    HorizontalAlignment=Center
-/>
-```
-
-This behaves similarly to setting attached or forwarded properties on a root XAML element.
-
-Unlike XAML user controls, this does not have limitation of creating component on top of sealed types.
+Component properties declared at the top automatically become reactive.
 
 ---
 
-## Mental model comparison
+# Mental Model
 
-| Concept             | XAML / MVVM                   | QuickMarkup                       |
-| ------------------- | ----------------------------- | --------------------------------- |
-| UI declaration      | XAML                          | C# markup                         |
-| Binding system      | Runtime binding engine        | Generated reactive bindings       |
-| State updates       | `INotifyPropertyChanged`      | Reactive references               |
-| Binding expressions | String paths                  | Direct C#                         |
-| Value conversion    | `IValueConverter`             | Inline expressions                |
-| Templates           | `DataTemplate`                | `foreach` / fragments             |
-| Conditional UI      | Triggers / template switching | `if` / `else`                     |
-| Rendering           | Dependency-property system    | Direct generated property updates |
-| Code organization   | XAML + ViewModel              | Unified reactive component        |
-| Dependency tracking | Runtime                       | Generated reactive infrastructure |
-| UI target           | Native WinUI/UWP              | Native WinUI/UWP                  |
-
-QuickMarkup intentionally borrows many of the ergonomic goals people wanted from MVVM:
-
-* declarative UI
-* automatic UI updates
-* separation of state and presentation
-* reusable components
-
-...while removing much of the ceremony traditionally associated with XAML binding infrastructure.
-
-If you already think in terms of:
+QuickMarkup is easiest to understand if you think of it as:
 
 * native WinUI/UWP controls
 * declarative UI
 * reactive state
-* dependency-driven updates
+* direct C# expressions
 
-...then most of QuickMarkup will feel immediately familiar — just significantly more direct.
+without the traditional XAML binding infrastructure.
+
+The platform itself is still WinUI/UWP.
+
+Your existing knowledge of:
+
+* layouts
+* controls
+* styles
+* dependency properties
+* resources
+* platform APIs
+
+still applies directly.
+
+What changes is the authoring model.
