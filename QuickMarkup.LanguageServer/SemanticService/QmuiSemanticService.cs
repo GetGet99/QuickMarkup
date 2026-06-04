@@ -386,9 +386,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         }
         else
         {
-            displayString = roslynSymbol is not null
-                ? roslynSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                : $"{typeName} {propertyName}";
+            displayString = $"{typeName} {propertyName}";
         }
 
         return new PropertyResolutionResult(
