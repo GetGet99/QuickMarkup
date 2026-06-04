@@ -10,53 +10,41 @@ namespace QuickMarkup.LanguageServer.Diagnostics;
 
 public class QmuiDiagnosticService : IQmuiDiagnosticService
 {
-    readonly IRoslynWorkspaceManager _workspaceManager;
-    readonly QuickMarkupWorkspaceCatalog _catalog;
-    readonly IFileProvider _fileProvider;
-    QuickMarkupGeneratedMemberTable? _generatedMemberTable;
+    readonly IQmuiWorkspaceService _workspace;
 
-    public QmuiDiagnosticService(
-        IRoslynWorkspaceManager workspaceManager,
-        QuickMarkupWorkspaceCatalog catalog,
-        IFileProvider fileProvider)
+    public QmuiDiagnosticService(IQmuiWorkspaceService workspace)
     {
-        _workspaceManager = workspaceManager;
-        _catalog = catalog;
-        _fileProvider = fileProvider;
+        _workspace = workspace;
     }
 
-    public Task<IReadOnlyList<LspDiagnostic>> GetDiagnosticsAsync(
+    public async Task<IReadOnlyList<LspDiagnostic>> GetDiagnosticsAsync(
         string filePath, string content, CancellationToken ct)
     {
         var (sfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
-        var compilation = GetEnrichedCompilation(ct);
+        var compilation = await _workspace.GetEnrichedCompilationAsync(ct);
 
         if (sfc is null)
-            return Task.FromResult<IReadOnlyList<LspDiagnostic>>([]);
+            return [];
 
         if (compilation is null)
-            return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
-                LspDiagnosticConverter.ConvertParseErrors(parseErrors, content));
+            return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
 
-        var generatedMembers = GetOrBuildGeneratedMemberTable(compilation);
+        var generatedMembers = _workspace.GetGeneratedMemberTable();
 
         var ns = sfc.Namespace?.Name ?? "";
         var typeName = sfc.ClassDeclaration?.Name ?? "";
         if (string.IsNullOrEmpty(typeName))
-            return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
-                LspDiagnosticConverter.ConvertParseErrors(parseErrors, content));
+            return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
 
         var fullName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
         var typeSym = compilation.GetTypeByMetadataName(fullName);
         if (typeSym is not null)
         {
             var binder = Bind(compilation, sfc, typeSym, ns, generatedMembers);
-            return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
-                LspDiagnosticConverter.ConvertAll(binder.Diagnostics, parseErrors, content));
+            return LspDiagnosticConverter.ConvertAll(binder.Diagnostics, parseErrors, content);
         }
         if (sfc.ClassDeclaration is { } classDecl)
         {
-            // Use the shared enricher to create a dummy class with file-scoped namespace
             var target = new QuickMarkupTargetContext(
                 Namespace: ns,
                 TypeName: typeName,
@@ -69,75 +57,13 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
 
             var dummyTypeSym = compilationWithDummy.GetTypeByMetadataName(fullName);
             if (dummyTypeSym is null)
-            {
-                // Fallback to just parse errors if we still can't find the type (should not happen)
-                goto fallback;
-            }
+                return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
 
             var dummyBinder = Bind(compilationWithDummy, sfc, dummyTypeSym, ns, generatedMembers);
-            return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
-                LspDiagnosticConverter.ConvertAll(dummyBinder.Diagnostics, parseErrors, content));
-        }
-    fallback:
-        return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
-            LspDiagnosticConverter.ConvertParseErrors(parseErrors, content));
-    }
-
-    private Compilation? GetEnrichedCompilation(CancellationToken ct)
-    {
-        var compilation = _workspaceManager.Compilation;
-        if (compilation is null)
-            return null;
-
-        // If catalog is empty and we have a workspace root, rebuild it
-        if (_catalog.Entries.Length == 0 && _workspaceManager.CurrentProjectPath is not null)
-        {
-            var workspaceRoot = Path.GetDirectoryName(_workspaceManager.CurrentProjectPath);
-            if (workspaceRoot is not null)
-            {
-                _catalog.Rebuild(compilation, workspaceRoot, _fileProvider);
-            }
+            return LspDiagnosticConverter.ConvertAll(dummyBinder.Diagnostics, parseErrors, content);
         }
 
-        // Enrich compilation with all catalog .qmui entries
-        foreach (var entry in _catalog.Entries)
-        {
-            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
-            {
-                try
-                {
-                    var content = _fileProvider.ReadAllText(entry.FilePath);
-                    var sfc = QuickMarkupProviderExtension.Parse(content);
-                    if (sfc is not null && sfc.ClassDeclaration is not null)
-                    {
-                        var target = new QuickMarkupTargetContext(
-                            Namespace: entry.Namespace,
-                            TypeName: entry.ShortName,
-                            FullTypeName: entry.FullTypeName,
-                            FileName: entry.FilePath,
-                            AttributeLocation: default,
-                            AttributeLineSpan: default);
-
-                        compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
-                    }
-                }
-                catch (Exception)
-                {
-                    // Skip problematic files
-                }
-            }
-        }
-
-        return compilation;
-    }
-
-    private QuickMarkupGeneratedMemberTable GetOrBuildGeneratedMemberTable(Compilation compilation)
-    {
-        if (_generatedMemberTable is not null)
-            return _generatedMemberTable;
-
-        _generatedMemberTable = GeneratedMemberTableBuilder.Build(_catalog, _fileProvider, compilation);
-        return _generatedMemberTable;
+        return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
     }
 
     static QuickMarkupBinder Bind(

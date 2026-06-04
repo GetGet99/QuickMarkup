@@ -41,10 +41,9 @@ var server = await LanguageServer.From(options => options
     .WithHandler<QmuiDefinitionHandler>()
     .WithServices(services =>
     {
-        services.AddSingleton<IRoslynWorkspaceManager, RoslynWorkspaceManager>();
+        services.AddSingleton<IQmuiWorkspaceService, QmuiWorkspaceService>();
         services.AddSingleton<IQmuiDiagnosticService, QmuiDiagnosticService>();
         services.AddSingleton<IQmuiDocumentStore, QmuiDocumentStore>();
-        services.AddSingleton<QuickMarkupWorkspaceCatalog>();
         services.AddSingleton<IQmuiSemanticService, QmuiSemanticService>();
         services.AddSingleton<MarkupCursorResolver>();
         services.AddSingleton<SymbolLocationResolver>();
@@ -56,17 +55,8 @@ var server = await LanguageServer.From(options => options
         var workspaceRoot = (string?)initOpts?["workspaceRoot"];
         if (!string.IsNullOrEmpty(workspaceRoot))
         {
-            var workspace = server.Services.GetRequiredService<IRoslynWorkspaceManager>();
+            var workspace = server.Services.GetRequiredService<IQmuiWorkspaceService>();
             await workspace.InitializeAsync(workspaceRoot);
-            
-            // Rebuild the catalog after workspace is initialized
-            var catalog = server.Services.GetRequiredService<QuickMarkupWorkspaceCatalog>();
-            var fileProvider = server.Services.GetRequiredService<IFileProvider>();
-            var compilation = workspace.Compilation;
-            if (compilation is not null)
-            {
-                catalog.Rebuild(compilation, workspaceRoot, fileProvider);
-            }
         }
     })
 );

@@ -2,6 +2,7 @@ using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.Language.Symbols;
 using System.Diagnostics.CodeAnalysis;
 
@@ -198,7 +199,36 @@ class CodeTypeResolver(
     }
 
     public ResolvedProperty? FindProperty(ITypeSymbol? type, string property)
-        => generatedMembers.FindProperty(type, property, currentTypeName, ResolveGeneratedPropertyType);
+        => generatedMembers.FindProperty(type, property, currentTypeName, ResolveGeneratedPropertyType,
+            GenerateMembersForCSharpAttribute);
+
+    QuickMarkupGeneratedTypeMembers? GenerateMembersForCSharpAttribute(INamedTypeSymbol type)
+    {
+        var attr = type.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.FullName() == "global::QuickMarkup.SourceGen.QuickMarkupAttribute");
+        if (attr is null || attr.ConstructorArguments.Length == 0)
+            return null;
+
+        var markupString = attr.ConstructorArguments[0].Value as string;
+        if (string.IsNullOrEmpty(markupString))
+            return null;
+
+        var sfc = QuickMarkupProviderExtension.Parse(markupString);
+
+        var ns = type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString();
+        var target = new QuickMarkupTargetContext(
+            Namespace: ns,
+            TypeName: type.Name,
+            FullTypeName: type.ToDisplayString(),
+            FileName: type.Locations.FirstOrDefault()?.SourceTree?.FilePath ?? "",
+            AttributeLocation: default,
+            AttributeLineSpan: default);
+
+        return QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
+            new QuickMarkupParsedAttribute(target, sfc),
+            compilation,
+            CancellationToken.None);
+    }
 
     public HashSet<string> GetPropertyNames(ITypeSymbol type)
     {

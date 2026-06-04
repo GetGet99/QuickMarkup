@@ -32,7 +32,7 @@ class QmuiHoverHandler : IHoverHandler
 
     public async Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)
     {
-        var workspace = _serviceProvider.GetRequiredService<IRoslynWorkspaceManager>();
+        var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
         await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
 
         var filePath = request.TextDocument.Uri.GetFileSystemPath();

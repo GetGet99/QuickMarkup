@@ -5,7 +5,6 @@ using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.Language.Symbols;
 using QuickMarkup.LanguageServer.Contracts;
-using System.Reflection.Metadata;
 
 namespace QuickMarkup.LanguageServer.SemanticService;
 
@@ -15,19 +14,11 @@ namespace QuickMarkup.LanguageServer.SemanticService;
 /// </summary>
 public class QmuiSemanticService : IQmuiSemanticService
 {
-    private readonly IRoslynWorkspaceManager _workspaceManager;
-    private readonly QuickMarkupWorkspaceCatalog _catalog;
-    private readonly IFileProvider _fileProvider;
-    private QuickMarkupGeneratedMemberTable? _generatedMemberTable;
+    private readonly IQmuiWorkspaceService _workspace;
 
-    public QmuiSemanticService(
-        IRoslynWorkspaceManager workspaceManager,
-        QuickMarkupWorkspaceCatalog catalog,
-        IFileProvider fileProvider)
+    public QmuiSemanticService(IQmuiWorkspaceService workspace)
     {
-        _workspaceManager = workspaceManager;
-        _catalog = catalog;
-        _fileProvider = fileProvider;
+        _workspace = workspace;
     }
 
     public async Task<CursorResolutionResult?> TryResolveAtPositionAsync(
@@ -37,25 +28,20 @@ public class QmuiSemanticService : IQmuiSemanticService
         int character,
         CancellationToken ct = default)
     {
-        // Parse content once
         var (sfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
         if (sfc is null)
             return null;
 
-        // Get compilation once
-        var compilation = await GetEnrichedCompilationAsync(ct);
+        var compilation = await _workspace.GetEnrichedCompilationAsync(ct);
         if (compilation is null)
             return null;
 
-        // Check ref declarations first (property resolution)
         var refResult = TryResolveRefDeclarationAtPosition(sfc, line, character, compilation);
         if (refResult is not null)
             return new CursorResolutionResult(null, refResult);
 
-        // Get generated members once for property resolution
-        var generatedMembers = GetOrBuildGeneratedMemberTable(compilation);
+        var generatedMembers = _workspace.GetGeneratedMemberTable();
 
-        // Walk the template once, checking for both tag and property at the position
         if (sfc.Template is not null)
         {
             var result = ResolveAtPositionInNode(sfc.Template, null, sfc, compilation, generatedMembers, line, character);
@@ -77,7 +63,6 @@ public class QmuiSemanticService : IQmuiSemanticService
     {
         if (node is QuickMarkupParsedTag tag)
         {
-            // Check if cursor is on the tag name (tag resolution)
             if (tag.TagStart is QuickMarkupConstructor constructor)
             {
                 var identifierAst = constructor.TagIdentifierAST as PositionedIdentifier;
@@ -90,7 +75,6 @@ public class QmuiSemanticService : IQmuiSemanticService
                 }
             }
 
-            // Check if cursor is on the closing tag
             if (tag.EndTagName is not null)
             {
                 if (tag.EndTagName.Start.Line <= line && tag.EndTagName.End.Line >= line &&
@@ -101,7 +85,6 @@ public class QmuiSemanticService : IQmuiSemanticService
                 }
             }
 
-            // Check if this is a property tag or attached property tag (requires parent tag context)
             if (parentTag is not null)
             {
                 if (tag.TagStart is QuickMarkupPropertyTagStart propertyTagStart)
@@ -126,7 +109,6 @@ public class QmuiSemanticService : IQmuiSemanticService
                 }
             }
 
-            // Check inline members (attributes) of this tag for property resolution
             if (tag.InlineMembers is not null)
             {
                 foreach (var member in tag.InlineMembers)
@@ -148,7 +130,6 @@ public class QmuiSemanticService : IQmuiSemanticService
                 }
             }
 
-            // Check children for property tags or nested tags
             if (tag.Children is not null)
             {
                 foreach (var child in tag.Children)
@@ -192,7 +173,6 @@ public class QmuiSemanticService : IQmuiSemanticService
     {
         var tagName = tag.TagStart.TagName;
 
-        // Handle root tag specially
         if (tagName == "root" && sfc.ClassDeclaration is not null)
         {
             var componentClass = ResolveComponentClass(compilation, sfc);
@@ -217,15 +197,6 @@ public class QmuiSemanticService : IQmuiSemanticService
             RawTagName: tagName,
             ResolvedSymbol: resolvedSymbol,
             DisplayString: displayString2);
-    }
-
-    private QuickMarkupGeneratedMemberTable GetOrBuildGeneratedMemberTable(Compilation compilation)
-    {
-        if (_generatedMemberTable is not null)
-            return _generatedMemberTable;
-
-        _generatedMemberTable = GeneratedMemberTableBuilder.Build(_catalog, _fileProvider, compilation);
-        return _generatedMemberTable;
     }
 
     private PropertyResolutionResult? TryResolveRefDeclarationAtPosition(
@@ -443,52 +414,6 @@ public class QmuiSemanticService : IQmuiSemanticService
             Kind: kind);
     }
 
-    private async Task<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct)
-    {
-        var compilation = _workspaceManager.Compilation;
-        if (compilation is null)
-            return null;
-
-        if (_catalog.Entries.Length == 0 && _workspaceManager.CurrentProjectPath is not null)
-        {
-            var workspaceRoot = System.IO.Path.GetDirectoryName(_workspaceManager.CurrentProjectPath);
-            if (workspaceRoot is not null)
-            {
-                _catalog.Rebuild(compilation, workspaceRoot, _fileProvider);
-            }
-        }
-
-        foreach (var entry in _catalog.Entries)
-        {
-            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
-            {
-                try
-                {
-                    var fileContent = _fileProvider.ReadAllText(entry.FilePath);
-                    var sfc = QuickMarkupProviderExtension.Parse(fileContent);
-                    if (sfc is not null && sfc.ClassDeclaration is not null)
-                    {
-                        var target = new QuickMarkupTargetContext(
-                            Namespace: entry.Namespace,
-                            TypeName: entry.ShortName,
-                            FullTypeName: entry.FullTypeName,
-                            FileName: entry.FilePath,
-                            AttributeLocation: default,
-                            AttributeLineSpan: default);
-
-                        compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
-                    }
-                }
-                catch (Exception)
-                {
-                    // Skip problematic files
-                }
-            }
-        }
-
-        return compilation;
-    }
-
     private INamedTypeSymbol? TryResolveTagType(Compilation compilation, QuickMarkupSFC sfc, QuickMarkupParsedTag tag)
     {
         if (tag.TagStart is not QuickMarkupConstructor constructor)
@@ -504,7 +429,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         if (typeSymbol is not null)
             return typeSymbol;
 
-        foreach (var entry in _catalog.GetEntriesByShortName(tagName))
+        foreach (var entry in _workspace.GetQmuiEntriesByShortName(tagName))
         {
             typeSymbol = compilation.GetTypeByMetadataName(entry.FullTypeName);
             if (typeSymbol is not null)

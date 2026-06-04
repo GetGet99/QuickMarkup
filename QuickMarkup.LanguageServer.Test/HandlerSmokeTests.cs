@@ -27,10 +27,8 @@ public sealed class HandlerSmokeTests
     {
         Assert.IsNotNull(typeof(QmuiDiagnosticService));
         Assert.IsNotNull(typeof(QmuiSemanticService));
-        Assert.IsNotNull(typeof(RoslynWorkspaceManager));
-        Assert.IsNotNull(typeof(AdhocWorkspaceManager));
+        Assert.IsNotNull(typeof(QmuiWorkspaceService));
         Assert.IsNotNull(typeof(QmuiDocumentStore));
-        Assert.IsNotNull(typeof(QuickMarkupWorkspaceCatalog));
         Assert.IsNotNull(typeof(MarkupCursorResolver));
         Assert.IsNotNull(typeof(SymbolLocationResolver));
     }
@@ -38,7 +36,7 @@ public sealed class HandlerSmokeTests
     [TestMethod]
     public void ContractInterfaces_Available()
     {
-        Assert.IsNotNull(typeof(IRoslynWorkspaceManager));
+        Assert.IsNotNull(typeof(IQmuiWorkspaceService));
         Assert.IsNotNull(typeof(IQmuiDiagnosticService));
         Assert.IsNotNull(typeof(IQmuiDocumentStore));
         Assert.IsNotNull(typeof(IQmuiSemanticService));
@@ -50,27 +48,22 @@ public sealed class HandlerSmokeTests
         Assert.IsTrue(typeof(QmuiDiagnosticService).IsAssignableTo(typeof(IQmuiDiagnosticService)));
         Assert.IsTrue(typeof(QmuiSemanticService).IsAssignableTo(typeof(IQmuiSemanticService)));
         Assert.IsTrue(typeof(QmuiDocumentStore).IsAssignableTo(typeof(IQmuiDocumentStore)));
-        Assert.IsTrue(typeof(RoslynWorkspaceManager).IsAssignableTo(typeof(IRoslynWorkspaceManager)));
-        Assert.IsTrue(typeof(AdhocWorkspaceManager).IsAssignableTo(typeof(IRoslynWorkspaceManager)));
+        Assert.IsTrue(typeof(QmuiWorkspaceService).IsAssignableTo(typeof(IQmuiWorkspaceService)));
     }
 
     [TestMethod]
     public void DiagnosticService_CanBeConstructedWithMockWorkspace()
     {
-        var workspace = new TestMockWorkspaceManager { Compilation = null };
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new TestMockFileProvider();
-        var service = new QmuiDiagnosticService(workspace, catalog, fileProvider);
+        var workspace = new MockQmuiWorkspaceService { Compilation = null };
+        var service = new QmuiDiagnosticService(workspace);
         Assert.IsNotNull(service);
     }
 
     [TestMethod]
     public void SemanticService_CanBeConstructed()
     {
-        var workspace = new TestMockWorkspaceManager { Compilation = null };
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new TestMockFileProvider();
-        var service = new QmuiSemanticService(workspace, catalog, fileProvider);
+        var workspace = new MockQmuiWorkspaceService { Compilation = null };
+        var service = new QmuiSemanticService(workspace);
         Assert.IsNotNull(service);
     }
 
@@ -84,10 +77,8 @@ public sealed class HandlerSmokeTests
     [TestMethod]
     public void CursorResolver_CanBeConstructed()
     {
-        var workspace = new TestMockWorkspaceManager { Compilation = null };
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new TestMockFileProvider();
-        var semanticService = new QmuiSemanticService(workspace, catalog, fileProvider);
+        var workspace = new MockQmuiWorkspaceService { Compilation = null };
+        var semanticService = new QmuiSemanticService(workspace);
         var resolver = new MarkupCursorResolver(semanticService);
         Assert.IsNotNull(resolver);
     }
@@ -95,8 +86,8 @@ public sealed class HandlerSmokeTests
     [TestMethod]
     public void LocationResolver_CanBeConstructed()
     {
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var resolver = new SymbolLocationResolver(catalog);
+        var workspace = new MockQmuiWorkspaceService();
+        var resolver = new SymbolLocationResolver(workspace);
         Assert.IsNotNull(resolver);
     }
 
@@ -107,21 +98,4 @@ public sealed class HandlerSmokeTests
         Assert.IsNull(ProjectFinder.FindDefaultProject(""));
         Assert.IsNull(ProjectFinder.FindDefaultProject("C:\\NonExistentDirectory_QuickMarkup_Test"));
     }
-}
-
-internal class TestMockWorkspaceManager : IRoslynWorkspaceManager
-{
-    public bool IsLoaded { get; set; }
-    public string? CurrentProjectPath { get; set; }
-    public Compilation? Compilation { get; set; }
-    public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
-    public Task<bool> TryLoadAsync(string projectPath) => Task.FromResult(true);
-    public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);
-}
-
-internal class TestMockFileProvider : IFileProvider
-{
-    public string ReadAllText(string path) => "";
-    public string[] GetFiles(string directory, string pattern, bool recursive) => [];
-    public bool DirectoryExists(string path) => false;
 }

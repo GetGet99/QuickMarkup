@@ -42,7 +42,7 @@ public sealed class QuickMarkupGeneratedMemberTable
 {
     public static QuickMarkupGeneratedMemberTable Empty { get; } = new([]);
 
-    readonly IReadOnlyDictionary<string, QuickMarkupGeneratedTypeMembers> types;
+    readonly Dictionary<string, QuickMarkupGeneratedTypeMembers> types;
 
     public QuickMarkupGeneratedMemberTable(IEnumerable<QuickMarkupGeneratedTypeMembers> types)
     {
@@ -54,11 +54,22 @@ public sealed class QuickMarkupGeneratedMemberTable
         this.types = dict;
     }
 
+    public void RemoveType(string fullTypeName)
+    {
+        types.Remove(fullTypeName);
+    }
+
+    public void UpdateType(QuickMarkupGeneratedTypeMembers members)
+    {
+        types[members.FullTypeName] = members;
+    }
+
     public ResolvedProperty? FindProperty(
         ITypeSymbol? type,
         string property,
         string? currentTypeName,
-        Func<string, ITypeSymbol?> resolveType)
+        Func<string, ITypeSymbol?> resolveType,
+        Func<INamedTypeSymbol, QuickMarkupGeneratedTypeMembers?>? generateForType = null)
     {
         for (var current = type; current is not null; current = current.BaseType)
         {
@@ -66,7 +77,22 @@ public sealed class QuickMarkupGeneratedMemberTable
                 return ResolvedProperty.FromRoslyn(roslynProperty);
 
             if (!TryGetTypeMembers(current, out var members, out var currentFullName))
-                continue;
+            {
+                // Try on-demand generation (e.g. for C# [QuickMarkup] attribute types)
+                if (generateForType is not null
+                    && current is INamedTypeSymbol namedType
+                    && generateForType(namedType) is { } generated)
+                {
+                    members = generated;
+                    currentFullName = generated.FullTypeName;
+                    // Cache for future lookups
+                    types[generated.FullTypeName] = generated;
+                }
+                else
+                {
+                    continue;
+                }
+            }
 
             if (!members.Properties.TryGetValue(property, out var generatedProperty))
                 continue;

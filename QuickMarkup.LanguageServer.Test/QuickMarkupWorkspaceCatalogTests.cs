@@ -34,10 +34,17 @@ public sealed class QuickMarkupWorkspaceCatalogTests
     {
         var catalog = new QuickMarkupWorkspaceCatalog();
         var compilation = CSharpCompilation.Create("test");
-        var fileProvider = new TestMockFileProvider();
+        var fileProvider = new CatalogTestFileProvider();
 
         catalog.Rebuild(compilation, "C:\\NonExistentDirectory", fileProvider);
 
         Assert.IsEmpty(catalog.Entries);
     }
+}
+
+file class CatalogTestFileProvider : IFileProvider
+{
+    public string ReadAllText(string path) => "";
+    public string[] GetFiles(string directory, string pattern, bool recursive) => [];
+    public bool DirectoryExists(string path) => false;
 }

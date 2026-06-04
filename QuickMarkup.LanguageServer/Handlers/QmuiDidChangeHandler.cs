@@ -60,7 +60,7 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         {
             await Task.Delay(300, cts.Token);
 
-            var workspace = _serviceProvider.GetRequiredService<IRoslynWorkspaceManager>();
+            var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
             await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
 
             var server = _serviceProvider.GetRequiredService<ILanguageServer>();

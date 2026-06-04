@@ -15,11 +15,11 @@ namespace QuickMarkup.LanguageServer.Navigation;
 /// </summary>
 public class SymbolLocationResolver
 {
-    private readonly QuickMarkupWorkspaceCatalog _catalog;
+    private readonly IQmuiWorkspaceService _workspace;
 
-    public SymbolLocationResolver(QuickMarkupWorkspaceCatalog catalog)
+    public SymbolLocationResolver(IQmuiWorkspaceService workspace)
     {
-        _catalog = catalog;
+        _workspace = workspace;
     }
 
     /// <summary>
@@ -29,8 +29,7 @@ public class SymbolLocationResolver
     public LspLocation? GetDefinitionLocation(INamedTypeSymbol symbol, string currentFilePath)
     {
         // Check if this symbol corresponds to a catalog entry
-        var catalogEntry = _catalog.Entries.FirstOrDefault(e => e.FullTypeName == symbol.ToDisplayString());
-        if (catalogEntry != null)
+        if (_workspace.TryGetQmuiEntry(symbol.ToDisplayString(), out var catalogEntry))
         {
             // Prefer .qmui location over generated file location
             if (catalogEntry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(catalogEntry.FilePath))
@@ -149,7 +148,7 @@ public class SymbolLocationResolver
         string currentFilePath)
     {
         // Find the .qmui file that defines this property
-        foreach (var entry in _catalog.Entries)
+        foreach (var entry in _workspace.GetAllQmuiEntries())
         {
             if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
             {
@@ -216,7 +215,7 @@ public class SymbolLocationResolver
         }
 
         // Try other .qmui files in the catalog
-        foreach (var entry in _catalog.Entries)
+        foreach (var entry in _workspace.GetAllQmuiEntries())
         {
             if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
             {

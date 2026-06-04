@@ -13,8 +13,8 @@ public sealed class SymbolLocationResolverTests
     [TestMethod]
     public void GetDefinitionLocation_NullTagResult_ReturnsNull()
     {
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var resolver = new SymbolLocationResolver(catalog);
+        var workspace = new MockQmuiWorkspaceService();
+        var resolver = new SymbolLocationResolver(workspace);
 
         var result = resolver.GetDefinitionLocation((TagResolutionResult?)null, "test.qmui");
         Assert.IsNull(result);
@@ -23,8 +23,8 @@ public sealed class SymbolLocationResolverTests
     [TestMethod]
     public void GetDefinitionLocation_NullSymbol_ReturnsNull()
     {
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var resolver = new SymbolLocationResolver(catalog);
+        var workspace = new MockQmuiWorkspaceService();
+        var resolver = new SymbolLocationResolver(workspace);
 
         var tagResult = new TagResolutionResult(
             TagIdentifierAST: new AST.PositionedIdentifier("Button"),
@@ -46,8 +46,8 @@ public sealed class SymbolLocationResolverTests
         var buttonSymbol = compilation.GetTypeByMetadataName("Button");
         Assert.IsNotNull(buttonSymbol);
 
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        var resolver = new SymbolLocationResolver(catalog);
+        var workspace = new MockQmuiWorkspaceService();
+        var resolver = new SymbolLocationResolver(workspace);
 
         var result = resolver.GetDefinitionLocation(buttonSymbol, "test.qmui");
         Assert.IsNotNull(result);
@@ -56,8 +56,6 @@ public sealed class SymbolLocationResolverTests
     [TestMethod]
     public void GetDefinitionLocation_QmuiFileEntry_ReturnsCatalogLocation()
     {
-        var catalog = new QuickMarkupWorkspaceCatalog();
-        // Add a mock entry
         var entry = new QuickMarkupTypeEntry(
             FullTypeName: "Test.Component",
             ShortName: "Component",
@@ -67,14 +65,9 @@ public sealed class SymbolLocationResolverTests
             FilePath: @"C:\path\to\component.qmui",
             NameSpan: null);
 
-        // Use reflection to add entry (since _entries is private)
-        var entriesField = typeof(QuickMarkupWorkspaceCatalog)
-            .GetField("_entries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        entriesField?.SetValue(catalog, ImmutableArray.Create(entry));
+        var workspace = new MockQmuiWorkspaceService { QmuiEntries = [entry] };
+        var resolver = new SymbolLocationResolver(workspace);
 
-        var resolver = new SymbolLocationResolver(catalog);
-
-        // Create a symbol with matching display string
         var compilation = CSharpCompilation.Create("test",
             syntaxTrees: new[] { CSharpSyntaxTree.ParseText("namespace Test { public class Component { } }") },
             references: new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
