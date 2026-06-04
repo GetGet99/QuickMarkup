@@ -41,19 +41,30 @@ class QmuiDefinitionHandler : IDefinitionHandler
         if (content is null)
             return null;
 
-        var tagResult = await _cursorResolver.ResolveTagAtPositionAsync(
+        // Single traversal to find either tag or property
+        var result = await _cursorResolver.ResolveAtPositionAsync(
             filePath,
             content,
             request.Position,
             cancellationToken);
 
-        if (tagResult is null)
+        if (result is null)
             return null;
 
-        var location = _locationResolver.GetDefinitionLocation(tagResult, filePath);
-        if (location is null)
-            return null;
+        if (result.Tag is { } tagResult)
+        {
+            var location = _locationResolver.GetDefinitionLocation(tagResult, filePath);
+            if (location is not null)
+                return new LocationOrLocationLinks(location);
+        }
 
-        return new LocationOrLocationLinks(location);
+        if (result.Property is { } propertyResult)
+        {
+            var location = _locationResolver.GetDefinitionLocation(propertyResult, filePath);
+            if (location is not null)
+                return new LocationOrLocationLinks(location);
+        }
+
+        return null;
     }
 }

@@ -13,6 +13,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
     readonly IRoslynWorkspaceManager _workspaceManager;
     readonly QuickMarkupWorkspaceCatalog _catalog;
     readonly IFileProvider _fileProvider;
+    QuickMarkupGeneratedMemberTable? _generatedMemberTable;
 
     public QmuiDiagnosticService(
         IRoslynWorkspaceManager workspaceManager,
@@ -37,6 +38,8 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
             return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
                 LspDiagnosticConverter.ConvertParseErrors(parseErrors, content));
 
+        var generatedMembers = GetOrBuildGeneratedMemberTable(compilation);
+
         var ns = sfc.Namespace?.Name ?? "";
         var typeName = sfc.ClassDeclaration?.Name ?? "";
         if (string.IsNullOrEmpty(typeName))
@@ -47,7 +50,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
         var typeSym = compilation.GetTypeByMetadataName(fullName);
         if (typeSym is not null)
         {
-            var binder = Bind(compilation, sfc, typeSym, ns);
+            var binder = Bind(compilation, sfc, typeSym, ns, generatedMembers);
             return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
                 LspDiagnosticConverter.ConvertAll(binder.Diagnostics, parseErrors, content));
         }
@@ -71,7 +74,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
                 goto fallback;
             }
 
-            var dummyBinder = Bind(compilationWithDummy, sfc, dummyTypeSym, ns);
+            var dummyBinder = Bind(compilationWithDummy, sfc, dummyTypeSym, ns, generatedMembers);
             return Task.FromResult<IReadOnlyList<LspDiagnostic>>(
                 LspDiagnosticConverter.ConvertAll(dummyBinder.Diagnostics, parseErrors, content));
         }
@@ -128,13 +131,23 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
         return compilation;
     }
 
+    private QuickMarkupGeneratedMemberTable GetOrBuildGeneratedMemberTable(Compilation compilation)
+    {
+        if (_generatedMemberTable is not null)
+            return _generatedMemberTable;
+
+        _generatedMemberTable = GeneratedMemberTableBuilder.Build(_catalog, _fileProvider, compilation);
+        return _generatedMemberTable;
+    }
+
     static QuickMarkupBinder Bind(
         Compilation compilation,
         QuickMarkupSFC sfc,
         INamedTypeSymbol typeSym,
-        string ns)
+        string ns,
+        QuickMarkupGeneratedMemberTable generatedMembers)
     {
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, ns);
+        var resolver = new CodeTypeResolver(compilation, sfc.Usings, ns, generatedMembers);
         var binder = new QuickMarkupBinder(resolver, failFast: false);
 
         if (sfc.Template is not null)

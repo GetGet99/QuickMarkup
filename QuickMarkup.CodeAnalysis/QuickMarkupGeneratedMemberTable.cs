@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace QuickMarkup.CodeAnalysis;
 
-enum QuickMarkupGeneratedPropertyKind
+public enum QuickMarkupGeneratedPropertyKind
 {
     RefValue,
     RefBacking,
@@ -12,14 +12,14 @@ enum QuickMarkupGeneratedPropertyKind
     ComponentOutput
 }
 
-readonly record struct QuickMarkupGeneratedPropertySymbol(
+public readonly record struct QuickMarkupGeneratedPropertySymbol(
     string Name,
     string? TypeName,
     bool IsPrivate,
     QuickMarkupGeneratedPropertyKind Kind
 );
 
-readonly record struct ResolvedProperty(
+public readonly record struct ResolvedProperty(
     string Name,
     ITypeSymbol? Type,
     IPropertySymbol? RoslynSymbol,
@@ -33,12 +33,12 @@ readonly record struct ResolvedProperty(
         => new(property.Name, type, null, property);
 }
 
-readonly record struct QuickMarkupGeneratedTypeMembers(
+public readonly record struct QuickMarkupGeneratedTypeMembers(
     string FullTypeName,
     IReadOnlyDictionary<string, QuickMarkupGeneratedPropertySymbol> Properties
 );
 
-sealed class QuickMarkupGeneratedMemberTable
+public sealed class QuickMarkupGeneratedMemberTable
 {
     public static QuickMarkupGeneratedMemberTable Empty { get; } = new([]);
 
@@ -104,11 +104,32 @@ sealed class QuickMarkupGeneratedMemberTable
         if (types.TryGetValue(currentFullName, out members))
             return true;
 
+        // FullNameWithoutAnnotation returns "global::Ns.Type" but catalog keys are "Ns.Type"
+        if (currentFullName.StartsWith("global::"))
+        {
+            var withoutGlobal = currentFullName["global::".Length..];
+            if (types.TryGetValue(withoutGlobal, out members))
+            {
+                currentFullName = withoutGlobal;
+                return true;
+            }
+        }
+
         if (type is INamedTypeSymbol { IsGenericType: true } namedType)
         {
             currentFullName = namedType.ConstructedFrom.FullNameWithoutAnnotation();
             if (types.TryGetValue(currentFullName, out members))
                 return true;
+
+            if (currentFullName.StartsWith("global::"))
+            {
+                var withoutGlobal = currentFullName["global::".Length..];
+                if (types.TryGetValue(withoutGlobal, out members))
+                {
+                    currentFullName = withoutGlobal;
+                    return true;
+                }
+            }
         }
 
         members = default;

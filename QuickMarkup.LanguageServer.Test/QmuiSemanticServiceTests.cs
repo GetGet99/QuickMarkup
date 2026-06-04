@@ -10,14 +10,14 @@ namespace QuickMarkup.LanguageServer.Test;
 public sealed class QmuiSemanticServiceTests
 {
     [TestMethod]
-    public async Task TryResolveTagAtPositionAsync_EmptyContent_ReturnsNull()
+    public async Task TryResolveAtPositionAsync_EmptyContent_ReturnsNull()
     {
-        var workspace = new MockWorkspaceManager { Compilation = null };
+        var workspace = new MockWorkspaceManager2 { Compilation = null };
         var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new MockFileProvider();
+        var fileProvider = new MockFileProvider2();
         var service = new QmuiSemanticService(workspace, catalog, fileProvider);
 
-        var result = await service.TryResolveTagAtPositionAsync(
+        var result = await service.TryResolveAtPositionAsync(
             "test.qmui",
             "",
             0,
@@ -27,14 +27,14 @@ public sealed class QmuiSemanticServiceTests
     }
 
     [TestMethod]
-    public async Task TryResolveTagAtPositionAsync_NullCompilation_ReturnsNull()
+    public async Task TryResolveAtPositionAsync_NullCompilation_ReturnsNull()
     {
-        var workspace = new MockWorkspaceManager { Compilation = null };
+        var workspace = new MockWorkspaceManager2 { Compilation = null };
         var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new MockFileProvider();
+        var fileProvider = new MockFileProvider2();
         var service = new QmuiSemanticService(workspace, catalog, fileProvider);
 
-        var result = await service.TryResolveTagAtPositionAsync(
+        var result = await service.TryResolveAtPositionAsync(
             "test.qmui",
             "<Button />",
             0,
@@ -44,15 +44,15 @@ public sealed class QmuiSemanticServiceTests
     }
 
     [TestMethod]
-    public async Task TryResolveTagAtPositionAsync_InvalidMarkup_ReturnsNull()
+    public async Task TryResolveAtPositionAsync_InvalidMarkup_ReturnsNull()
     {
         var compilation = CSharpCompilation.Create("test");
-        var workspace = new MockWorkspaceManager { Compilation = compilation };
+        var workspace = new MockWorkspaceManager2 { Compilation = compilation };
         var catalog = new QuickMarkupWorkspaceCatalog();
-        var fileProvider = new MockFileProvider();
+        var fileProvider = new MockFileProvider2();
         var service = new QmuiSemanticService(workspace, catalog, fileProvider);
 
-        var result = await service.TryResolveTagAtPositionAsync(
+        var result = await service.TryResolveAtPositionAsync(
             "test.qmui",
             "<<<invalid>>>",
             0,
@@ -60,9 +60,105 @@ public sealed class QmuiSemanticServiceTests
 
         Assert.IsNull(result);
     }
+
+    [TestMethod]
+    public async Task TryResolveAtPositionAsync_NothingAtPosition_ReturnsNull()
+    {
+        var compilation = CSharpCompilation.Create("test");
+        var workspace = new MockWorkspaceManager2 { Compilation = compilation };
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider2();
+        var service = new QmuiSemanticService(workspace, catalog, fileProvider);
+
+        // Position 0 is at the very start of the line, before any content
+        var result = await service.TryResolveAtPositionAsync(
+            "test.qmui",
+            "  <Button />",
+            0,
+            0);
+
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public async Task TryResolveAtPositionAsync_RefDeclaration_ReturnsPropertyResult()
+    {
+        var compilation = CSharpCompilation.Create("test");
+        var workspace = new MockWorkspaceManager2 { Compilation = compilation };
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider2();
+        var service = new QmuiSemanticService(workspace, catalog, fileProvider);
+
+        // "class TestComponent;\nstring Name = \"default\";"
+        // Position on line 1, char 7 is where "Name" starts (after "string ")
+        var content = "class TestComponent;\nstring Name = \"default\";";
+        var result = await service.TryResolveAtPositionAsync(
+            "test.qmui",
+            content,
+            1,
+            7);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsProperty);
+        Assert.AreEqual("Name", result.Property!.RawPropertyName);
+        Assert.AreEqual(PropertyResolutionKind.RefDeclaration, result.Property.Kind);
+        Assert.IsTrue(result.Property.DisplayString.Contains("(reactive)"));
+    }
+
+    [TestMethod]
+    public async Task TryResolveAtPositionAsync_ComputedDeclaration_ReturnsPropertyResult()
+    {
+        var compilation = CSharpCompilation.Create("test");
+        var workspace = new MockWorkspaceManager2 { Compilation = compilation };
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider2();
+        var service = new QmuiSemanticService(workspace, catalog, fileProvider);
+
+        // "class TestComponent;\nstring FullName => `FirstName + LastName`;"
+        // Position on line 1, char 7 is where "FullName" starts (after "string ")
+        var content = "class TestComponent;\nstring FullName => `FirstName + LastName`;";
+        var result = await service.TryResolveAtPositionAsync(
+            "test.qmui",
+            content,
+            1,
+            7);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsProperty);
+        Assert.AreEqual("FullName", result.Property!.RawPropertyName);
+        Assert.AreEqual(PropertyResolutionKind.RefDeclaration, result.Property.Kind);
+        Assert.IsTrue(result.Property.DisplayString.Contains("(computed)"));
+    }
+
+    [TestMethod]
+    public async Task TryResolveAtPositionAsync_NestedTag_ReturnsTagResult()
+    {
+        // Add Button type to compilation
+        var buttonSource = "namespace System.Windows.Controls; public class Button : System.Windows.FrameworkElement { }";
+        var buttonSyntaxTree = CSharpSyntaxTree.ParseText(buttonSource);
+        var compilation = CSharpCompilation.Create("test", [buttonSyntaxTree]);
+
+        var workspace = new MockWorkspaceManager2 { Compilation = compilation };
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        var fileProvider = new MockFileProvider2();
+        var service = new QmuiSemanticService(workspace, catalog, fileProvider);
+
+        // <Grid><Button /></Grid>
+        // Position on line 0, char 7 is on "Button" (after "<Grid><")
+        var content = "<Grid><Button /></Grid>";
+        var result = await service.TryResolveAtPositionAsync(
+            "test.qmui",
+            content,
+            0,
+            7);
+
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsTag);
+        Assert.AreEqual("Button", result.Tag!.RawTagName);
+    }
 }
 
-internal class MockWorkspaceManager : IRoslynWorkspaceManager
+internal class MockWorkspaceManager2 : IRoslynWorkspaceManager
 {
     public bool IsLoaded { get; set; }
     public string? CurrentProjectPath { get; set; }
@@ -72,7 +168,7 @@ internal class MockWorkspaceManager : IRoslynWorkspaceManager
     public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);
 }
 
-internal class MockFileProvider : IFileProvider
+internal class MockFileProvider2 : IFileProvider
 {
     public string ReadAllText(string path) => "";
     public string[] GetFiles(string directory, string pattern, bool recursive) => [];

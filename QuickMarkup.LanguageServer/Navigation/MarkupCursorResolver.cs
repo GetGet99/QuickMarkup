@@ -4,8 +4,8 @@ using LspPosition = OmniSharp.Extensions.LanguageServer.Protocol.Models.Position
 namespace QuickMarkup.LanguageServer.Navigation;
 
 /// <summary>
-/// Resolves the QuickMarkup tag at a given LSP position.
-/// Converts LSP position to markup Position and walks the AST to find the opening tag identifier.
+/// Resolves the QuickMarkup tag or property at a given LSP position.
+/// Converts LSP position to markup Position and walks the AST once to find either a tag name or property.
 /// </summary>
 public class MarkupCursorResolver
 {
@@ -17,23 +17,22 @@ public class MarkupCursorResolver
     }
 
     /// <summary>
-    /// Attempts to resolve a tag at the specified LSP position.
+    /// Attempts to resolve a tag or property at the specified LSP position.
+    /// Traverses the AST once and returns whichever result is found.
     /// </summary>
-    public async Task<TagResolutionResult?> ResolveTagAtPositionAsync(
-        string filePath, 
-        string content, 
-        LspPosition position, 
+    public async Task<CursorResolutionResult?> ResolveAtPositionAsync(
+        string filePath,
+        string content,
+        LspPosition position,
         CancellationToken ct = default)
     {
-        // Convert LSP position to our Position type (0-based, exclusive end)
         var markupPosition = new Get.PLShared.Position(position.Line, position.Character);
         
-        // Delegate to the semantic service which handles parsing and resolution
-        return await _semanticService.TryResolveTagAtPositionAsync(
-            filePath, 
-            content, 
-            markupPosition.Line, 
-            markupPosition.Char, 
+        return await _semanticService.TryResolveAtPositionAsync(
+            filePath,
+            content,
+            markupPosition.Line,
+            markupPosition.Char,
             ct);
     }
 }

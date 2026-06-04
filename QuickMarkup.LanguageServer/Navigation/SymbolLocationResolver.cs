@@ -89,6 +89,168 @@ public class SymbolLocationResolver
         return GetDefinitionLocation(tagResult.ResolvedSymbol, currentFilePath);
     }
 
+    /// <summary>
+    /// Gets the definition location for a property symbol.
+    /// </summary>
+    public LspLocation? GetDefinitionLocation(IPropertySymbol propertySymbol, string currentFilePath)
+    {
+        var primaryLocation = propertySymbol.Locations.FirstOrDefault(l => l.IsInSource);
+        if (primaryLocation != null && primaryLocation.SourceTree != null)
+        {
+            return new LspLocation
+            {
+                Uri = UriHelper.FromFilePath(primaryLocation.SourceTree.FilePath),
+                Range = ConvertTextSpanToLspRange(primaryLocation.SourceTree, primaryLocation.SourceSpan)
+            };
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the definition location for a resolved property.
+    /// Handles both Roslyn symbols and generated symbols (reactive/computed properties).
+    /// </summary>
+    public LspLocation? GetDefinitionLocation(PropertyResolutionResult? propertyResult, string currentFilePath)
+    {
+        if (propertyResult == null)
+            return null;
+
+        // For Roslyn properties, navigate to the C# declaration
+        if (propertyResult.RoslynSymbol != null)
+        {
+            return GetDefinitionLocation(propertyResult.RoslynSymbol, currentFilePath);
+        }
+
+        // For type references in ref declarations, navigate to the type
+        if (propertyResult.ResolvedTypeSymbol != null && propertyResult.Kind == PropertyResolutionKind.RefDeclarationType)
+        {
+            return GetDefinitionLocation(propertyResult.ResolvedTypeSymbol, currentFilePath);
+        }
+
+        // For generated properties (reactive/computed), find the ref declaration in the .qmui file
+        if (propertyResult.GeneratedSymbol is { } generatedSymbol)
+        {
+            return GetGeneratedPropertyDefinitionLocation(generatedSymbol, propertyResult.RawPropertyName, currentFilePath);
+        }
+
+        // For ref declarations, try to find the .qmui file
+        if (propertyResult.Kind == PropertyResolutionKind.RefDeclaration)
+        {
+            return GetRefDeclarationDefinitionLocation(propertyResult.RawPropertyName, currentFilePath);
+        }
+
+        return null;
+    }
+
+    private LspLocation? GetGeneratedPropertyDefinitionLocation(
+        QuickMarkup.CodeAnalysis.QuickMarkupGeneratedPropertySymbol generatedSymbol,
+        string propertyName,
+        string currentFilePath)
+    {
+        // Find the .qmui file that defines this property
+        foreach (var entry in _catalog.Entries)
+        {
+            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
+            {
+                // Parse the file to find the ref declaration
+                try
+                {
+                    var fileContent = File.ReadAllText(entry.FilePath);
+                    var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
+                    if (sfc is null)
+                        continue;
+
+                    foreach (var refDecl in sfc.Refs)
+                    {
+                        // Check if this ref declaration matches the property name
+                        if (refDecl.Name.Name == propertyName)
+                        {
+                            return new LspLocation
+                            {
+                                Uri = UriHelper.FromFilePath(entry.FilePath),
+                                Range = new LspRange(
+                                    new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                                    new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                            };
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Skip problematic files
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private LspLocation? GetRefDeclarationDefinitionLocation(string propertyName, string currentFilePath)
+    {
+        // Try to find the ref declaration in the current file first
+        try
+        {
+            var fileContent = File.ReadAllText(currentFilePath);
+            var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
+            if (sfc is not null)
+            {
+                foreach (var refDecl in sfc.Refs)
+                {
+                    if (refDecl.Name.Name == propertyName)
+                    {
+                        return new LspLocation
+                        {
+                            Uri = UriHelper.FromFilePath(currentFilePath),
+                            Range = new LspRange(
+                                new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                                new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Ignore errors reading the current file
+        }
+
+        // Try other .qmui files in the catalog
+        foreach (var entry in _catalog.Entries)
+        {
+            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
+            {
+                try
+                {
+                    var fileContent = File.ReadAllText(entry.FilePath);
+                    var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
+                    if (sfc is null)
+                        continue;
+
+                    foreach (var refDecl in sfc.Refs)
+                    {
+                        if (refDecl.Name.Name == propertyName)
+                        {
+                            return new LspLocation
+                            {
+                                Uri = UriHelper.FromFilePath(entry.FilePath),
+                                Range = new LspRange(
+                                    new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                                    new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                            };
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Skip problematic files
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static LspRange ConvertTextSpanToLspRange(SyntaxTree tree, TextSpan span)
     {
         var startLine = tree.GetLineSpan(new TextSpan(span.Start, 0)).StartLinePosition;
