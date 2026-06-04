@@ -1,5 +1,7 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.LanguageServer.Contracts;
 using QuickMarkup.LanguageServer.Diagnostics;
@@ -130,7 +132,7 @@ public class SymbolLocationResolver
         // For generated properties (reactive/computed), find the ref declaration in the .qmui file
         if (propertyResult.GeneratedSymbol is { } generatedSymbol)
         {
-            return GetGeneratedPropertyDefinitionLocation(generatedSymbol, propertyResult.RawPropertyName, currentFilePath);
+            return GetGeneratedPropertyDefinitionLocation(generatedSymbol, propertyResult.RawPropertyName, currentFilePath, propertyResult.OwnerTypeSymbol);
         }
 
         // For ref declarations, try to find the .qmui file
@@ -145,41 +147,99 @@ public class SymbolLocationResolver
     private LspLocation? GetGeneratedPropertyDefinitionLocation(
         QuickMarkup.CodeAnalysis.QuickMarkupGeneratedPropertySymbol generatedSymbol,
         string propertyName,
-        string currentFilePath)
+        string currentFilePath,
+        INamedTypeSymbol? ownerTypeSymbol)
     {
-        // Find the .qmui file that defines this property
-        foreach (var entry in _workspace.GetAllQmuiEntries())
+        // If we know the owner type, search for it directly
+        if (ownerTypeSymbol is not null)
         {
-            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
+            // First try .qmui files from the catalog
+            if (_workspace.TryGetQmuiEntry(ownerTypeSymbol.ToDisplayString(), out var entry)
+                && entry.Kind == QuickMarkupDefinitionKind.QmuiFile
+                && !string.IsNullOrEmpty(entry.FilePath))
             {
-                // Parse the file to find the ref declaration
                 try
                 {
                     var fileContent = File.ReadAllText(entry.FilePath);
-                    var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
-                    if (sfc is null)
-                        continue;
-
-                    foreach (var refDecl in sfc.Refs)
+                    var sfc = QuickMarkupProviderExtension.Parse(fileContent);
+                    if (sfc is not null)
                     {
-                        // Check if this ref declaration matches the property name
-                        if (refDecl.Name.Name == propertyName)
+                        foreach (var refDecl in sfc.Refs)
                         {
-                            return new LspLocation
+                            if (refDecl.Name.Name == propertyName)
                             {
-                                Uri = UriHelper.FromFilePath(entry.FilePath),
-                                Range = new LspRange(
-                                    new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                                    new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
-                            };
+                                return new LspLocation
+                                {
+                                    Uri = UriHelper.FromFilePath(entry.FilePath),
+                                    Range = new LspRange(
+                                        new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                                        new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                                };
+                            }
                         }
                     }
                 }
-                catch (Exception)
-                {
-                    // Skip problematic files
-                }
+                catch (Exception) { }
             }
+
+            // Then try [QuickMarkup] C# classes - search only this specific type
+            var location = FindInQuickMarkupAttributeClass(ownerTypeSymbol, propertyName);
+            if (location is not null)
+                return location;
+        }
+
+        return null;
+    }
+
+    private LspLocation? FindInQuickMarkupAttributeClass(INamedTypeSymbol typeSymbol, string propertyName)
+    {
+        try
+        {
+            var compilation = _workspace.GetEnrichedCompilationAsync().GetAwaiter().GetResult();
+            if (compilation is null)
+                return null;
+
+            var quickMarkupAttributeSymbol = compilation.GetTypeByMetadataName("QuickMarkup.SourceGen.QuickMarkupAttribute");
+            if (quickMarkupAttributeSymbol is null)
+                return null;
+
+            var attribute = typeSymbol.GetAttributes()
+                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, quickMarkupAttributeSymbol));
+            if (attribute is null || attribute.ConstructorArguments.Length == 0)
+                return null;
+
+            var markup = attribute.ConstructorArguments[0].Value as string;
+            if (string.IsNullOrEmpty(markup))
+                return null;
+
+            var sfc = QuickMarkupProviderExtension.Parse(markup);
+            if (sfc is null)
+                return null;
+
+            var mapper = new AttributeStringLocationMapper(attribute);
+            if (!mapper.IsValid)
+                return null;
+
+            foreach (var refDecl in sfc.Refs)
+            {
+                if (refDecl.Name.Name != propertyName)
+                    continue;
+
+                var location = mapper.GetLocation(refDecl.Name);
+                var syntaxTree = location.SourceTree;
+                if (syntaxTree is null)
+                    return null;
+
+                return new LspLocation
+                {
+                    Uri = UriHelper.FromFilePath(syntaxTree.FilePath),
+                    Range = ConvertTextSpanToLspRange(syntaxTree, location.SourceSpan)
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Skip errors
         }
 
         return null;

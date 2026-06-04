@@ -55,66 +55,29 @@ static partial class QuickMarkupProviderExtension
 
 class QuickMarkupSourceCodeLocationProvider : IQuickMarkupLocationProvider
 {
-    Location fallback;
-    SyntaxTree? syntaxTree = null;
-    TextLineCollection textLines = null!;
-    int startLine = 0;
-    int startIndent = 0;
-    bool ok;
+    readonly AttributeStringLocationMapper _mapper;
+    Location _fallback;
+
     public QuickMarkupSourceCodeLocationProvider(AttributeData attribute, ITypeSymbol typeSym, CancellationToken ct)
     {
+        _mapper = new AttributeStringLocationMapper(attribute, ct);
+
         var syn = attribute.ApplicationSyntaxReference;
-        syntaxTree = syn?.SyntaxTree;
-        fallback = syn is null ? typeSym.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span);
-        if (syn is null) return;
-        if (syntaxTree is null) return;
-        if (syn.GetSyntax(ct) is not AttributeSyntax attrSyntax) return;
-        // move fallback to just the attribute name
-        fallback = Location.Create(syn.SyntaxTree, attrSyntax.Name.Span);
-        // TO USE
-        if (attrSyntax.ArgumentList?.Arguments[0].Expression is not LiteralExpressionSyntax strLitSyntax) return;
-        var strLitSpan = strLitSyntax.Span;
-        var text = syn!.SyntaxTree.GetText(ct);
-        textLines = text.Lines;
-        var lpspan = text.Lines.GetLinePositionSpan(strLitSpan);
-        startLine = lpspan.Start.Line;
-        var endLine = lpspan.End.Line;
-        if (startLine == endLine)
-        {
-            // let's just not deal with """ single line """
-            return;
-        }
-        // skip line with starting """
-        startLine++;
-        var startLineSpan = text.Lines[startLine].Span;
-        // skip empty lines, they don't count towards string literal
-        for (int i = startLineSpan.Start; i < startLineSpan.End; i++)
-        {
-            if (!char.IsWhiteSpace(text[i])) goto skipIncrement;
-        }
-        // skip first empty line
-        startLine++;
-    skipIncrement:
-        // end line consists of whitespaces and """ charcater and whatever after it
-        var endLineSpan = text.Lines[endLine].Span;
-        // get the index of first " as the indent start
-        int indent = 0;
-        while (indent < endLineSpan.End - endLineSpan.Start && text[endLineSpan.Start + indent] is ' ' or '\t')
-        {
-            indent++;
-        }
-        startIndent = indent;
-        ok = true;
+        _fallback = syn is null ? typeSym.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span);
+
+        if (syn?.GetSyntax(ct) is AttributeSyntax attrSyntax)
+            _fallback = Location.Create(syn.SyntaxTree, attrSyntax.Name.Span);
     }
-    public Location Fallback => fallback;
+
+    public Location Fallback => _fallback;
+
     public Location GetLocation(Position start, Position end)
     {
-        if (!ok)
-            return fallback;
-        var startPos = textLines.GetPosition(new LinePosition(startLine + start.Line, startIndent + start.Char));
-        var endPos = textLines.GetPosition(new LinePosition(startLine + end.Line, startIndent + end.Char + 1));
-        return Location.Create(syntaxTree!, new TextSpan(startPos, endPos - startPos));
+        if (!_mapper.IsValid)
+            return _fallback;
+        return _mapper.GetLocation(start, end);
     }
+
     public Location GetLocation(AST.AST? ast)
         => ast is null ? Fallback : GetLocation(ast.Start, ast.End);
 }

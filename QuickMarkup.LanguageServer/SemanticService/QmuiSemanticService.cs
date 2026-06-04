@@ -207,17 +207,31 @@ public class QmuiSemanticService : IQmuiSemanticService
     {
         foreach (var refDecl in sfc.Refs)
         {
+            // Check if cursor is on the type reference (before the name on the same line)
+            var typeStr = refDecl.Type.Type;
+            var typeStartChar = refDecl.Name.Start.Char - typeStr.Length - 1;
+            if (refDecl.Name.Start.Line == line &&
+                typeStartChar >= 0 &&
+                character >= typeStartChar && character < refDecl.Name.Start.Char)
+            {
+                var typeSymbol = ResolveRefTypeSymbol(typeStr, sfc, compilation);
+                var typeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? typeStr;
+
+                return new PropertyResolutionResult(
+                    PropertyAST: null,
+                    RawPropertyName: typeStr,
+                    RoslynSymbol: null,
+                    GeneratedSymbol: null,
+                    DisplayString: typeName,
+                    Kind: PropertyResolutionKind.RefDeclarationType,
+                    ResolvedTypeSymbol: typeSymbol);
+            }
+
+            // Check if cursor is on the ref name
             if (refDecl.Name.Start.Line <= line && refDecl.Name.End.Line >= line &&
                 refDecl.Name.Start.Char <= character && refDecl.Name.End.Char >= character)
             {
-                var typeStr = refDecl.Type.Type;
-                var typeSymbol = compilation.GetTypeByMetadataName(typeStr);
-                if (typeSymbol is null)
-                {
-                    var ns = sfc.Namespace?.Name ?? "";
-                    var fullName = string.IsNullOrEmpty(ns) ? typeStr : $"{ns}.{typeStr}";
-                    typeSymbol = compilation.GetTypeByMetadataName(fullName);
-                }
+                var typeSymbol = ResolveRefTypeSymbol(typeStr, sfc, compilation);
 
                 var prefix = refDecl.IsComputedDeclaration ? "(computed)" : "(reactive)";
                 var typeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? typeStr;
@@ -237,6 +251,18 @@ public class QmuiSemanticService : IQmuiSemanticService
         return null;
     }
 
+    private static INamedTypeSymbol? ResolveRefTypeSymbol(string typeStr, QuickMarkupSFC sfc, Compilation compilation)
+    {
+        var typeSymbol = compilation.GetTypeByMetadataName(typeStr);
+        if (typeSymbol is null)
+        {
+            var ns = sfc.Namespace?.Name ?? "";
+            var fullName = string.IsNullOrEmpty(ns) ? typeStr : $"{ns}.{typeStr}";
+            typeSymbol = compilation.GetTypeByMetadataName(fullName);
+        }
+        return typeSymbol;
+    }
+
     private PropertyResolutionResult? ResolvePropertyAtPosition(
         QuickMarkupParsedTag tag,
         QuickMarkupSFC sfc,
@@ -253,7 +279,7 @@ public class QmuiSemanticService : IQmuiSemanticService
 
         if (resolvedProperty is { } prop)
         {
-            return BuildPropertyResolutionResult(property, prop, property.Key, PropertyResolutionKind.TagAttribute);
+            return BuildPropertyResolutionResult(property, prop, property.Key, PropertyResolutionKind.TagAttribute, tagType);
         }
 
         var componentKind = resolver.GetComponentKind(tagType, out var componentOutputType);
@@ -262,7 +288,7 @@ public class QmuiSemanticService : IQmuiSemanticService
             var outputProp = resolver.FindProperty(componentOutputType, property.Key);
             if (outputProp is { } outProp)
             {
-                return BuildPropertyResolutionResult(property, outProp, $"{CodeTypeResolver.ComponentOutputPropertyName}.{property.Key}", PropertyResolutionKind.TagAttribute);
+                return BuildPropertyResolutionResult(property, outProp, $"{CodeTypeResolver.ComponentOutputPropertyName}.{property.Key}", PropertyResolutionKind.TagAttribute, componentOutputType as INamedTypeSymbol ?? tagType);
             }
         }
 
@@ -285,7 +311,7 @@ public class QmuiSemanticService : IQmuiSemanticService
 
         if (resolvedProperty is { } prop)
         {
-            return BuildPropertyResolutionResultFromTag(parentTag, prop, propertyName, PropertyResolutionKind.PropertyTag);
+            return BuildPropertyResolutionResultFromTag(parentTag, prop, propertyName, PropertyResolutionKind.PropertyTag, tagType);
         }
 
         return null;
@@ -322,11 +348,14 @@ public class QmuiSemanticService : IQmuiSemanticService
         QuickMarkupParsedProperty property,
         ResolvedProperty resolvedProperty,
         string propertyName,
-        PropertyResolutionKind kind)
+        PropertyResolutionKind kind,
+        INamedTypeSymbol? ownerTypeSymbol)
     {
         string displayString;
         QuickMarkupGeneratedPropertySymbol? generatedSymbol = null;
         IPropertySymbol? roslynSymbol = null;
+
+        roslynSymbol = resolvedProperty.RoslynSymbol;
 
         string typeName;
         if (resolvedProperty.Type is not null)
@@ -357,7 +386,9 @@ public class QmuiSemanticService : IQmuiSemanticService
         }
         else
         {
-            displayString = $"{typeName} {propertyName}";
+            displayString = roslynSymbol is not null
+                ? roslynSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                : $"{typeName} {propertyName}";
         }
 
         return new PropertyResolutionResult(
@@ -366,14 +397,16 @@ public class QmuiSemanticService : IQmuiSemanticService
             RoslynSymbol: roslynSymbol,
             GeneratedSymbol: generatedSymbol,
             DisplayString: displayString,
-            Kind: kind);
+            Kind: kind,
+            OwnerTypeSymbol: ownerTypeSymbol);
     }
 
     private PropertyResolutionResult BuildPropertyResolutionResultFromTag(
         QuickMarkupParsedTag tag,
         ResolvedProperty resolvedProperty,
         string propertyName,
-        PropertyResolutionKind kind)
+        PropertyResolutionKind kind,
+        INamedTypeSymbol? ownerTypeSymbol)
     {
         string displayString;
         QuickMarkupGeneratedPropertySymbol? generatedSymbol = null;
@@ -411,7 +444,8 @@ public class QmuiSemanticService : IQmuiSemanticService
             RoslynSymbol: roslynSymbol,
             GeneratedSymbol: generatedSymbol,
             DisplayString: displayString,
-            Kind: kind);
+            Kind: kind,
+            OwnerTypeSymbol: ownerTypeSymbol);
     }
 
     private INamedTypeSymbol? TryResolveTagType(Compilation compilation, QuickMarkupSFC sfc, QuickMarkupParsedTag tag)

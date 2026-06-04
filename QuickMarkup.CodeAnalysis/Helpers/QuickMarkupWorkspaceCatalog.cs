@@ -62,6 +62,7 @@ public class QuickMarkupWorkspaceCatalog
                 }
             }
 
+
             // 2. Scan [QuickMarkup] attributes in Roslyn syntax trees
             foreach (var tree in compilation.SyntaxTrees)
             {
@@ -154,6 +155,7 @@ public class QuickMarkupWorkspaceCatalog
 public enum QuickMarkupDefinitionKind
 {
     QmuiFile,
+    [Obsolete("Builder no longer searches for C# file correctly. Please load definition manually")]
     CSharpClass
 }
 

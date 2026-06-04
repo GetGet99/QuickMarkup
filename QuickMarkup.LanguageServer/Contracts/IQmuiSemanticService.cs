@@ -66,14 +66,16 @@ public enum PropertyResolutionKind
 /// <param name="DisplayString">Formatted display string for hover tooltip</param>
 /// <param name="Kind">The kind of property resolution</param>
 /// <param name="ResolvedTypeSymbol">The resolved type symbol (for type references in ref declarations)</param>
+/// <param name="OwnerTypeSymbol">The type that owns this property (for navigating to definition)</param>
 public record PropertyResolutionResult(
-    QuickMarkup.AST.AST PropertyAST,
+    QuickMarkup.AST.AST? PropertyAST,
     string RawPropertyName,
     IPropertySymbol? RoslynSymbol,
     QuickMarkupGeneratedPropertySymbol? GeneratedSymbol,
     string DisplayString,
     PropertyResolutionKind Kind,
-    INamedTypeSymbol? ResolvedTypeSymbol = null);
+    INamedTypeSymbol? ResolvedTypeSymbol = null,
+    INamedTypeSymbol? OwnerTypeSymbol = null);
 
 /// <summary>
 /// Combined result for cursor resolution. Contains either a tag or property result.
