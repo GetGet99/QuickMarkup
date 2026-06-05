@@ -2,7 +2,7 @@
   "name": "quickmarkup-lsp",
   "displayName": "QuickMarkup LSP",
   "description": "QuickMarkup language support with real-time diagnostics",
-  "version": "0.0.1",
+  "version": "0.1.12-beta",
   "engines": {
     "vscode": "^1.120.0"
   },
@@ -14,7 +14,7 @@
     "onLanguage:quickmarkup"
   ],
   "repository": "https://github.com/GetGet99/QuickMarkup",
-  "main": "./out/extension.js",
+  "main": "./out/main.js",
   "contributes": {
     "languages": [
       {
@@ -41,8 +41,8 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run esbuild-base --minify",
-    "vscode:prepackage": "pnpm run esbuild-base --minify",
+    "prepublish": "pnpm run esbuild-base --minify",
+    "prepackage": "pnpm run esbuild-base --minify",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -52,8 +52,8 @@
     "gen:textmate": "dotnet run --project ../QuickMarkup.GrammarGenerator/QuickMarkup.GrammarGenerator.csproj",
     "build:server": "pwsh -NoProfile -File ./build-server.ps1",
     "build:server:self-contained": "pwsh -NoProfile -File ./build-server.ps1 -Mode self-contained -Runtime win-x64",
-    "package": "pnpm run build:server && pnpm vsce package --no-dependencies",
-    "publish": "pnpm run build:server && pnpm run compile && pnpm vsce publish --no-dependencies"
+    "package": "pnpm run build:server && pnpm run esbuild-base --minify && pnpm vsce package --no-dependencies",
+    "publish": "pnpm run build:server && pnpm run compile && pnpm run esbuild-base --minify && pnpm vsce publish --no-dependencies"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

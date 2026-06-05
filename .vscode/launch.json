@@ -24,6 +24,16 @@
 			"preLaunchTask": "[extension] npm: watch"
 		},
 		{
+			"name": "Launch Extension (Built Assembly)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/QuickMarkup.VSCode.Extension"
+			],
+			"preLaunchTask": "[extension] npm: watch"
+		},
+		{
 			"name": "C#: QuickMarkup.LanguageServer",
 			"type": "dotnet",
 			"request": "launch",

@@ -12,10 +12,13 @@ import {
 let client: LanguageClient | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+	const logChannel = vscode.window.createOutputChannel('QuickMarkup Extension', { log: true });
+	logChannel.appendLine('Extension started');
 	const bundledServerDir = path.join(context.extensionUri.fsPath, 'server');
 	const bundledServerDll = path.join(bundledServerDir, 'QuickMarkup.LanguageServer.dll');
 
 	const debugPort = process.env.QMUI_LSP_DEBUG;
+	logChannel.appendLine(`debugPort = ${debugPort}`);
 	const serverOptions: ServerOptions = debugPort
 		? () => connectWithRetry(Number(debugPort))
 		: fs.existsSync(bundledServerDll)
@@ -31,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 				],
 			};
 
+	logChannel.appendLine(`serverOptions = ${JSON.stringify(serverOptions)}`);
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'quickmarkup' }],
 		initializationOptions: {
