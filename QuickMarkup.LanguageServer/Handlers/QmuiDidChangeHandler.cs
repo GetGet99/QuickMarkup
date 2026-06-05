@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -15,15 +16,16 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
     readonly IQmuiDiagnosticService _diagnostics;
     readonly IQmuiDocumentStore _documentStore;
     readonly IQmuiWorkspaceService _workspace;
-    readonly ILanguageServer _languageServer;
+    readonly IServiceProvider _serviceProvider;
+    ILanguageServer LanguageServer => field ??= _serviceProvider.GetRequiredService<ILanguageServer>();
     readonly ConcurrentDictionary<DocumentUri, CancellationTokenSource> _debounceTokens = new();
 
-    public QmuiDidChangeHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IQmuiWorkspaceService workspace, ILanguageServer languageServer)
+    public QmuiDidChangeHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IQmuiWorkspaceService workspace, IServiceProvider serviceProvider)
     {
         _diagnostics = diagnostics;
         _documentStore = documentStore;
         _workspace = workspace;
-        _languageServer = languageServer;
+        _serviceProvider = serviceProvider;
     }
 
     public TextDocumentChangeRegistrationOptions GetRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
@@ -95,7 +97,7 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
                 cts.Token
             );
 
-            _languageServer.PublishDiagnostics(new PublishDiagnosticsParams
+            LanguageServer.PublishDiagnostics(new PublishDiagnosticsParams
             {
                 Uri = request.TextDocument.Uri,
                 Diagnostics = new Container<Diagnostic>(results)
