@@ -15,7 +15,10 @@
 			"outFiles": [
 				"${workspaceFolder}/QuickMarkup.VSCode.Extension/out/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}"
+			"preLaunchTask": "extension task",
+			"env": {
+				"QMUI_LSP_DEBUG": "8765"
+			}
 		}
 	]
 }

@@ -8,13 +8,16 @@
 			"script": "watch",
 			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}/QuickMarkup.VSCode.Extension"
+			},
 			"presentation": {
 				"reveal": "never"
 			},
 			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
+				"kind": "build"
+			},
+			"label": "extension task"
 		}
 	]
 }
