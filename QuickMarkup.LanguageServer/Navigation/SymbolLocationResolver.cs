@@ -15,7 +15,7 @@ namespace QuickMarkup.LanguageServer.Navigation;
 /// Resolves definition locations for QuickMarkup type symbols.
 /// Handles C# types, .qmui components, and generated file fallbacks.
 /// </summary>
-public class SymbolLocationResolver
+public class SymbolLocationResolver : ISymbolLocationResolver
 {
     private readonly IQmuiWorkspaceService _workspace;
 

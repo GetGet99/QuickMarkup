@@ -1,29 +1,27 @@
-using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using QuickMarkup.LanguageServer.Contracts;
-using QuickMarkup.LanguageServer.Navigation;
 
 namespace QuickMarkup.LanguageServer.Handlers;
 
 class QmuiDefinitionHandler : IDefinitionHandler
 {
     readonly IQmuiDocumentStore _documentStore;
-    readonly MarkupCursorResolver _cursorResolver;
-    readonly SymbolLocationResolver _locationResolver;
-    readonly IServiceProvider _serviceProvider;
+    readonly IMarkupCursorResolver _cursorResolver;
+    readonly ISymbolLocationResolver _locationResolver;
+    readonly IQmuiWorkspaceService _workspace;
 
     public QmuiDefinitionHandler(
         IQmuiDocumentStore documentStore,
-        MarkupCursorResolver cursorResolver,
-        SymbolLocationResolver locationResolver,
-        IServiceProvider serviceProvider)
+        IMarkupCursorResolver cursorResolver,
+        ISymbolLocationResolver locationResolver,
+        IQmuiWorkspaceService workspace)
     {
         _documentStore = documentStore;
         _cursorResolver = cursorResolver;
         _locationResolver = locationResolver;
-        _serviceProvider = serviceProvider;
+        _workspace = workspace;
     }
 
     public DefinitionRegistrationOptions GetRegistrationOptions(DefinitionCapability capability, ClientCapabilities clientCapabilities)
@@ -33,8 +31,7 @@ class QmuiDefinitionHandler : IDefinitionHandler
 
     public async Task<LocationOrLocationLinks?> Handle(DefinitionParams request, CancellationToken cancellationToken)
     {
-        var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
-        await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
+        await _workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
 
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
         var content = await _documentStore.GetTextAsync(filePath, cancellationToken);

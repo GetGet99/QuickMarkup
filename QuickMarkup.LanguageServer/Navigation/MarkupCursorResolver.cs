@@ -7,7 +7,7 @@ namespace QuickMarkup.LanguageServer.Navigation;
 /// Resolves the QuickMarkup tag or property at a given LSP position.
 /// Converts LSP position to markup Position and walks the AST once to find either a tag name or property.
 /// </summary>
-public class MarkupCursorResolver
+public class MarkupCursorResolver : IMarkupCursorResolver
 {
     private readonly IQmuiSemanticService _semanticService;
 

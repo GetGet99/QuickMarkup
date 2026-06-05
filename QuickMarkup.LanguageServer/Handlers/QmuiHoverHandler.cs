@@ -1,9 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using QuickMarkup.LanguageServer.Contracts;
-using QuickMarkup.LanguageServer.Navigation;
 using LspPosition = OmniSharp.Extensions.LanguageServer.Protocol.Models.Position;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -12,17 +10,17 @@ namespace QuickMarkup.LanguageServer.Handlers;
 class QmuiHoverHandler : IHoverHandler
 {
     readonly IQmuiDocumentStore _documentStore;
-    readonly MarkupCursorResolver _cursorResolver;
-    readonly IServiceProvider _serviceProvider;
+    readonly IMarkupCursorResolver _cursorResolver;
+    readonly IQmuiWorkspaceService _workspace;
 
     public QmuiHoverHandler(
         IQmuiDocumentStore documentStore,
-        MarkupCursorResolver cursorResolver,
-        IServiceProvider serviceProvider)
+        IMarkupCursorResolver cursorResolver,
+        IQmuiWorkspaceService workspace)
     {
         _documentStore = documentStore;
         _cursorResolver = cursorResolver;
-        _serviceProvider = serviceProvider;
+        _workspace = workspace;
     }
 
     public HoverRegistrationOptions GetRegistrationOptions(HoverCapability capability, ClientCapabilities clientCapabilities)
@@ -32,8 +30,7 @@ class QmuiHoverHandler : IHoverHandler
 
     public async Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)
     {
-        var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
-        await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
+        await _workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
 
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
         var content = await _documentStore.GetTextAsync(filePath, cancellationToken);

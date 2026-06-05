@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.Extensions.DependencyInjection;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -12,13 +11,15 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
 {
     readonly IQmuiDiagnosticService _diagnostics;
     readonly IQmuiDocumentStore _documentStore;
-    readonly IServiceProvider _serviceProvider;
+    readonly IQmuiWorkspaceService _workspace;
+    readonly ILanguageServer _languageServer;
 
-    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IServiceProvider serviceProvider)
+    public QmuiDidOpenHandler(IQmuiDiagnosticService diagnostics, IQmuiDocumentStore documentStore, IQmuiWorkspaceService workspace, ILanguageServer languageServer)
     {
         _diagnostics = diagnostics;
         _documentStore = documentStore;
-        _serviceProvider = serviceProvider;
+        _workspace = workspace;
+        _languageServer = languageServer;
     }
 
     public TextDocumentOpenRegistrationOptions GetRegistrationOptions(TextSynchronizationCapability capability, ClientCapabilities clientCapabilities)
@@ -32,17 +33,15 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
         
         await _documentStore.UpdateTextAsync(filePath, request.TextDocument.Text, cancellationToken).ConfigureAwait(false);
 
-        var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
-        await workspace.EnsureProjectForFileAsync(filePath);
+        await _workspace.EnsureProjectForFileAsync(filePath);
 
-        var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         var results = await _diagnostics.GetDiagnosticsAsync(
             request.TextDocument.Uri.GetFileSystemPath(),
             request.TextDocument.Text,
             cancellationToken
         );
 
-        server.PublishDiagnostics(new PublishDiagnosticsParams
+        _languageServer.PublishDiagnostics(new PublishDiagnosticsParams
         {
             Uri = request.TextDocument.Uri,
             Diagnostics = new Container<Diagnostic>(results)
