@@ -9,7 +9,7 @@ namespace QuickMarkup.CodeAnalysis.Helpers;
 
 partial class QuickMarkupProviderExtension
 {
-    static IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
+    internal static IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
     {
         // retry as it is flaky
         QuickMarkupLexer? lexer = null;
@@ -27,7 +27,7 @@ partial class QuickMarkupProviderExtension
         lexer ??= new QuickMarkupLexer(new StringTextSeeker(code));
         return lexer.GetTokens();
     }
-    static ThreadLocal<QuickMarkupParser> ParserPerThread { get; } = new(static () =>
+    internal static ThreadLocal<QuickMarkupParser> ParserPerThread { get; } = new(static () =>
     {
         // retry as it is flaky
         for (int i = 0; i < 10; i++)
@@ -60,13 +60,22 @@ partial class QuickMarkupProviderExtension
     {
         try
         {
-            var tokens = Lex(code);
-            var sfc = ParserPerThread.Value!.Parse(tokens, out var errors);
-            return (sfc, errors);
+            return ParseWithErrorsCore(code);
         }
         catch
         {
             return (null, []);
         }
+    }
+
+    /// <summary>
+    /// Parses QuickMarkup code and returns errors without catching parse exceptions.
+    /// Used by the analyzer which handles parse exceptions separately via <c>TryHandleParseException</c>.
+    /// </summary>
+    internal static (QuickMarkupSFC Sfc, List<ErrorTerminalValue> Errors) ParseWithErrorsCore(string code)
+    {
+        var tokens = Lex(code);
+        var sfc = ParserPerThread.Value!.Parse(tokens, out var errors);
+        return (sfc, errors);
     }
 }

@@ -1,14 +1,11 @@
 using System.Collections.Immutable;
 using Get.EasyCSharp.GeneratorTools;
-using Get.Lexer;
 using Get.Parser;
-using Get.PLShared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QuickMarkup.AST;
-using QuickMarkup.Parser;
 using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
@@ -20,47 +17,6 @@ namespace QuickMarkup.SourceGen;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
 {
-    IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code)
-    {
-        // retry as it is flaky
-        QuickMarkupLexer? lexer = null;
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                lexer = new QuickMarkupLexer(new StringTextSeeker(code));
-                break;
-            } catch { }
-        }
-        lexer ??= new QuickMarkupLexer(new StringTextSeeker(code));
-        return lexer.GetTokens();
-    }
-    ThreadLocal<QuickMarkupParser> ParserPerThread { get; } = new(static () =>
-    {
-        // retry as it is flaky
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                return new QuickMarkupParser();
-            }
-            catch
-            {
-
-            }
-        }
-        return new QuickMarkupParser();
-    });
-
-    QuickMarkupSFC Parse(IEnumerable<IToken<QuickMarkupLexer.Tokens>> tokens, out List<ErrorTerminalValue> errors)
-    {
-        return ParserPerThread.Value.Parse(tokens, out errors);
-    }
-    QuickMarkupSFC Parse(string code, out List<ErrorTerminalValue> errors)
-    {
-        return Parse(Lex(code), out errors);
-    }
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         ParseErrorUnexpectedInput,
         ParseErrorUnexpectedEnding,
@@ -209,7 +165,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
             List<ErrorTerminalValue> errors;
             try
             {
-                qm = Parse(markup, out errors);
+                (qm, errors) = QuickMarkupProviderExtension.ParseWithErrorsCore(markup);
             }
             catch (Exception e) when (TryHandleParseException(e, locationProvider, d => ctx.ReportDiagnostic(d)))
             {

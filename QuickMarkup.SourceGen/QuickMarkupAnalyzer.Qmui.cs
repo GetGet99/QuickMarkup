@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using Get.Lexer;
 using Get.Parser;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -7,7 +6,6 @@ using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis.Helpers;
-using QuickMarkup.Parser;
 using static QuickMarkup.SourceGen.QuickMarkupDiagnosticReporter;
 
 namespace QuickMarkup.SourceGen;
@@ -44,7 +42,7 @@ partial class QuickMarkupAnalyzer
         List<ErrorTerminalValue> errors;
         try
         {
-            sfc = Parse(content, out errors);
+            (sfc, errors) = QuickMarkupProviderExtension.ParseWithErrorsCore(content);
         }
         catch (Exception e) when (TryHandleParseException(e, locationProvider, d => context.ReportDiagnostic(d)))
         {

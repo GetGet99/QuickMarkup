@@ -1,7 +1,6 @@
 using System.Text;
 using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
 using QuickMarkup.SourceGen.CodeGen;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Binders;
@@ -14,22 +13,6 @@ namespace QuickMarkup.SourceGen;
 [Generator]
 partial class QuickMarkupGenerator : IIncrementalGenerator
 {
-    //static readonly DiagnosticDescriptor compileError = new(
-    //    "QMC001",
-    //    "Compilation error in generated code",
-    //    "One more errors occured on the generated source file\n{0}",
-    //    "QuickMarkupSourceCompiler",
-    //    DiagnosticSeverity.Error,
-    //    isEnabledByDefault: true
-    //);
-    //static readonly DiagnosticDescriptor compileWarning = new(
-    //    "QMC002",
-    //    "Compilation warning in generated code",
-    //    "One more warnings occured on the generated source file\n{0}",
-    //    "QuickMarkupSourceCompiler",
-    //    DiagnosticSeverity.Warning,
-    //    isEnabledByDefault: true
-    //);
     protected void OnInitialize(IncrementalGeneratorPostInitializationContext context) { }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -79,70 +62,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
                 sourceProductionContext.AddSource(ctx, "INIT", code, usings, typeModifiers);
             });
-            /*
-            // ERRORS from source file:
-            var compilationErrors = sources.Combine(context.CompilationProvider).Select((value, ct) =>
-            {
-                var ((ctx, usings, code, _), compilation) = value;
-                var parseOptions = (CSharpParseOptions)compilation.SyntaxTrees.First().Options;
-                var tree = CSharpSyntaxTree.ParseText($$"""
-                #nullable enable
-                {{usings}}
-
-                namespace {{ctx.Namespace}};
-                
-                partial class {{ctx.TypeNameWithoutNamespace}} {
-                    {{code}}
-                }
-                
-                """, parseOptions);
-                var newCompilation = compilation.AddSyntaxTrees(tree);
-                var model = newCompilation.GetSemanticModel(tree);
-                var diagnostics = model.GetDiagnostics(cancellationToken: ct);
-                string error = "";
-                string warning = "";
-                foreach (var diagnostic in diagnostics)
-                {
-                    if (diagnostic.IsSuppressed) continue;
-                    if (diagnostic.Severity is not (DiagnosticSeverity.Error or DiagnosticSeverity.Warning))
-                        continue;
-                    var source = GetExpandedLineText(diagnostic.Location)?.Trim();
-                    if (diagnostic.Severity is DiagnosticSeverity.Error)
-                    {
-                        if (source is not null)
-                            error += $"\n{source}";
-                        error += $"\nError {diagnostic.Id}: {diagnostic.GetMessage()}";
-                    }
-                    if (!diagnostic.IsSuppressed && diagnostic.Severity is DiagnosticSeverity.Warning)
-                    {
-                        if (source is not null)
-                            warning += $"\n{source}";
-                        warning += $"\nWarning {diagnostic.Id}: {diagnostic.GetMessage()}";
-                    }
-                }
-                return (ctx, error, warning);
-            });
-
-            context.RegisterSourceOutput(compilationErrors, (sourceProductionContext, value) =>
-            {
-                var (ctx, error, warning) = value;
-
-                if (ctx.FileName is null) return;
-
-                if (!string.IsNullOrWhiteSpace(error))
-                    sourceProductionContext.ReportDiagnostic(Diagnostic.Create(
-                        compileError,
-                        Location.Create(ctx.FileName, ctx.AttributeLocation, ctx.AttributeLineSpan),
-                        error
-                    ));
-                if (!string.IsNullOrWhiteSpace(warning))
-                    sourceProductionContext.ReportDiagnostic(Diagnostic.Create(
-                        compileWarning,
-                        Location.Create(ctx.FileName, ctx.AttributeLocation, ctx.AttributeLineSpan),
-                        warning
-                    ));
-            });
-            */
         }
 
         // REFS
@@ -187,32 +106,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         // .QMUI ADDITIONALFILES PIPELINE
         InitializeQmuiPipeline(context);
     }
-    public static string? GetExpandedLineText(Location location)
-    {
-        if (location == null)
-            throw new ArgumentNullException(nameof(location));
-
-        if (!location.IsInSource)
-            return null; // or throw, depending on your use case
-
-        var sourceTree = location.SourceTree;
-        var sourceText = sourceTree.GetText();
-
-        var span = location.SourceSpan;
-
-        // Get line numbers
-        var startLine = sourceText.Lines.GetLineFromPosition(span.Start);
-        var endLine = sourceText.Lines.GetLineFromPosition(span.End);
-
-        // Expand to full lines (including line breaks)
-        var expandedStart = startLine.Start;
-        var expandedEnd = endLine.EndIncludingLineBreak;
-
-        var expandedSpan = TextSpan.FromBounds(expandedStart, expandedEnd);
-
-        return sourceText.ToString(expandedSpan);
-    }
-
     static QuickMarkupParsedTag? CombineMarkupTags(ListAST<QuickMarkupParsedTag> tags)
     {
         if (tags.Count == 0)

@@ -4,9 +4,6 @@ static class StringSimilarity
 {
     public static int LevenshteinDistance(string a, string b)
     {
-        a = a.ToLowerInvariant();
-        b = b.ToLowerInvariant();
-
         var lenA = a.Length;
         var lenB = b.Length;
 
@@ -24,7 +21,7 @@ static class StringSimilarity
             for (var j = 1; j <= lenB; j++)
             {
                 var temp = row[j];
-                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                var cost = char.ToLowerInvariant(a[i - 1]) == char.ToLowerInvariant(b[j - 1]) ? 0 : 1;
                 row[j] = Math.Min(Math.Min(row[j - 1] + 1, row[j] + 1), prev + cost);
                 prev = temp;
             }
