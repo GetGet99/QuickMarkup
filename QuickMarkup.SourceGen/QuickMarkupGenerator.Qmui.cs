@@ -65,20 +65,11 @@ partial class QuickMarkupGenerator
             context.RegisterSourceOutput(initSources, (spc, value) =>
             {
                 var (ctx, sfc, usings, code, error) = value;
-                if (error is not null)
-                {
-                    code = $"""
-                    /*
-                        {error.Replace("*/", "*_/")}
-                    */
-                    {code}
-                    """;
-                }
                 var classDecl = sfc?.ClassDeclaration;
-                var baseTypes = classDecl is null ? "" : GetBaseTypesString(classDecl);
                 var typeModifiers = classDecl?.Kind is ClassKind.Component or ClassKind.FragmentComponent
                     ? "sealed partial" : "partial";
-                spc.AddSource(ctx, "INIT", code, usings, typeModifiers, baseTypes);
+                var baseTypes = classDecl is null ? "" : GetBaseTypesString(classDecl);
+                EmitInitSource(spc, ctx, usings, code, error, typeModifiers, baseTypes);
             });
         }
 
@@ -97,10 +88,10 @@ partial class QuickMarkupGenerator
             {
                 var (ctx, sfc, usings, refsCode) = value;
                 var classDecl = sfc?.ClassDeclaration;
-                var baseTypes = classDecl is null ? "" : GetBaseTypesString(classDecl);
                 var typeModifiers = classDecl?.Kind is ClassKind.Component or ClassKind.FragmentComponent
                     ? "sealed partial" : "partial";
-                spc.AddSource(ctx, "REFS", refsCode, usings, typeModifiers, baseTypes);
+                var baseTypes = classDecl is null ? "" : GetBaseTypesString(classDecl);
+                EmitRefsSource(spc, ctx, usings, refsCode, typeModifiers, baseTypes);
             });
         }
 
@@ -111,11 +102,7 @@ partial class QuickMarkupGenerator
             context.RegisterSourceOutput(qmuiErrors, (spc, value) =>
             {
                 var (target, _, _, error) = value;
-                spc.AddSource(target, "INIT", $"""
-                /*
-                    {error!.Replace("*/", "*_/")}
-                */
-                """);
+                EmitErrorSource(spc, target, "INIT", error!);
             });
         }
     }

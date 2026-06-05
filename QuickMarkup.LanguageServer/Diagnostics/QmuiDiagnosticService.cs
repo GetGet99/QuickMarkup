@@ -34,7 +34,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
         if (effectiveCompilation is null)
             return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
 
-        var analysis = QuickMarkupAnalyzer.Analyze(
+        var analysis = QuickMarkupFileAnalyzer.Analyze(
             sfc, filePath, ns, effectiveCompilation, generatedMembers, failFast: false);
 
         return LspDiagnosticConverter.ConvertAll(analysis.Diagnostics, parseErrors);

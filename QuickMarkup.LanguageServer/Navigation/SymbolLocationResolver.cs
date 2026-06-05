@@ -227,9 +227,9 @@ public class SymbolLocationResolver : ISymbolLocationResolver
                 };
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Skip errors
+            Console.Error.WriteLine($"[QuickMarkup] Error resolving symbol location: {ex.Message}");
         }
 
         return null;

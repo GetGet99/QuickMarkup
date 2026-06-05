@@ -5,7 +5,7 @@ using QuickMarkup.CodeAnalysis.Binders;
 
 namespace QuickMarkup.Snapshot.SourceGen.Binders;
 
-class SnapshotBinder(CodeTypeResolver resolver, bool failFast = false) : Binder(failFast)
+class SnapshotBinder(CodeTypeResolver resolver, Action<QMBinderError> onError) : Binder(onError)
 {
     protected readonly QuickMarkupBinderUtilities utils = new(resolver);
     public List<SnapshotField> Bind(IEnumerable<RefDeclaration> declarations, SnasphostConfiguration configuration)

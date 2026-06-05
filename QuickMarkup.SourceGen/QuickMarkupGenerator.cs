@@ -47,20 +47,11 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 }
             );
 
-            context.RegisterSourceOutput(sources, (sourceProductionContext, value) =>
+            context.RegisterSourceOutput(sources, (spc, value) =>
             {
                 var (ctx, usings, code, error, isComponent) = value;
-                if (error is not null)
-                {
-                    code = $"""
-                    /*
-                        {error}
-                    */
-                    {code}
-                    """;
-                }
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
-                sourceProductionContext.AddSource(ctx, "INIT", code, usings, typeModifiers);
+                EmitInitSource(spc, ctx, usings, code, error, typeModifiers);
             });
         }
 
@@ -82,24 +73,20 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 return (target, sfc.Usings, code, isComponent);
             });
 
-            context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
+            context.RegisterSourceOutput(lines, (spc, value) =>
             {
                 var (ctx, usings, refsCode, isComponent) = value;
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
-                sourceProductionContext.AddSource(ctx, "REFS", refsCode, usings, typeModifiers);
+                EmitRefsSource(spc, ctx, usings, refsCode, typeModifiers);
             });
         }
 
         // ERRORS
         {
-            context.RegisterSourceOutput(errorMarkups, (sourceProductionContext, value) =>
+            context.RegisterSourceOutput(errorMarkups, (spc, value) =>
             {
                 var (target, errors) = value;
-                sourceProductionContext.AddSource(target, "ERROR", $"""
-                /*
-                    {errors.Replace("*/", "*_/")}
-                */
-                """);
+                EmitErrorSource(spc, target, "ERROR", errors);
             });
         }
 
@@ -168,7 +155,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         {
             if (template is not null)
             {
-                var analyzer = new QuickMarkupBinder(componentInfoResolver);
+                var analyzer = new QuickMarkupBinder(componentInfoResolver, Binder.FailFast);
                 var output = analyzer.Bind(template, typeSymbol);
                 ct.ThrowIfCancellationRequested();
                 var cgen = new CodeGenContext(
@@ -231,7 +218,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         QuickMarkupGeneratedMemberTable? generatedMembers,
         CancellationToken ct)
     {
-        var analysis = global::QuickMarkup.CodeAnalysis.QuickMarkupAnalyzer.Analyze(
+        var analysis = QuickMarkupFileAnalyzer.Analyze(
             sfc, target.FileName ?? "", target.Namespace, compilation,
             generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty, failFast: true);
 
@@ -239,5 +226,33 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         var rgen = new RefsGenContext(sb, target.FullTypeName);
         rgen.CGenWrite(analysis.RefDeclarations, ct);
         return (sb.ToString(), analysis.IsComponent);
+    }
+
+    static void EmitInitSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string usings, string code, string? error, string typeModifiers, string? baseTypes = null)
+    {
+        if (error is not null)
+        {
+            code = $$"""
+            /*
+                {{error.Replace("*/", "*_/")}}
+            */
+            {{code}}
+            """;
+        }
+        spc.AddSource(ctx, "INIT", code, usings, typeModifiers, baseTypes);
+    }
+
+    static void EmitRefsSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string usings, string refsCode, string typeModifiers, string? baseTypes = null)
+    {
+        spc.AddSource(ctx, "REFS", refsCode, usings, typeModifiers, baseTypes);
+    }
+
+    static void EmitErrorSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string hintNameSuffix, string error)
+    {
+        spc.AddSource(ctx, hintNameSuffix, $$"""
+        /*
+            {{error.Replace("*/", "*_/")}}
+        */
+        """);
     }
 }

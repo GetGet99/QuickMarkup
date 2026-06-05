@@ -23,12 +23,13 @@ sealed class CatalogService : ICatalogService
             try
             {
                 var filePath = doc.FilePath ?? doc.Name;
-                Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
+                await Console.Error.WriteLineAsync($"[QuickMarkup] Parsing {filePath}");
                 var content = await GetQmuiContentAsync(filePath, documentStore, fileProvider);
                 _catalog.AddOrUpdateQmuiFile(filePath, content);
             }
-            catch
+            catch (Exception ex)
             {
+                await Console.Error.WriteLineAsync($"[QuickMarkup] Failed to parse additional document {doc.Name}: {ex.Message}");
             }
         }
 
@@ -39,12 +40,13 @@ sealed class CatalogService : ICatalogService
             {
                 try
                 {
-                    Console.Error.WriteLine($"[QuickMarkup] Parsing {file}");
+                    await Console.Error.WriteLineAsync($"[QuickMarkup] Parsing {file}");
                     var content = await GetQmuiContentAsync(file, documentStore, fileProvider);
                     _catalog.AddOrUpdateQmuiFile(file, content);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    await Console.Error.WriteLineAsync($"[QuickMarkup] Failed to parse {file}: {ex.Message}");
                 }
             }
         }

@@ -19,7 +19,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
             return null;
 
         var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, target.Namespace);
-        var binder = new QuickMarkupBinder(resolver, failFast: true);
+        var binder = new QuickMarkupBinder(resolver, Binder.FailFast);
         var refs = binder.BindRefDeclarations(markup.AST.Refs, typeSymbol);
         var properties = new Dictionary<string, QuickMarkupGeneratedPropertySymbol>();
         var unknownTypes = typeSymbol.TypeParameters.Length > 0;

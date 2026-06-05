@@ -19,7 +19,7 @@ public class QuickMarkupWorkspaceCatalog
 
     ImmutableArray<QuickMarkupTypeEntry> _entries = ImmutableArray<QuickMarkupTypeEntry>.Empty;
     readonly Dictionary<string, QuickMarkupTypeEntry> _entriesByFilePath = new(StringComparer.OrdinalIgnoreCase);
-    readonly Dictionary<string, int> _contentHashes = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, string> _cachedContent = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, QuickMarkupSFC> _cachedAst = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, List<ErrorTerminalValue>> _cachedErrors = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, List<QuickMarkupTypeEntry>> _entriesByShortName = new();
@@ -58,11 +58,9 @@ public class QuickMarkupWorkspaceCatalog
     /// </summary>
     public (QuickMarkupSFC? Sfc, List<ErrorTerminalValue> Errors) GetOrParse(string filePath, string content)
     {
-        var contentHash = content.GetHashCode();
-
         lock (_lock)
         {
-            if (_contentHashes.TryGetValue(filePath, out var cachedHash) && cachedHash == contentHash
+            if (_cachedContent.TryGetValue(filePath, out var cachedContent) && string.Equals(cachedContent, content)
                 && _cachedAst.TryGetValue(filePath, out var cached))
             {
                 _cachedErrors.TryGetValue(filePath, out var errors);
@@ -77,7 +75,7 @@ public class QuickMarkupWorkspaceCatalog
         {
             lock (_lock)
             {
-                _contentHashes[filePath] = contentHash;
+                _cachedContent[filePath] = content;
                 _cachedAst[filePath] = parsedSfc;
                 _cachedErrors[filePath] = parseErrors;
             }
@@ -96,7 +94,7 @@ public class QuickMarkupWorkspaceCatalog
             _entriesByFilePath.Clear();
             _cachedAst.Clear();
             _cachedErrors.Clear();
-            _contentHashes.Clear();
+            _cachedContent.Clear();
             _entriesByShortName.Clear();
 
             var entries = ImmutableArray.CreateBuilder<QuickMarkupTypeEntry>();
@@ -109,18 +107,17 @@ public class QuickMarkupWorkspaceCatalog
                     try
                     {
                         var content = fileProvider.ReadAllText(file);
-                        var contentHash = content.GetHashCode();
                         var (sfc, errors) = QuickMarkupProviderExtension.ParseWithErrors(content);
                         if (sfc?.ClassDeclaration != null)
                         {
                             AddEntry(entries, file, sfc);
-                            _contentHashes[file] = contentHash;
+                            _cachedContent[file] = content;
                             _cachedErrors[file] = errors;
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Skip unparsable files
+                        Console.Error.WriteLine($"[QuickMarkup] Skipping unparsable file {file}: {ex.Message}");
                     }
                 }
             }
@@ -232,7 +229,7 @@ public class QuickMarkupWorkspaceCatalog
     {
         _cachedAst.Remove(filePath);
         _cachedErrors.Remove(filePath);
-        _contentHashes.Remove(filePath);
+        _cachedContent.Remove(filePath);
 
         if (_entriesByFilePath.TryGetValue(filePath, out var existing))
         {

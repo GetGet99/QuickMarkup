@@ -3,14 +3,16 @@ using QuickMarkup.AST;
 namespace QuickMarkup.CodeAnalysis.Binders;
 using AST = AST.AST;
 
-class Binder(bool failFast = false)
+class Binder(Action<QMBinderError> onError)
 {
+    public static Action<QMBinderError> FailFast => d => throw new InvalidOperationException(d.ToString());
+    public static Action<QMBinderError> Collect => _ => { };
+
     public List<QMDiagnostic> Diagnostics { get; } = [];
     protected void Error(QMBinderError error)
     {
         Diagnostics.Add(error);
-        if (failFast)
-            throw new InvalidOperationException(error.ToString());
+        onError(error);
     }
     protected void Warn(QMBinderWarning warning)
     {

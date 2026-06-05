@@ -40,14 +40,15 @@ sealed class MemberTableService : IMemberTableService
                 if (sfc?.ClassDeclaration is null)
                     continue;
 
-                var analysis = QuickMarkupAnalyzer.Analyze(
+                var analysis = QuickMarkupFileAnalyzer.Analyze(
                     sfc, entry.FilePath, entry.Namespace, enrichedCompilation, _table, failFast: true);
 
                 if (analysis.GeneratedMembers is { } m)
                     members.Add(m);
             }
-            catch
+            catch (Exception ex)
             {
+                await Console.Error.WriteLineAsync($"[QuickMarkup] Failed to analyze {entry.FilePath}: {ex.Message}");
             }
         }
 
@@ -71,7 +72,7 @@ sealed class MemberTableService : IMemberTableService
 
         var ns = sfc.Namespace?.Name ?? "";
 
-        var analysis = QuickMarkupAnalyzer.Analyze(
+        var analysis = QuickMarkupFileAnalyzer.Analyze(
             sfc, filePath, ns, enrichedCompilation, _table, failFast: true);
 
         if (analysis.GeneratedMembers is { } m)

@@ -2,7 +2,7 @@
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
-abstract class RefAttributeBinder<T>(CodeTypeResolver resolver, bool failFast = false, string? attributeName = null) : Binder(failFast)
+abstract class RefAttributeBinder<T>(CodeTypeResolver resolver, Action<QMBinderError> onError, string? attributeName = null) : Binder(onError)
 {
     protected readonly QuickMarkupBinderUtilities utils = new(resolver);
     protected abstract T Bind(RefDeclaration reference, QMAttribute attribute);

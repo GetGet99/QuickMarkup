@@ -15,7 +15,7 @@ public record class QMBinderTagInfo(
     ChildrenModes ChildrenMode,
     QMComponentKind ComponentKind = QMComponentKind.None,
     ITypeSymbol? ComponentOutputType = null);
-partial class QuickMarkupBinder(CodeTypeResolver resolver, bool failFast = true) : Binder(failFast)
+partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError> onError) : Binder(onError)
 {
     readonly QuickMarkupBinderUtilities utils = new(resolver);
     readonly Stack<string> scopedLocalNames = [];

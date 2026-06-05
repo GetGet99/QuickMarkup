@@ -92,8 +92,9 @@ sealed class CompilationService : ICompilationService
 
                 compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
             }
-            catch
+            catch (Exception ex)
             {
+                await Console.Error.WriteLineAsync($"[QuickMarkup] Failed to enrich type in compilation: {ex.Message}");
             }
         }
 

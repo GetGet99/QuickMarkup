@@ -6,7 +6,7 @@ using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.CodeAnalysis;
 
-public static class QuickMarkupAnalyzer
+public static class QuickMarkupFileAnalyzer
 {
     public static QuickMarkupFileAnalysis Analyze(
         string qmuiContent,
@@ -38,7 +38,7 @@ public static class QuickMarkupAnalyzer
 
         var resolver = new CodeTypeResolver(compilation, sfc.Usings, @namespace, generatedMemberTable);
         var containingType = TryGetContainingType(compilation, target.FullTypeName);
-        var binder = new QuickMarkupBinder(resolver, failFast);
+        var binder = new QuickMarkupBinder(resolver, failFast ? Binder.FailFast : Binder.Collect);
 
         var isComponent = false;
         if (containingType is not null)
@@ -46,13 +46,13 @@ public static class QuickMarkupAnalyzer
 
         IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> refDeclarations = [];
         try { refDeclarations = binder.BindRefDeclarations(sfc.Refs, containingType); }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"[QuickMarkup] Ref binding failed for {target.FullTypeName}: {ex.Message}"); }
 
         QMNodeSymbol<ITypeSymbol?>? boundTemplate = null;
         if (sfc.Template is not null && containingType is not null)
         {
             try { boundTemplate = binder.Bind(sfc.Template, containingType); }
-            catch { }
+            catch (Exception ex) { Console.Error.WriteLine($"[QuickMarkup] Template binding failed for {target.FullTypeName}: {ex.Message}"); }
         }
 
         QuickMarkupGeneratedTypeMembers? generatedMembers = null;
@@ -61,7 +61,7 @@ public static class QuickMarkupAnalyzer
             generatedMembers = QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
                 new QuickMarkupParsedAttribute(target, sfc), compilation, CancellationToken.None);
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"[QuickMarkup] Member table building failed for {target.FullTypeName}: {ex.Message}"); }
 
         return new QuickMarkupFileAnalysis(
             sfc, target, refDeclarations, boundTemplate,

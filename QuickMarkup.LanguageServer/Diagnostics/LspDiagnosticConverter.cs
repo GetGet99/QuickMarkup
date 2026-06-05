@@ -2,6 +2,7 @@ using Get.Parser;
 using Get.PLShared;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using QuickMarkup.AST;
+using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.Parser;
 using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
@@ -12,19 +13,7 @@ public static class LspDiagnosticConverter
 {
     const string SourceName = "QuickMarkup";
 
-    static class DiagnosticCodes
-    {
-        public const string UnexpectedInput = "QM1001";
-        public const string UnexpectedEnding = "QM1002";
-        public const string GenericError = "QM1003";
-        public const string ChildrenTooMany = "QM1004";
-        public const string PropertyUnknown = "QM1006";
-        public const string EnumMemberUnknown = "QM1007";
-        public const string TypeUnknown = "QM1008";
-        public const string TagMismatched = "QM1009";
-        public const string TagUnexpected = "QM1010";
-        public const string TypeMismatch = "QM1011";
-    }
+
 
     internal static List<Diagnostic> ConvertParseErrors(List<ErrorTerminalValue> errors, string sourceText)
     {
@@ -38,7 +27,7 @@ public static class LspDiagnosticConverter
                     {
                         Range = PositionConverter.ToLspRange(unexpectedInput.UnexpectedElement.Start, unexpectedInput.UnexpectedElement.End),
                         Severity = DiagnosticSeverity.Error,
-                        Code = DiagnosticCodes.UnexpectedInput,
+                        Code = QMDiagnosticHelper.ParseErrorUnexpectedInputCode,
                         Source = SourceName,
                         Message = $"Unexpected {unexpectedInput.UnexpectedElement}"
                     });
@@ -48,7 +37,7 @@ public static class LspDiagnosticConverter
                     {
                         Range = PositionConverter.ToLspRange(error.Start, error.End),
                         Severity = DiagnosticSeverity.Error,
-                        Code = DiagnosticCodes.UnexpectedEnding,
+                        Code = QMDiagnosticHelper.ParseErrorUnexpectedEndingCode,
                         Source = SourceName,
                         Message = $"Expect {string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
                     });
@@ -65,33 +54,14 @@ public static class LspDiagnosticConverter
         return PositionConverter.ToLspRange(node.Start, node.End);
     }
 
-    static DiagnosticSeverity Severity(QMDiagnostic diag) => diag switch
-    {
-        QMBinderWarning => DiagnosticSeverity.Warning,
-        QMBinderError => DiagnosticSeverity.Error,
-        _ => DiagnosticSeverity.Error
-    };
-
-    static string DiagnosticCode(QMDiagnostic diag) => diag switch
-    {
-        QMBinderPropertyUnknownError => DiagnosticCodes.PropertyUnknown,
-        QMBinderEnumMemberUnknownError => DiagnosticCodes.EnumMemberUnknown,
-        QMBinderTypeUnknownError => DiagnosticCodes.TypeUnknown,
-        QMBinderChildrenTooMany => DiagnosticCodes.ChildrenTooMany,
-        QMBinderTagMismatchedError => DiagnosticCodes.TagMismatched,
-        QMBinderTagUnexpectedError => DiagnosticCodes.TagUnexpected,
-        QMBinderTypeMismatchError => DiagnosticCodes.TypeMismatch,
-        _ => DiagnosticCodes.GenericError
-    };
-
     static Diagnostic ConvertSingle(QMDiagnostic diag)
     {
         var range = RangeFromNode(diag.Node);
         return new()
         {
             Range = range,
-            Severity = Severity(diag),
-            Code = DiagnosticCode(diag),
+            Severity = diag is QMBinderWarning ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
+            Code = diag.GetDiagnosticCode(),
             Source = SourceName,
             Message = diag.Message
         };

@@ -69,7 +69,7 @@ partial class QuickMarkupAnalyzer
             return;
 
         var resolver = new CodeTypeResolver(context.Compilation, sfc.Usings, target.Namespace);
-        var binder = new QuickMarkupBinder(resolver, failFast: false);
+        var binder = new QuickMarkupBinder(resolver, Binder.Collect);
 
         if (sfc.Template is not null)
         {

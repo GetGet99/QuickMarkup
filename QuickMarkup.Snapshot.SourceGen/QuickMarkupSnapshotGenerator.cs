@@ -274,7 +274,7 @@ partial class QuickMarkupSnapshotGenerator : IIncrementalGenerator
             if (implementerMode.Mode is SnapshotImplementerMode.Generated)
             {
                 var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, markup.Target.Namespace);
-                var binder = new SnapshotBinder(resolver);
+                var binder = new SnapshotBinder(resolver, Binder.Collect);
                 fields = binder.Bind(markup.AST.Refs, snapshotInterface.Configuration);
                 foreach (var diagnostic in binder.Diagnostics)
                 {
