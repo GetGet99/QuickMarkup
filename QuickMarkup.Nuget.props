@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>0.1.11</Version>
+    <Version>0.1.12-beta</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <DefaultLanguage>en-US</DefaultLanguage>

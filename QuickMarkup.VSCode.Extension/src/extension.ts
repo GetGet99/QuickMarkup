@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -11,19 +12,24 @@ import {
 let client: LanguageClient | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-	const serverDir = path.join(
-		context.extensionUri.fsPath,
-		'..',
-		'QuickMarkup.LanguageServer'
-	);
+	const bundledServerDir = path.join(context.extensionUri.fsPath, 'server');
+	const bundledServerDll = path.join(bundledServerDir, 'QuickMarkup.LanguageServer.dll');
 
 	const debugPort = process.env.QMUI_LSP_DEBUG;
 	const serverOptions: ServerOptions = debugPort
 		? () => connectWithRetry(Number(debugPort))
-		: {
-			command: 'dotnet',
-			args: ['run', '--project', serverDir],
-		};
+		: fs.existsSync(bundledServerDll)
+			? {
+				command: 'dotnet',
+				args: [bundledServerDll],
+			}
+			: {
+				command: 'dotnet',
+				args: [
+					'run', '--project',
+					path.join(context.extensionUri.fsPath, '..', 'QuickMarkup.LanguageServer'),
+				],
+			};
 
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'quickmarkup' }],

@@ -13,13 +13,19 @@
   "activationEvents": [
     "onLanguage:quickmarkup"
   ],
+  "repository": "https://github.com/GetGet99/QuickMarkup",
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "quickmarkup",
-        "extensions": [".qmui"],
-        "aliases": ["QuickMarkup", "quickmarkup"],
+        "extensions": [
+          ".qmui"
+        ],
+        "aliases": [
+          "QuickMarkup",
+          "quickmarkup"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -35,25 +41,39 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run compile",
+    "vscode:prepublish": "pnpm run esbuild-base --minify",
+    "vscode:prepackage": "pnpm run esbuild-base --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "gen:textmate": "dotnet run --project ../QuickMarkup.GrammarGenerator/QuickMarkup.GrammarGenerator.csproj"
+    "gen:textmate": "dotnet run --project ../QuickMarkup.GrammarGenerator/QuickMarkup.GrammarGenerator.csproj",
+    "build:server": "pwsh -NoProfile -File ./build-server.ps1",
+    "build:server:self-contained": "pwsh -NoProfile -File ./build-server.ps1 -Mode self-contained -Runtime win-x64",
+    "package": "pnpm run build:server && pnpm vsce package --no-dependencies",
+    "publish": "pnpm run build:server && pnpm run compile && pnpm vsce publish --no-dependencies"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@vscode/vsce-sign",
+      "keytar"
+    ]
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.120.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.56.1",
+    "@types/vscode": "^1.120.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.0",
     "eslint": "^9.39.3",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.56.1"
   }
 }
