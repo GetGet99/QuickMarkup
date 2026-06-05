@@ -150,45 +150,32 @@ public class SymbolLocationResolver
         string currentFilePath,
         INamedTypeSymbol? ownerTypeSymbol)
     {
-        // If we know the owner type, search for it directly
-        if (ownerTypeSymbol is not null)
-        {
-            // First try .qmui files from the catalog
-            if (_workspace.TryGetQmuiEntry(ownerTypeSymbol.ToDisplayString(), out var entry)
-                && entry.Kind == QuickMarkupDefinitionKind.QmuiFile
-                && !string.IsNullOrEmpty(entry.FilePath))
-            {
-                try
-                {
-                    var fileContent = File.ReadAllText(entry.FilePath);
-                    var sfc = QuickMarkupProviderExtension.Parse(fileContent);
-                    if (sfc is not null)
-                    {
-                        foreach (var refDecl in sfc.Refs)
-                        {
-                            if (refDecl.Name.Name == propertyName)
-                            {
-                                return new LspLocation
-                                {
-                                    Uri = UriHelper.FromFilePath(entry.FilePath),
-                                    Range = new LspRange(
-                                        new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                                        new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
-                                };
-                            }
-                        }
-                    }
-                }
-                catch (Exception) { }
-            }
+        if (ownerTypeSymbol is null)
+            return null;
 
-            // Then try [QuickMarkup] C# classes - search only this specific type
-            var location = FindInQuickMarkupAttributeClass(ownerTypeSymbol, propertyName);
-            if (location is not null)
-                return location;
+        // First try .qmui files from the catalog (uses cached AST, no disk I/O)
+        if (_workspace.TryGetQmuiEntry(ownerTypeSymbol.ToDisplayString(), out var entry)
+            && entry.Kind == QuickMarkupDefinitionKind.QmuiFile
+            && !string.IsNullOrEmpty(entry.FilePath)
+            && _workspace.Catalog.TryGetCachedAst(entry.FilePath, out var sfc))
+        {
+            foreach (var refDecl in sfc.Refs)
+            {
+                if (refDecl.Name.Name == propertyName)
+                {
+                    return new LspLocation
+                    {
+                        Uri = UriHelper.FromFilePath(entry.FilePath),
+                        Range = new LspRange(
+                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                    };
+                }
+            }
         }
 
-        return null;
+        // Then try [QuickMarkup] C# classes - search only this specific type
+        return FindInQuickMarkupAttributeClass(ownerTypeSymbol, propertyName);
     }
 
     private LspLocation? FindInQuickMarkupAttributeClass(INamedTypeSymbol typeSymbol, string propertyName)
@@ -247,62 +234,41 @@ public class SymbolLocationResolver
 
     private LspLocation? GetRefDeclarationDefinitionLocation(string propertyName, string currentFilePath)
     {
-        // Try to find the ref declaration in the current file first
-        try
+        // Try to find the ref declaration in the current file first (from cached AST)
+        if (_workspace.Catalog.TryGetCachedAst(currentFilePath, out var currentSfc))
         {
-            var fileContent = File.ReadAllText(currentFilePath);
-            var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
-            if (sfc is not null)
+            foreach (var refDecl in currentSfc.Refs)
             {
-                foreach (var refDecl in sfc.Refs)
+                if (refDecl.Name.Name == propertyName)
                 {
-                    if (refDecl.Name.Name == propertyName)
+                    return new LspLocation
                     {
-                        return new LspLocation
-                        {
-                            Uri = UriHelper.FromFilePath(currentFilePath),
-                            Range = new LspRange(
-                                new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                                new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
-                        };
-                    }
+                        Uri = UriHelper.FromFilePath(currentFilePath),
+                        Range = new LspRange(
+                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                    };
                 }
             }
         }
-        catch (Exception)
-        {
-            // Ignore errors reading the current file
-        }
 
-        // Try other .qmui files in the catalog
-        foreach (var entry in _workspace.GetAllQmuiEntries())
+        // Try other .qmui files in the catalog (uses cached ASTs, no disk I/O)
+        foreach (var (filePath, sfc) in _workspace.Catalog.CachedAst)
         {
-            if (entry.Kind == QuickMarkupDefinitionKind.QmuiFile && !string.IsNullOrEmpty(entry.FilePath))
+            if (string.Equals(filePath, currentFilePath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            foreach (var refDecl in sfc.Refs)
             {
-                try
+                if (refDecl.Name.Name == propertyName)
                 {
-                    var fileContent = File.ReadAllText(entry.FilePath);
-                    var sfc = QuickMarkup.CodeAnalysis.Helpers.QuickMarkupProviderExtension.Parse(fileContent);
-                    if (sfc is null)
-                        continue;
-
-                    foreach (var refDecl in sfc.Refs)
+                    return new LspLocation
                     {
-                        if (refDecl.Name.Name == propertyName)
-                        {
-                            return new LspLocation
-                            {
-                                Uri = UriHelper.FromFilePath(entry.FilePath),
-                                Range = new LspRange(
-                                    new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                                    new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
-                            };
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    // Skip problematic files
+                        Uri = UriHelper.FromFilePath(filePath),
+                        Range = new LspRange(
+                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
+                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                    };
                 }
             }
         }

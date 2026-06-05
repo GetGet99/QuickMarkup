@@ -44,5 +44,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\IFileProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupCompilationEnricher.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupWorkspaceCatalog.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\AttributeStringLocationMapper.cs" />
   </ItemGroup>
 </Project>

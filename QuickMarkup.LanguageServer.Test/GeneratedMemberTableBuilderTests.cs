@@ -1,7 +1,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
+using QuickMarkup.LanguageServer.Contracts;
 using QuickMarkup.LanguageServer.Workspace;
 
 namespace QuickMarkup.LanguageServer.Test;
@@ -29,20 +31,11 @@ public sealed class GeneratedMemberTableBuilderTests
         var compilation = CSharpCompilation.Create("test", [tree], references);
         var qmuiContent = "namespace TestNs;\nclass MyComponent;\n<Button />";
         var fileProvider = new TestFileProvider(qmuiContent);
-        var entries = new[]
-        {
-            new QuickMarkupTypeEntry(
-                FullTypeName: "TestNs.MyComponent",
-                ShortName: "MyComponent",
-                Namespace: "TestNs",
-                Usings: "",
-                Kind: QuickMarkupDefinitionKind.QmuiFile,
-                FilePath: "test.qmui",
-                NameSpan: null)
-        };
+        var docStore = new MockDocumentStore();
+        var catalog = new QuickMarkupWorkspaceCatalog();
+        catalog.AddOrUpdateQmuiFile("test.qmui", qmuiContent);
 
-        // This should not throw - the entry should be processed
-        var table = GeneratedMemberTableBuilder.Build(entries, fileProvider, compilation);
+        var table = GeneratedMemberTableBuilder.Build(catalog, docStore, fileProvider, compilation);
         Assert.IsNotNull(table);
     }
 
@@ -52,8 +45,10 @@ public sealed class GeneratedMemberTableBuilderTests
         var references = GetReferences();
         var compilation = CSharpCompilation.Create("test", references: references);
         var fileProvider = new TestFileProvider("");
+        var docStore = new MockDocumentStore();
+        var catalog = new QuickMarkupWorkspaceCatalog();
 
-        var table = GeneratedMemberTableBuilder.Build([], fileProvider, compilation);
+        var table = GeneratedMemberTableBuilder.Build(catalog, docStore, fileProvider, compilation);
 
         var typeSymbol = compilation.GetTypeByMetadataName("System.Object");
         Assert.IsNotNull(typeSymbol);
@@ -73,9 +68,10 @@ public sealed class GeneratedMemberTableBuilderTests
         var tree = CSharpSyntaxTree.ParseText(source);
         var compilation = CSharpCompilation.Create("test", [tree], references);
         var fileProvider = new TestFileProvider("");
+        var docStore = new MockDocumentStore();
+        var catalog = new QuickMarkupWorkspaceCatalog();
 
-        // This should not throw - C# attribute entries should be scanned from compilation
-        var table = GeneratedMemberTableBuilder.Build([], fileProvider, compilation);
+        var table = GeneratedMemberTableBuilder.Build(catalog, docStore, fileProvider, compilation);
         Assert.IsNotNull(table);
     }
 
@@ -86,5 +82,15 @@ public sealed class GeneratedMemberTableBuilderTests
         public string ReadAllText(string path) => _content;
         public string[] GetFiles(string directory, string pattern, bool recursive) => [];
         public bool DirectoryExists(string path) => false;
+    }
+
+    class MockDocumentStore : IQmuiDocumentStore
+    {
+        public ValueTask<string?> GetTextAsync(string filePath, CancellationToken ct = default)
+            => new((string?)null);
+        public ValueTask UpdateTextAsync(string filePath, string content, CancellationToken ct = default)
+            => default;
+        public ValueTask RemoveAsync(string filePath, CancellationToken ct = default)
+            => default;
     }
 }

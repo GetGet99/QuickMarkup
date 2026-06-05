@@ -2,6 +2,8 @@ namespace QuickMarkup.LanguageServer.Workspace;
 
 static class ProjectFinder
 {
+    const string TestProjectSuffix = ".Test";
+
     public static string? FindDefaultProject(string? workspaceRoot)
     {
         if (string.IsNullOrEmpty(workspaceRoot) || !Directory.Exists(workspaceRoot))
@@ -13,7 +15,7 @@ static class ProjectFinder
         if (csprojs.Length == 1)
             return csprojs[0];
 
-        var nonTest = csprojs.Where(c => !c.Contains(".Test", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var nonTest = csprojs.Where(c => !c.Contains(TestProjectSuffix, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (nonTest.Length == 1)
             return nonTest[0];
         if (nonTest.Length > 1)
@@ -57,7 +59,7 @@ static class ProjectFinder
 
         if (solutionProjects is not null && solutionProjects.Count > 0)
         {
-            var nonTest = solutionProjects.Where(p => !p.Contains(".Test", StringComparison.OrdinalIgnoreCase)).ToArray();
+            var nonTest = solutionProjects.Where(p => !p.Contains(TestProjectSuffix, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (nonTest.Length > 0)
                 return nonTest[0];
             return solutionProjects[0];

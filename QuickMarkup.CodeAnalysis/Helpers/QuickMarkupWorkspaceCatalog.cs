@@ -2,112 +2,220 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.AST;
 
 namespace QuickMarkup.CodeAnalysis.Helpers;
 
 /// <summary>
 /// Workspace-scoped catalog of QuickMarkup types (.qmui files and [QuickMarkup] attributes).
-/// Built once per workspace and invalidated on file changes.
+/// Supports full rebuild and incremental single-file updates.
+/// Caches parsed ASTs to avoid re-parsing across the LSP pipeline.
 /// </summary>
 public class QuickMarkupWorkspaceCatalog
 {
-    private ImmutableArray<QuickMarkupTypeEntry> _entries = ImmutableArray<QuickMarkupTypeEntry>.Empty;
-    private readonly object _lock = new();
+    const string QmuiFilePattern = "*.qmui";
+    const string QuickMarkupAttributeTypeName = "QuickMarkup.Infra.QuickMarkupAttribute";
+
+    ImmutableArray<QuickMarkupTypeEntry> _entries = ImmutableArray<QuickMarkupTypeEntry>.Empty;
+    readonly Dictionary<string, QuickMarkupTypeEntry> _entriesByFilePath = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, QuickMarkupSFC> _cachedAst = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, List<QuickMarkupTypeEntry>> _entriesByShortName = new();
+    readonly object _lock = new();
 
     /// <summary>
     /// Gets all catalog entries.
     /// </summary>
-    public ImmutableArray<QuickMarkupTypeEntry> Entries => _entries;
+    public ImmutableArray<QuickMarkupTypeEntry> Entries
+    {
+        get { lock (_lock) return _entries; }
+    }
+
+    /// <summary>
+    /// Gets cached parsed ASTs keyed by file path (read-only snapshot).
+    /// </summary>
+    public IReadOnlyDictionary<string, QuickMarkupSFC> CachedAst
+    {
+        get { lock (_lock) return new Dictionary<string, QuickMarkupSFC>(_cachedAst); }
+    }
+
+    /// <summary>
+    /// Tries to get a cached parsed AST for a file path (lock-free read of snapshot).
+    /// </summary>
+    public bool TryGetCachedAst(string filePath, [NotNullWhen(true)] out QuickMarkupSFC? sfc)
+    {
+        lock (_lock)
+        {
+            return _cachedAst.TryGetValue(filePath, out sfc);
+        }
+    }
 
     /// <summary>
     /// Rebuilds the catalog from scratch using the provided compilation and workspace root.
     /// </summary>
-    /// <param name="compilation">The Roslyn compilation to scan for [QuickMarkup] attributes.</param>
-    /// <param name="workspaceRoot">Root directory to scan for .qmui files.</param>
-    /// <param name="fileProvider">File system abstraction for reading files (required for Roslyn Analyzer compatibility).</param>
     public void Rebuild(Compilation compilation, string workspaceRoot, IFileProvider fileProvider)
     {
         lock (_lock)
         {
+            _entriesByFilePath.Clear();
+            _cachedAst.Clear();
+            _entriesByShortName.Clear();
+
             var entries = ImmutableArray.CreateBuilder<QuickMarkupTypeEntry>();
 
             // 1. Scan .qmui files under workspace
             if (!string.IsNullOrEmpty(workspaceRoot) && fileProvider.DirectoryExists(workspaceRoot))
             {
-                var qmuiFiles = fileProvider.GetFiles(workspaceRoot, "*.qmui", recursive: true);
+                var qmuiFiles = fileProvider.GetFiles(workspaceRoot, QmuiFilePattern, recursive: true);
                 foreach (var file in qmuiFiles)
                 {
                     try
                     {
                         var content = fileProvider.ReadAllText(file);
                         var sfc = QuickMarkupProviderExtension.Parse(content);
-                        if (sfc != null && sfc.ClassDeclaration != null)
+                        if (sfc?.ClassDeclaration != null)
                         {
-                            var entry = new QuickMarkupTypeEntry(
-                                FullTypeName: GetFullTypeName(sfc.Namespace?.Name ?? "", sfc.ClassDeclaration.Name),
-                                ShortName: sfc.ClassDeclaration.Name,
-                                Namespace: sfc.Namespace?.Name ?? "",
-                                Usings: string.Join(" ", sfc.Usings),
-                                Kind: QuickMarkupDefinitionKind.QmuiFile,
-                                FilePath: file,
-                                NameSpan: null
-                            );
-                            entries.Add(entry);
+                            AddEntry(entries, file, sfc);
                         }
                     }
-                    catch (Exception)
+                    catch
                     {
                         // Skip unparsable files
                     }
                 }
             }
 
-
             // 2. Scan [QuickMarkup] attributes in Roslyn syntax trees
-            foreach (var tree in compilation.SyntaxTrees)
+            var attributeSymbol = compilation.GetTypeByMetadataName(QuickMarkupAttributeTypeName);
+            if (attributeSymbol != null)
             {
-                var semanticModel = compilation.GetSemanticModel(tree);
-                var quickMarkupAttributeSymbol = compilation.GetTypeByMetadataName("QuickMarkup.Infra.QuickMarkupAttribute");
-                if (quickMarkupAttributeSymbol == null) continue;
-
-                var classesWithAttribute = tree.GetRoot()
-                    .DescendantNodes()
-                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
-                    .Where(c => c.AttributeLists
-                        .SelectMany(a => a.Attributes)
-                        .Any(a => SymbolEqualityComparer.Default.Equals(
-                            semanticModel.GetSymbolInfo(a).Symbol,
-                            quickMarkupAttributeSymbol)));
-
-                foreach (var classDecl in classesWithAttribute)
+                foreach (var tree in compilation.SyntaxTrees)
                 {
-                    var typeSymbol = semanticModel.GetDeclaredSymbol(classDecl);
-                    if (typeSymbol == null) continue;
+                    var semanticModel = compilation.GetSemanticModel(tree);
+                    var classesWithAttribute = tree.GetRoot()
+                        .DescendantNodes()
+                        .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
+                        .Where(c => c.AttributeLists
+                            .SelectMany(a => a.Attributes)
+                            .Any(a => SymbolEqualityComparer.Default.Equals(
+                                semanticModel.GetSymbolInfo(a).Symbol,
+                                attributeSymbol)));
 
-                    string filePath = tree.FilePath ?? "";
-                    Position? nameSpan = null;
-
-                    var identifierToken = classDecl.Identifier;
-                    if (!identifierToken.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None))
+                    foreach (var classDecl in classesWithAttribute)
                     {
-                        // Simplified approach - leave span null for now
-                    }
+                        var typeSymbol = semanticModel.GetDeclaredSymbol(classDecl);
+                        if (typeSymbol == null) continue;
 
-                    var entry = new QuickMarkupTypeEntry(
-                        FullTypeName: typeSymbol.ToDisplayString(),
-                        ShortName: typeSymbol.Name,
-                        Namespace: typeSymbol.ContainingNamespace.IsGlobalNamespace ? "" : typeSymbol.ContainingNamespace.ToDisplayString(),
-                        Usings: "",
-                        Kind: QuickMarkupDefinitionKind.CSharpClass,
-                        FilePath: filePath,
-                        NameSpan: nameSpan
-                    );
-                    entries.Add(entry);
+                        var entry = new QuickMarkupTypeEntry(
+                            FullTypeName: typeSymbol.ToDisplayString(),
+                            ShortName: typeSymbol.Name,
+                            Namespace: typeSymbol.ContainingNamespace.IsGlobalNamespace
+                                ? "" : typeSymbol.ContainingNamespace.ToDisplayString(),
+                            Usings: "",
+                            Kind: QuickMarkupDefinitionKind.CSharpClass,
+                            FilePath: tree.FilePath ?? "",
+                            NameSpan: null);
+
+                        entries.Add(entry);
+                        IndexEntry(entry);
+                    }
                 }
             }
 
             _entries = entries.ToImmutable();
         }
+    }
+
+    /// <summary>
+    /// Adds or updates a single .qmui entry without rebuilding the entire catalog.
+    /// </summary>
+    public void AddOrUpdateQmuiFile(string filePath, string content)
+    {
+        var sfc = QuickMarkupProviderExtension.Parse(content);
+        if (sfc?.ClassDeclaration == null)
+            return;
+
+        lock (_lock)
+        {
+            RemoveEntryInternal(filePath);
+
+            var entries = _entries.ToBuilder();
+            AddEntry(entries, filePath, sfc);
+            _entries = entries.ToImmutable();
+        }
+    }
+
+    /// <summary>
+    /// Removes a .qmui entry from the catalog.
+    /// </summary>
+    public void RemoveQmuiFile(string filePath)
+    {
+        lock (_lock)
+        {
+            if (!RemoveEntryInternal(filePath))
+                return;
+
+            var entries = _entries.ToBuilder();
+            for (int i = entries.Count - 1; i >= 0; i--)
+            {
+                if (string.Equals(entries[i].FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    entries.RemoveAt(i);
+                    break;
+                }
+            }
+            _entries = entries.ToImmutable();
+        }
+    }
+
+    void AddEntry(ImmutableArray<QuickMarkupTypeEntry>.Builder entries, string filePath, QuickMarkupSFC sfc)
+    {
+        var ns = sfc.Namespace?.Name ?? "";
+        var typeName = sfc.ClassDeclaration!.Name;
+        var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
+
+        var entry = new QuickMarkupTypeEntry(
+            FullTypeName: fullTypeName,
+            ShortName: typeName,
+            Namespace: ns,
+            Usings: string.Join(" ", sfc.Usings),
+            Kind: QuickMarkupDefinitionKind.QmuiFile,
+            FilePath: filePath,
+            NameSpan: null);
+
+        entries.Add(entry);
+        _cachedAst[filePath] = sfc;
+        IndexEntry(entry);
+    }
+
+    bool RemoveEntryInternal(string filePath)
+    {
+        _cachedAst.Remove(filePath);
+
+        if (_entriesByFilePath.TryGetValue(filePath, out var existing))
+        {
+            _entriesByFilePath.Remove(filePath);
+
+            if (_entriesByShortName.TryGetValue(existing.ShortName, out var list))
+            {
+                list.Remove(existing);
+                if (list.Count == 0)
+                    _entriesByShortName.Remove(existing.ShortName);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    void IndexEntry(QuickMarkupTypeEntry entry)
+    {
+        _entriesByFilePath[entry.FilePath] = entry;
+
+        if (!_entriesByShortName.TryGetValue(entry.ShortName, out var list))
+        {
+            list = new List<QuickMarkupTypeEntry>();
+            _entriesByShortName[entry.ShortName] = list;
+        }
+        list.Add(entry);
     }
 
     /// <summary>
@@ -131,21 +239,32 @@ public class QuickMarkupWorkspaceCatalog
     }
 
     /// <summary>
-    /// Gets all entries that match a short type name (useful for name resolution).
+    /// Gets all entries that match a short type name (O(1) lookup).
     /// </summary>
-    public IEnumerable<QuickMarkupTypeEntry> GetEntriesByShortName(string shortName)
+    public IReadOnlyList<QuickMarkupTypeEntry> GetEntriesByShortName(string shortName)
     {
         lock (_lock)
         {
-            return _entries.Where(e => e.ShortName == shortName);
+            return _entriesByShortName.TryGetValue(shortName, out var list)
+                ? list.ToArray()
+                : [];
         }
     }
 
-    private static string GetFullTypeName(string @namespace, string typeName)
+    /// <summary>
+    /// Finds the file path for a given full type name.
+    /// </summary>
+    public string? FindFilePathForTypeName(string fullTypeName)
     {
-        if (string.IsNullOrEmpty(@namespace))
-            return typeName;
-        return $"{@namespace}.{typeName}";
+        lock (_lock)
+        {
+            foreach (var e in _entries)
+            {
+                if (e.FullTypeName == fullTypeName)
+                    return e.FilePath;
+            }
+            return null;
+        }
     }
 }
 

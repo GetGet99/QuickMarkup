@@ -35,16 +35,13 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
 
     public Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
-        // Update document store immediately with latest content
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
         var content = request.ContentChanges.First().Text;
-        _ = _documentStore.UpdateTextAsync(filePath, content, cancellationToken).ConfigureAwait(false);
 
-        if (_debounceTokens.TryRemove(request.TextDocument.Uri, out var previous))
-        {
-            _ = previous.CancelAsync();
-            previous.Dispose();
-        }
+        FireAndForget(() => _documentStore.UpdateTextAsync(filePath, content, cancellationToken),
+            nameof(_documentStore.UpdateTextAsync));
+
+        CancelPreviousDebounce(request.TextDocument.Uri);
 
         var cts = new CancellationTokenSource();
         _debounceTokens.TryAdd(request.TextDocument.Uri, cts);
@@ -54,11 +51,40 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         return Unit.Task;
     }
 
+    static async void FireAndForget(Func<ValueTask> taskFactory, string operationName)
+    {
+        try
+        {
+            await taskFactory().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync(
+                $"[QuickMarkup] Error in {operationName}: {ex.Message}").ConfigureAwait(false);
+        }
+    }
+
+    void CancelPreviousDebounce(DocumentUri uri)
+    {
+        if (_debounceTokens.TryRemove(uri, out var previous))
+        {
+            try
+            {
+                previous.Cancel();
+                previous.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[QuickMarkup] Error canceling previous debounce: {ex.Message}");
+            }
+        }
+    }
+
     async Task DebounceAndPublishAsync(DidChangeTextDocumentParams request, CancellationTokenSource cts)
     {
         try
         {
-            await Task.Delay(300, cts.Token);
+            await Task.Delay(DebounceDelayMs, cts.Token);
 
             var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
             await workspace.EnsureProjectForFileAsync(request.TextDocument.Uri.GetFileSystemPath());
@@ -86,7 +112,9 @@ class QmuiDidChangeHandler : IDidChangeTextDocumentHandler
         finally
         {
             cts.Dispose();
-            _debounceTokens.TryRemove(KeyValuePair.Create(request.TextDocument.Uri, cts));
+            _debounceTokens.TryRemove(request.TextDocument.Uri, out _);
         }
     }
+
+    const int DebounceDelayMs = 300;
 }

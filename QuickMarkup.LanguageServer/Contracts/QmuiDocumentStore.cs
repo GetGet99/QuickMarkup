@@ -10,21 +10,21 @@ public class QmuiDocumentStore : IQmuiDocumentStore
 {
     private readonly ConcurrentDictionary<string, string> _documents = new();
 
-    public Task<string?> GetTextAsync(string filePath, CancellationToken ct = default)
+    public ValueTask<string?> GetTextAsync(string filePath, CancellationToken ct = default)
     {
         _documents.TryGetValue(filePath, out var content);
-        return Task.FromResult(content);
+        return new ValueTask<string?>(content);
     }
 
-    public Task UpdateTextAsync(string filePath, string content, CancellationToken ct = default)
+    public ValueTask UpdateTextAsync(string filePath, string content, CancellationToken ct = default)
     {
         _documents[filePath] = content;
-        return Task.CompletedTask;
+        return default;
     }
 
-    public Task RemoveAsync(string filePath, CancellationToken ct = default)
+    public ValueTask RemoveAsync(string filePath, CancellationToken ct = default)
     {
         _documents.TryRemove(filePath, out _);
-        return Task.CompletedTask;
+        return default;
     }
 }

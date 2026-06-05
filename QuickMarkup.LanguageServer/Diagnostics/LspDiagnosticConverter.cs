@@ -12,6 +12,20 @@ public static class LspDiagnosticConverter
 {
     const string SourceName = "QuickMarkup";
 
+    static class DiagnosticCodes
+    {
+        public const string UnexpectedInput = "QM1001";
+        public const string UnexpectedEnding = "QM1002";
+        public const string GenericError = "QM1003";
+        public const string ChildrenTooMany = "QM1004";
+        public const string PropertyUnknown = "QM1006";
+        public const string EnumMemberUnknown = "QM1007";
+        public const string TypeUnknown = "QM1008";
+        public const string TagMismatched = "QM1009";
+        public const string TagUnexpected = "QM1010";
+        public const string TypeMismatch = "QM1011";
+    }
+
     internal static List<Diagnostic> ConvertParseErrors(List<ErrorTerminalValue> errors, string sourceText)
     {
         var results = new List<Diagnostic>(errors.Count);
@@ -24,7 +38,7 @@ public static class LspDiagnosticConverter
                     {
                         Range = PositionConverter.ToLspRange(unexpectedInput.UnexpectedElement.Start, unexpectedInput.UnexpectedElement.End),
                         Severity = DiagnosticSeverity.Error,
-                        Code = "QM1001",
+                        Code = DiagnosticCodes.UnexpectedInput,
                         Source = SourceName,
                         Message = $"Unexpected {unexpectedInput.UnexpectedElement}"
                     });
@@ -34,7 +48,7 @@ public static class LspDiagnosticConverter
                     {
                         Range = PositionConverter.ToLspRange(error.Start, error.End),
                         Severity = DiagnosticSeverity.Error,
-                        Code = "QM1002",
+                        Code = DiagnosticCodes.UnexpectedEnding,
                         Source = SourceName,
                         Message = $"Expect {string.Join(", ", (object?[])unexpectedEnding.ExpectedInputs)} after the last parameter"
                     });
@@ -60,14 +74,14 @@ public static class LspDiagnosticConverter
 
     static string DiagnosticCode(QMDiagnostic diag) => diag switch
     {
-        QMBinderPropertyUnknownError => "QM1006",
-        QMBinderEnumMemberUnknownError => "QM1007",
-        QMBinderTypeUnknownError => "QM1008",
-        QMBinderChildrenTooMany => "QM1004",
-        QMBinderTagMismatchedError => "QM1009",
-        QMBinderTagUnexpectedError => "QM1010",
-        QMBinderTypeMismatchError => "QM1011",
-        _ => "QM1003"
+        QMBinderPropertyUnknownError => DiagnosticCodes.PropertyUnknown,
+        QMBinderEnumMemberUnknownError => DiagnosticCodes.EnumMemberUnknown,
+        QMBinderTypeUnknownError => DiagnosticCodes.TypeUnknown,
+        QMBinderChildrenTooMany => DiagnosticCodes.ChildrenTooMany,
+        QMBinderTagMismatchedError => DiagnosticCodes.TagMismatched,
+        QMBinderTagUnexpectedError => DiagnosticCodes.TagUnexpected,
+        QMBinderTypeMismatchError => DiagnosticCodes.TypeMismatch,
+        _ => DiagnosticCodes.GenericError
     };
 
     static Diagnostic ConvertSingle(QMDiagnostic diag)
@@ -85,13 +99,15 @@ public static class LspDiagnosticConverter
 
     internal static List<Diagnostic> ConvertAll(
         List<QMDiagnostic> binderDiagnostics,
-        List<ErrorTerminalValue> parseErrors,
-        string sourceText)
+        List<ErrorTerminalValue> parseErrors)
     {
-        var results = new List<Diagnostic>(binderDiagnostics.Count + parseErrors.Count + 1);
-        results.AddRange(ConvertParseErrors(parseErrors, sourceText));
+        var results = new List<Diagnostic>(binderDiagnostics.Count + parseErrors.Count);
+        results.AddRange(ConvertParseErrors(parseErrors));
         foreach (var diag in binderDiagnostics)
             results.Add(ConvertSingle(diag));
         return results;
     }
+
+    internal static List<Diagnostic> ConvertParseErrors(List<ErrorTerminalValue> errors)
+        => ConvertParseErrors(errors, "");
 }

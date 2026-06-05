@@ -57,7 +57,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderPropertyUnknownError(node, "Button", "Color", ["Foreground"])
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Warning, result[0].Severity!.Value);
@@ -74,7 +74,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderTypeUnknownError(node, "NonExistentType")
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -91,7 +91,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderEnumMemberUnknownError(node, "Visibility", "Collapsed", ["Visible"])
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Warning, result[0].Severity!.Value);
@@ -108,7 +108,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderChildrenTooMany(node, tagInfo)
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -124,7 +124,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderTagMismatchedError(node, "Button", "StackPanel")
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -140,7 +140,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderTagUnexpectedError(node, "Button", "StackPanel")
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -156,7 +156,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderTypeMismatchError(node, "int", "string")
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -172,7 +172,7 @@ public sealed class LspDiagnosticConverterTests
             new QMBinderError(node, "Something went wrong")
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, [], "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
 
         Assert.HasCount(1, result);
         Assert.AreEqual(DiagnosticSeverity.Error, result[0].Severity!.Value);
@@ -198,7 +198,7 @@ public sealed class LspDiagnosticConverterTests
             }
         };
 
-        var result = LspDiagnosticConverter.ConvertAll(diags, parseErrors, "");
+        var result = LspDiagnosticConverter.ConvertAll(diags, parseErrors);
 
         Assert.HasCount(3, result);
     }

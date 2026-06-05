@@ -12,7 +12,8 @@ using QuickMarkup.LanguageServer.Navigation;
 using QuickMarkup.LanguageServer.SemanticService;
 using QuickMarkup.LanguageServer.Workspace;
 
-var debugPortEnv = Environment.GetEnvironmentVariable("QMUI_LSP_DEBUG");
+const string DebugEnvVar = "QMUI_LSP_DEBUG";
+var debugPortEnv = Environment.GetEnvironmentVariable(DebugEnvVar);
 Stream input, output;
 
 if (debugPortEnv is not null && int.TryParse(debugPortEnv, out var port))
@@ -48,6 +49,7 @@ var server = await LanguageServer.From(options => options
         services.AddSingleton<MarkupCursorResolver>();
         services.AddSingleton<SymbolLocationResolver>();
         services.AddSingleton<IFileProvider, FileSystemProvider>();
+        services.AddSingleton(sp => sp.GetRequiredService<IQmuiWorkspaceService>().Catalog);
     })
     .OnInitialize(async (server, request, ct) =>
     {

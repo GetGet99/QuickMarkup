@@ -11,6 +11,7 @@ internal class MockQmuiWorkspaceService : IQmuiWorkspaceService
     public string? CurrentProjectPath { get; set; }
     public Compilation? Compilation { get; set; }
     public IReadOnlyList<QuickMarkupTypeEntry> QmuiEntries { get; set; } = [];
+    public QuickMarkupWorkspaceCatalog Catalog { get; set; } = new();
 
     public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
     public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);

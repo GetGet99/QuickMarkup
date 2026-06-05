@@ -2,30 +2,34 @@ using Microsoft.CodeAnalysis;
 using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
+using QuickMarkup.LanguageServer.Contracts;
 
 namespace QuickMarkup.LanguageServer;
 
 /// <summary>
 /// Builds <see cref="QuickMarkupGeneratedMemberTable"/> from .qmui entries.
 /// C# [QuickMarkup] attribute types are resolved on-demand via FindProperty.
+/// Uses cached ASTs from the catalog to avoid re-parsing.
 /// </summary>
 internal static class GeneratedMemberTableBuilder
 {
     public static QuickMarkupGeneratedMemberTable Build(
-        IEnumerable<QuickMarkupTypeEntry> qmuiEntries,
+        QuickMarkupWorkspaceCatalog catalog,
+        IQmuiDocumentStore documentStore,
         IFileProvider fileProvider,
         Compilation compilation)
     {
         var members = new List<QuickMarkupGeneratedTypeMembers>();
 
-        foreach (var entry in qmuiEntries)
+        foreach (var entry in catalog.Entries)
         {
             try
             {
                 if (entry.Kind != QuickMarkupDefinitionKind.QmuiFile || string.IsNullOrEmpty(entry.FilePath))
                     continue;
 
-                var sfc = ParseQmuiFile(entry, fileProvider);
+                // Use cached AST from catalog to avoid re-parsing
+                var sfc = GetSfc(entry.FilePath, catalog, documentStore, fileProvider);
                 if (sfc?.ClassDeclaration is null)
                     continue;
 
@@ -54,9 +58,22 @@ internal static class GeneratedMemberTableBuilder
         return new QuickMarkupGeneratedMemberTable(members);
     }
 
-    static QuickMarkupSFC? ParseQmuiFile(QuickMarkupTypeEntry entry, IFileProvider fileProvider)
+    static QuickMarkupSFC? GetSfc(
+        string filePath,
+        QuickMarkupWorkspaceCatalog catalog,
+        IQmuiDocumentStore documentStore,
+        IFileProvider fileProvider)
     {
-        var fileContent = fileProvider.ReadAllText(entry.FilePath);
-        return QuickMarkupProviderExtension.Parse(fileContent);
+        // Prefer cached AST from catalog
+        if (catalog.TryGetCachedAst(filePath, out var cached))
+            return cached;
+
+        // Fallback: read and parse (shouldn't happen in normal flow)
+        var storeTask = documentStore.GetTextAsync(filePath);
+        var content = storeTask.IsCompletedSuccessfully && storeTask.Result is { } inMemory
+            ? inMemory
+            : fileProvider.ReadAllText(filePath);
+
+        return QuickMarkupProviderExtension.Parse(content);
     }
 }

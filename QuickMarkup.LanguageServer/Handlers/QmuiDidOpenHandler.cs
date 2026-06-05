@@ -30,7 +30,7 @@ class QmuiDidOpenHandler : IDidOpenTextDocumentHandler
     {
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
         
-        await _documentStore.UpdateTextAsync(filePath, request.TextDocument.Text, cancellationToken);
+        await _documentStore.UpdateTextAsync(filePath, request.TextDocument.Text, cancellationToken).ConfigureAwait(false);
 
         var workspace = _serviceProvider.GetRequiredService<IQmuiWorkspaceService>();
         await workspace.EnsureProjectForFileAsync(filePath);

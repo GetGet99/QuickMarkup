@@ -27,7 +27,7 @@ class QmuiDidCloseHandler : IDidCloseTextDocumentHandler
     public async Task<Unit> Handle(DidCloseTextDocumentParams request, CancellationToken cancellationToken)
     {
         var filePath = request.TextDocument.Uri.GetFileSystemPath();
-        await _documentStore.RemoveAsync(filePath, cancellationToken);
+        await _documentStore.RemoveAsync(filePath, cancellationToken).ConfigureAwait(false);
 
         var server = _serviceProvider.GetRequiredService<ILanguageServer>();
         server.PublishDiagnostics(new PublishDiagnosticsParams

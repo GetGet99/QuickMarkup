@@ -41,7 +41,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
         if (typeSym is not null)
         {
             var binder = Bind(compilation, sfc, typeSym, ns, generatedMembers);
-            return LspDiagnosticConverter.ConvertAll(binder.Diagnostics, parseErrors, content);
+            return LspDiagnosticConverter.ConvertAll(binder.Diagnostics, parseErrors);
         }
         if (sfc.ClassDeclaration is { } classDecl)
         {
@@ -60,7 +60,7 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
                 return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);
 
             var dummyBinder = Bind(compilationWithDummy, sfc, dummyTypeSym, ns, generatedMembers);
-            return LspDiagnosticConverter.ConvertAll(dummyBinder.Diagnostics, parseErrors, content);
+            return LspDiagnosticConverter.ConvertAll(dummyBinder.Diagnostics, parseErrors);
         }
 
         return LspDiagnosticConverter.ConvertParseErrors(parseErrors, content);

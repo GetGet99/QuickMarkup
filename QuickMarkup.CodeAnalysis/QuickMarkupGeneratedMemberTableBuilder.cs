@@ -12,7 +12,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
     public static QuickMarkupGeneratedTypeMembers? BuildTypeMembers(
         QuickMarkupParsedAttribute markup,
         Compilation compilation,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         var target = markup.Target;
         if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out _))

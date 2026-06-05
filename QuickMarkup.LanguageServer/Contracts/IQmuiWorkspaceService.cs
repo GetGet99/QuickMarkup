@@ -54,4 +54,9 @@ public interface IQmuiWorkspaceService
     /// Finds the file path for a given full type name.
     /// </summary>
     string? FindFilePathForTypeName(string fullTypeName);
+
+    /// <summary>
+    /// Gets the workspace catalog (cached ASTs and type entries).
+    /// </summary>
+    QuickMarkupWorkspaceCatalog Catalog { get; }
 }

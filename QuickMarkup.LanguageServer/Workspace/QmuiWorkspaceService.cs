@@ -21,6 +21,7 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
     readonly SemaphoreSlim _loadLock = new(1, 1);
     readonly IQmuiDocumentStore _documentStore;
     readonly IFileProvider _fileProvider;
+    readonly QuickMarkupWorkspaceCatalog _catalog = new();
 
     Compilation? _compilation;
     Compilation? _enrichedCompilation;
@@ -29,11 +30,6 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
     List<string> _solutionProjects = [];
     volatile bool _isStale;
 
-    // Catalog: .qmui type entries keyed by full type name
-    ImmutableArray<QuickMarkupTypeEntry> _qmuiEntries = ImmutableArray<QuickMarkupTypeEntry>.Empty;
-    // Reverse map: file path -> full type name (for incremental updates)
-    readonly Dictionary<string, string> _filePathToTypeName = new(StringComparer.OrdinalIgnoreCase);
-
     QuickMarkupGeneratedMemberTable _generatedMemberTable = QuickMarkupGeneratedMemberTable.Empty;
 
     FileSystemWatcher? _watcher;
@@ -41,6 +37,7 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
 
     public bool IsLoaded => _compilation is not null;
     public string? CurrentProjectPath => _currentProjectPath;
+    public QuickMarkupWorkspaceCatalog Catalog => _catalog;
 
     public QmuiWorkspaceService(IQmuiDocumentStore documentStore, IFileProvider fileProvider)
     {
@@ -120,17 +117,13 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
                 return false;
 
             // Build catalog from AdditionalDocuments
-            BuildCatalogFromProject(project);
-
-            // Fallback: if no AdditionalDocuments found, glob filesystem
-            if (_qmuiEntries.Length == 0)
-                BuildCatalogFromFilesystem();
+            BuildCatalog(project);
 
             // Build GeneratedMemberTable using enriched compilation
             // (so .qmui types from other files are resolvable)
             _enrichedCompilation = await GetEnrichedCompilationAsync();
             _generatedMemberTable = GeneratedMemberTableBuilder.Build(
-                _qmuiEntries, _fileProvider, _enrichedCompilation ?? _compilation);
+                _catalog, _documentStore, _fileProvider, _enrichedCompilation ?? _compilation);
 
             // Wire up file watcher
             WatchProjectChanges(csprojPath);
@@ -149,27 +142,21 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         }
     }
 
-    void BuildCatalogFromProject(Microsoft.CodeAnalysis.Project project)
+    void BuildCatalog(Microsoft.CodeAnalysis.Project project)
     {
-        var entries = ImmutableArray.CreateBuilder<QuickMarkupTypeEntry>();
-        _filePathToTypeName.Clear();
-
+        // Build from AdditionalDocuments first
+        bool hasAdditionalDocs = false;
         foreach (var doc in project.AdditionalDocuments)
         {
             if (!doc.Name.EndsWith(".qmui", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            hasAdditionalDocs = true;
             try
             {
                 var filePath = doc.FilePath ?? doc.Name;
                 var content = GetQmuiContent(filePath);
-                var sfc = QuickMarkupProviderExtension.Parse(content);
-                if (sfc?.ClassDeclaration is null)
-                    continue;
-
-                var entry = CreateQmuiEntry(filePath, sfc);
-                entries.Add(entry);
-                _filePathToTypeName[filePath] = entry.FullTypeName;
+                _catalog.AddOrUpdateQmuiFile(filePath, content);
             }
             catch
             {
@@ -177,54 +164,23 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
             }
         }
 
-        _qmuiEntries = entries.ToImmutable();
-    }
-
-    void BuildCatalogFromFilesystem()
-    {
-        if (string.IsNullOrEmpty(_workspaceRoot) || !_fileProvider.DirectoryExists(_workspaceRoot))
-            return;
-
-        var entries = ImmutableArray.CreateBuilder<QuickMarkupTypeEntry>();
-        _filePathToTypeName.Clear();
-
-        var qmuiFiles = _fileProvider.GetFiles(_workspaceRoot, "*.qmui", recursive: true);
-        foreach (var file in qmuiFiles)
+        // Fallback: if no AdditionalDocuments found, glob filesystem
+        if (!hasAdditionalDocs && !string.IsNullOrEmpty(_workspaceRoot) && _fileProvider.DirectoryExists(_workspaceRoot))
         {
-            try
+            var qmuiFiles = _fileProvider.GetFiles(_workspaceRoot, "*.qmui", recursive: true);
+            foreach (var file in qmuiFiles)
             {
-                var content = GetQmuiContent(file);
-                var sfc = QuickMarkupProviderExtension.Parse(content);
-                if (sfc?.ClassDeclaration is null)
-                    continue;
-
-                var entry = CreateQmuiEntry(file, sfc);
-                entries.Add(entry);
-                _filePathToTypeName[file] = entry.FullTypeName;
-            }
-            catch
-            {
-                // Skip unparsable files
+                try
+                {
+                    var content = GetQmuiContent(file);
+                    _catalog.AddOrUpdateQmuiFile(file, content);
+                }
+                catch
+                {
+                    // Skip unparsable files
+                }
             }
         }
-
-        _qmuiEntries = entries.ToImmutable();
-    }
-
-    static QuickMarkupTypeEntry CreateQmuiEntry(string filePath, QuickMarkupSFC sfc)
-    {
-        var ns = sfc.Namespace?.Name ?? "";
-        var typeName = sfc.ClassDeclaration!.Name;
-        var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
-
-        return new QuickMarkupTypeEntry(
-            FullTypeName: fullTypeName,
-            ShortName: typeName,
-            Namespace: ns,
-            Usings: string.Join(" ", sfc.Usings),
-            Kind: QuickMarkupDefinitionKind.QmuiFile,
-            FilePath: filePath,
-            NameSpan: null);
     }
 
     /// <summary>
@@ -232,8 +188,8 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
     /// </summary>
     string GetQmuiContent(string filePath)
     {
-        var task = _documentStore.GetTextAsync(filePath);
-        if (task.IsCompleted && task.Result is { } inMemory)
+        var storeTask = _documentStore.GetTextAsync(filePath);
+        if (storeTask.IsCompletedSuccessfully && storeTask.Result is { } inMemory)
             return inMemory;
         return _fileProvider.ReadAllText(filePath);
     }
@@ -247,28 +203,25 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         if (_compilation is null)
             return;
 
-        // Parse new content
-        var sfc = QuickMarkupProviderExtension.Parse(newContent);
-        if (sfc?.ClassDeclaration is null)
+        // Remove old type from member table before updating catalog
+        RemoveTypeFromMemberTable(filePath);
+
+        // Update catalog (parses once, caches AST)
+        _catalog.AddOrUpdateQmuiFile(filePath, newContent);
+
+        // Rebuild GeneratedTypeMembers for this type using cached AST
+        if (!_catalog.TryGetCachedAst(filePath, out var sfc) || sfc?.ClassDeclaration is null)
             return;
 
-        var newEntry = CreateQmuiEntry(filePath, sfc);
+        var ns = sfc.Namespace?.Name ?? "";
+        var typeName = sfc.ClassDeclaration.Name;
+        var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
 
-        // Remove old entry from GeneratedMemberTable if type name changed
-        if (_filePathToTypeName.TryGetValue(filePath, out var oldFullName))
-        {
-            _generatedMemberTable.RemoveType(oldFullName);
-        }
-
-        // Update catalog entry
-        UpdateCatalogEntry(newEntry);
-
-        // Rebuild GeneratedTypeMembers for this type
         var target = new QuickMarkupTargetContext(
-            Namespace: newEntry.Namespace,
-            TypeName: newEntry.ShortName,
-            FullTypeName: newEntry.FullTypeName,
-            FileName: newEntry.FilePath,
+            Namespace: ns,
+            TypeName: typeName,
+            FullTypeName: fullTypeName,
+            FileName: filePath,
             AttributeLocation: default,
             AttributeLineSpan: default);
 
@@ -276,27 +229,18 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
             new QuickMarkupParsedAttribute(target, sfc), _enrichedCompilation ?? _compilation, CancellationToken.None);
         if (members is { } m)
             _generatedMemberTable.UpdateType(m);
-
-        // Update reverse map
-        _filePathToTypeName[filePath] = newEntry.FullTypeName;
     }
 
-    void UpdateCatalogEntry(QuickMarkupTypeEntry newEntry)
+    void RemoveTypeFromMemberTable(string filePath)
     {
-        var builder = _qmuiEntries.ToBuilder();
-
-        // Remove old entry for this file path
-        for (int i = builder.Count - 1; i >= 0; i--)
+        foreach (var entry in _catalog.Entries)
         {
-            if (string.Equals(builder[i].FilePath, newEntry.FilePath, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(entry.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
             {
-                builder.RemoveAt(i);
+                _generatedMemberTable.RemoveType(entry.FullTypeName);
                 break;
             }
         }
-
-        builder.Add(newEntry);
-        _qmuiEntries = builder.ToImmutable();
     }
 
     /// <summary>
@@ -314,23 +258,23 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         if (compilation is null)
             return null;
 
-        foreach (var entry in _qmuiEntries)
+        var astSnapshot = _catalog.CachedAst;
+        foreach (var (filePath, sfc) in astSnapshot)
         {
-            if (entry.Kind != QuickMarkupDefinitionKind.QmuiFile || string.IsNullOrEmpty(entry.FilePath))
+            if (sfc.ClassDeclaration is null)
                 continue;
 
             try
             {
-                var content = GetQmuiContent(entry.FilePath);
-                var sfc = QuickMarkupProviderExtension.Parse(content);
-                if (sfc?.ClassDeclaration is null)
-                    continue;
+                var ns = sfc.Namespace?.Name ?? "";
+                var typeName = sfc.ClassDeclaration.Name;
+                var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
 
                 var target = new QuickMarkupTargetContext(
-                    Namespace: entry.Namespace,
-                    TypeName: entry.ShortName,
-                    FullTypeName: entry.FullTypeName,
-                    FileName: entry.FilePath,
+                    Namespace: ns,
+                    TypeName: typeName,
+                    FullTypeName: fullTypeName,
+                    FileName: filePath,
                     AttributeLocation: default,
                     AttributeLineSpan: default);
 
@@ -349,34 +293,16 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         => _generatedMemberTable;
 
     public IReadOnlyList<QuickMarkupTypeEntry> GetAllQmuiEntries()
-        => _qmuiEntries;
+        => _catalog.Entries;
 
     public bool TryGetQmuiEntry(string fullTypeName, out QuickMarkupTypeEntry entry)
-    {
-        foreach (var e in _qmuiEntries)
-        {
-            if (e.FullTypeName == fullTypeName)
-            {
-                entry = e;
-                return true;
-            }
-        }
-        entry = default;
-        return false;
-    }
+        => _catalog.TryGetEntry(fullTypeName, out entry);
 
     public IEnumerable<QuickMarkupTypeEntry> GetQmuiEntriesByShortName(string shortName)
-        => _qmuiEntries.Where(e => e.ShortName == shortName);
+        => _catalog.GetEntriesByShortName(shortName);
 
     public string? FindFilePathForTypeName(string fullTypeName)
-    {
-        foreach (var entry in _qmuiEntries)
-        {
-            if (entry.FullTypeName == fullTypeName)
-                return entry.FilePath;
-        }
-        return null;
-    }
+        => _catalog.FindFilePathForTypeName(fullTypeName);
 
     void WatchProjectChanges(string csprojPath)
     {
@@ -402,7 +328,11 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _watcher?.Dispose();
+        if (_watcher is not null)
+        {
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Dispose();
+        }
         _loadLock.Dispose();
     }
 
