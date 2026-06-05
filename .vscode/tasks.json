@@ -17,7 +17,7 @@
 			"group": {
 				"kind": "build"
 			},
-			"label": "extension task"
+			"label": "[extension] npm: watch"
 		}
 	]
 }

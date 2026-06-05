@@ -3,7 +3,7 @@
     "QuickMarkup.LanguageServer": {
       "commandName": "Project",
       "environmentVariables": {
-        "QMUI_LSP_DEBUG": "n8765"
+        "QMUI_LSP_DEBUG": "8765"
       }
     }
   }
