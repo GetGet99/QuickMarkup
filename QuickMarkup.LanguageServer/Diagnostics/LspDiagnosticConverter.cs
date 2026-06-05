@@ -98,7 +98,7 @@ public static class LspDiagnosticConverter
     }
 
     internal static List<Diagnostic> ConvertAll(
-        List<QMDiagnostic> binderDiagnostics,
+        IReadOnlyList<QMDiagnostic> binderDiagnostics,
         List<ErrorTerminalValue> parseErrors)
     {
         var results = new List<Diagnostic>(binderDiagnostics.Count + parseErrors.Count);

@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace QuickMarkup.CodeAnalysis.Binders;
 
-record class QMBinderTagInfo(
+public record class QMBinderTagInfo(
     ITypeSymbol? TagType,
     string TagName,
     string? ChildrenProperty,

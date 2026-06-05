@@ -45,5 +45,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupCompilationEnricher.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupWorkspaceCatalog.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\AttributeStringLocationMapper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupFileAnalysis.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupAnalyzer.cs" />
   </ItemGroup>
 </Project>

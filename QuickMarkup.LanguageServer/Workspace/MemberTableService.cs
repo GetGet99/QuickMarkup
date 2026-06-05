@@ -40,16 +40,11 @@ sealed class MemberTableService : IMemberTableService
                 if (sfc?.ClassDeclaration is null)
                     continue;
 
-                var target = new QuickMarkupTargetContext(
-                    entry.Namespace, entry.ShortName, entry.FullTypeName, entry.FilePath, default, default);
+                var analysis = QuickMarkupAnalyzer.Analyze(
+                    sfc, entry.FilePath, entry.Namespace, enrichedCompilation, _table, failFast: true);
 
-                var result = QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
-                    new QuickMarkupParsedAttribute(target, sfc),
-                    enrichedCompilation,
-                    ct);
-
-                if (result is { } r)
-                    members.Add(r);
+                if (analysis.GeneratedMembers is { } m)
+                    members.Add(m);
             }
             catch
             {
@@ -75,15 +70,11 @@ sealed class MemberTableService : IMemberTableService
             return;
 
         var ns = sfc.Namespace?.Name ?? "";
-        var typeName = sfc.ClassDeclaration.Name;
-        var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
 
-        var target = new QuickMarkupTargetContext(ns, typeName, fullTypeName, filePath, default, default);
+        var analysis = QuickMarkupAnalyzer.Analyze(
+            sfc, filePath, ns, enrichedCompilation, _table, failFast: true);
 
-        var members = QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
-            new QuickMarkupParsedAttribute(target, sfc), enrichedCompilation, ct);
-
-        if (members is { } m)
+        if (analysis.GeneratedMembers is { } m)
             _table.UpdateType(m);
 
         TableUpdated?.Invoke(this, _table);

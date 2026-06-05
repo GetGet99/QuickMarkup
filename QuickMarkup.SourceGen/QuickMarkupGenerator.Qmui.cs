@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.Language.Symbols;
@@ -50,7 +49,7 @@ partial class QuickMarkupGenerator
                 {
                     var sfc = x.Sfc!;
                     var combined = CombineMarkupTags(sfc.MarkupTags);
-                    var compilation = EnsureTypeSymbolInCompilation(x.Target, sfc, x.Compilation);
+                    var compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(x.Target, sfc, x.Compilation);
                     return (x.Target, Sfc: sfc, Markup: combined, Compilation: compilation);
                 }
             );
@@ -88,8 +87,8 @@ partial class QuickMarkupGenerator
             var refSources = validQmui.Select(
                 (x, ct) =>
                 {
-                    var compilation = EnsureTypeSymbolInCompilation(x.Target, x.Sfc!, x.Compilation);
-                    var (code, _) = GenerateRefsSource(x.Target, x.Sfc!.Usings, x.Sfc!.Refs, compilation, null, ct);
+                    var compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(x.Target, x.Sfc!, x.Compilation);
+                    var (code, _) = GenerateRefsSource(x.Target, x.Sfc!, compilation, null, ct);
                     return (x.Target, x.Sfc, x.Sfc!.Usings, code);
                 }
             );
@@ -119,34 +118,6 @@ partial class QuickMarkupGenerator
                 """);
             });
         }
-    }
-
-    static Compilation EnsureTypeSymbolInCompilation(QuickMarkupTargetContext target, QuickMarkupSFC sfc, Compilation compilation)
-    {
-        if (target.TryGetTypeSymbol(compilation, out _, out _))
-            return compilation;
-
-        var classDecl = sfc.ClassDeclaration;
-        if (classDecl is null)
-            return compilation;
-
-        var effectiveBaseTypes = classDecl.Kind switch
-        {
-            ClassKind.Component => $"global::QuickMarkup.Infra.IQuickMarkupComponent<{classDecl.BaseTypes}>",
-            ClassKind.FragmentComponent => $"global::QuickMarkup.Infra.IQuickMarkupFragmentComponent<{classDecl.BaseTypes}>",
-            _ => classDecl.BaseTypes ?? ""
-        };
-        var baseClause = string.IsNullOrEmpty(effectiveBaseTypes) ? "" : $" : {effectiveBaseTypes}";
-        var ns = string.IsNullOrEmpty(target.Namespace) ? "" : $"namespace {target.Namespace};";
-        var source = $$"""
-            #nullable enable
-            {{sfc.Usings}}
-            {{ns}}
-            partial class {{target.TypeName}}{{baseClause}} { }
-            """;
-        var parseOptions = (CSharpParseOptions)compilation.SyntaxTrees.First().Options;
-        var tree = CSharpSyntaxTree.ParseText(source, parseOptions);
-        return compilation.AddSyntaxTrees(tree);
     }
 
     static string GetBaseTypesString(ClassDeclaration classDecl)

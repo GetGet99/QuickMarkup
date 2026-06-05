@@ -150,7 +150,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var refs = nonErrorMarkups.Select(
                 (x, _) =>
                 {
-                    return (x.Target, x.AST.Usings, x.AST.Refs);
+                    return (x.Target, x.AST);
                 }
             );
 
@@ -158,9 +158,9 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
             var lines = withCompilation.Select((x, tok) =>
             {
-                var (((target, usings, refs), compilation), generatedMembers) = x;
-                var (code, isComponent) = GenerateRefsSource(target, usings, refs, compilation, generatedMembers, tok);
-                return (target, usings, code, isComponent);
+                var (((target, sfc), compilation), generatedMembers) = x;
+                var (code, isComponent) = GenerateRefsSource(target, sfc, compilation, generatedMembers, tok);
+                return (target, sfc.Usings, code, isComponent);
             });
 
             context.RegisterSourceOutput(lines, (sourceProductionContext, value) =>
@@ -211,17 +211,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         var expandedSpan = TextSpan.FromBounds(expandedStart, expandedEnd);
 
         return sourceText.ToString(expandedSpan);
-    }
-
-    static INamedTypeSymbol? TryResolveTypeMetadataName(Compilation compilation, string typeDisplayString)
-    {
-        var searchTypeName = typeDisplayString.StartsWith("global::", StringComparison.Ordinal)
-            ? typeDisplayString["global::".Length..]
-            : typeDisplayString;
-        var idx = searchTypeName.IndexOf('<');
-        if (idx >= 0)
-            searchTypeName = searchTypeName[..idx];
-        return compilation.GetTypeByMetadataName(searchTypeName);
     }
 
     static QuickMarkupParsedTag? CombineMarkupTags(ListAST<QuickMarkupParsedTag> tags)
@@ -344,22 +333,18 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
     static (string Code, bool IsComponent) GenerateRefsSource(
         QuickMarkupTargetContext target,
-        string usings,
-        ListAST<RefDeclaration> refs,
+        QuickMarkupSFC sfc,
         Compilation compilation,
         QuickMarkupGeneratedMemberTable? generatedMembers,
         CancellationToken ct)
     {
-        var resolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
-        var containingType = TryResolveTypeMetadataName(compilation, target.FullTypeName);
-        if (containingType is null)
-            return ("", false);
-        var binder = new QuickMarkupBinder(resolver, failFast: true);
-        var boundRefs = binder.BindRefDeclarations(refs, containingType);
+        var analysis = global::QuickMarkup.CodeAnalysis.QuickMarkupAnalyzer.Analyze(
+            sfc, target.FileName ?? "", target.Namespace, compilation,
+            generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty, failFast: true);
+
         StringBuilder sb = new();
         var rgen = new RefsGenContext(sb, target.FullTypeName);
-        rgen.CGenWrite(boundRefs, ct);
-        var isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
-        return (sb.ToString(), isComponent);
+        rgen.CGenWrite(analysis.RefDeclarations, ct);
+        return (sb.ToString(), analysis.IsComponent);
     }
 }
