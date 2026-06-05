@@ -14,7 +14,7 @@ public sealed class SymbolLocationResolverTests
     public void GetDefinitionLocation_NullTagResult_ReturnsNull()
     {
         var workspace = new MockQmuiWorkspaceService();
-        var resolver = new SymbolLocationResolver(workspace);
+        var resolver = new SymbolLocationResolver(workspace, null!);
 
         var result = resolver.GetDefinitionLocation((TagResolutionResult?)null, "test.qmui");
         Assert.IsNull(result);
@@ -24,7 +24,7 @@ public sealed class SymbolLocationResolverTests
     public void GetDefinitionLocation_NullSymbol_ReturnsNull()
     {
         var workspace = new MockQmuiWorkspaceService();
-        var resolver = new SymbolLocationResolver(workspace);
+        var resolver = new SymbolLocationResolver(workspace, null!);
 
         var tagResult = new TagResolutionResult(
             TagIdentifierAST: new AST.PositionedIdentifier("Button"),
@@ -47,7 +47,7 @@ public sealed class SymbolLocationResolverTests
         Assert.IsNotNull(buttonSymbol);
 
         var workspace = new MockQmuiWorkspaceService();
-        var resolver = new SymbolLocationResolver(workspace);
+        var resolver = new SymbolLocationResolver(workspace, null!);
 
         var result = resolver.GetDefinitionLocation(buttonSymbol, "test.qmui");
         Assert.IsNotNull(result);
@@ -66,7 +66,7 @@ public sealed class SymbolLocationResolverTests
             NameSpan: null);
 
         var workspace = new MockQmuiWorkspaceService { QmuiEntries = [entry] };
-        var resolver = new SymbolLocationResolver(workspace);
+        var resolver = new SymbolLocationResolver(workspace, null!);
 
         var compilation = CSharpCompilation.Create("test",
             syntaxTrees: new[] { CSharpSyntaxTree.ParseText("namespace Test { public class Component { } }") },

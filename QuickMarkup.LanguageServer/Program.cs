@@ -42,6 +42,10 @@ var server = await LanguageServer.From(options => options
     .WithHandler<QmuiDefinitionHandler>()
     .WithServices(services =>
     {
+        services.AddSingleton<ICompilationService, CompilationService>();
+        services.AddSingleton<ICatalogService, CatalogService>();
+        services.AddSingleton<IMemberTableService, MemberTableService>();
+        services.AddSingleton<IFileWatcherService, FileWatcherService>();
         services.AddSingleton<IQmuiWorkspaceService, QmuiWorkspaceService>();
         services.AddSingleton<IQmuiDiagnosticService, QmuiDiagnosticService>();
         services.AddSingleton<IQmuiDocumentStore, QmuiDocumentStore>();
@@ -49,7 +53,6 @@ var server = await LanguageServer.From(options => options
         services.AddSingleton<IMarkupCursorResolver, MarkupCursorResolver>();
         services.AddSingleton<ISymbolLocationResolver, SymbolLocationResolver>();
         services.AddSingleton<IFileProvider, FileSystemProvider>();
-        services.AddSingleton(sp => sp.GetRequiredService<IQmuiWorkspaceService>().Catalog);
     })
     .OnInitialize(async (server, request, ct) =>
     {

@@ -17,11 +17,13 @@ namespace QuickMarkup.LanguageServer.Navigation;
 /// </summary>
 public class SymbolLocationResolver : ISymbolLocationResolver
 {
-    private readonly IQmuiWorkspaceService _workspace;
+    readonly IQmuiWorkspaceService _workspace;
+    readonly ICompilationService _compilation;
 
-    public SymbolLocationResolver(IQmuiWorkspaceService workspace)
+    public SymbolLocationResolver(IQmuiWorkspaceService workspace, ICompilationService compilation)
     {
         _workspace = workspace;
+        _compilation = compilation;
     }
 
     /// <summary>
@@ -182,7 +184,7 @@ public class SymbolLocationResolver : ISymbolLocationResolver
     {
         try
         {
-            var compilation = _workspace.GetEnrichedCompilationAsync().GetAwaiter().GetResult();
+            var compilation = _compilation.EnrichedCompilation ?? _compilation.Compilation;
             if (compilation is null)
                 return null;
 

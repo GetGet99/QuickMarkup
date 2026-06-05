@@ -87,7 +87,7 @@ public sealed class HandlerSmokeTests
     public void LocationResolver_CanBeConstructed()
     {
         var workspace = new MockQmuiWorkspaceService();
-        var resolver = new SymbolLocationResolver(workspace);
+        var resolver = new SymbolLocationResolver(workspace, null!);
         Assert.IsNotNull(resolver);
     }
 

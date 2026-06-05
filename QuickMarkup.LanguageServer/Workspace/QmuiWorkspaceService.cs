@@ -1,59 +1,47 @@
 using System.Collections.Immutable;
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.MSBuild;
-using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.LanguageServer.Contracts;
 
 namespace QuickMarkup.LanguageServer.Workspace;
 
-/// <summary>
-/// Centralized workspace service owning the Compilation, .qmui type catalog,
-/// and generated member table. All cache invalidation flows through this service.
-/// </summary>
-public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
+public sealed class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
 {
-    static readonly object _msBuildLock = new();
-    static bool _msBuildRegistered;
-
     readonly SemaphoreSlim _loadLock = new(1, 1);
     readonly IQmuiDocumentStore _documentStore;
     readonly IFileProvider _fileProvider;
-    readonly QuickMarkupWorkspaceCatalog _catalog = new();
+    readonly ICompilationService _compilation;
+    readonly ICatalogService _catalog;
+    readonly IMemberTableService _members;
+    readonly IFileWatcherService _watcher;
 
-    Compilation? _compilation;
-    Compilation? _enrichedCompilation;
     string? _workspaceRoot;
     string? _currentProjectPath;
     List<string> _solutionProjects = [];
     volatile bool _isStale;
-
-    QuickMarkupGeneratedMemberTable _generatedMemberTable = QuickMarkupGeneratedMemberTable.Empty;
-
-    FileSystemWatcher? _watcher;
     bool _disposed;
 
-    public bool IsLoaded => _compilation is not null;
+    public bool IsLoaded => _compilation.Compilation is not null;
     public string? CurrentProjectPath => _currentProjectPath;
-    public QuickMarkupWorkspaceCatalog Catalog => _catalog;
+    public QuickMarkupWorkspaceCatalog Catalog => _catalog.Catalog;
 
-    public QmuiWorkspaceService(IQmuiDocumentStore documentStore, IFileProvider fileProvider)
+    public QmuiWorkspaceService(
+        IQmuiDocumentStore documentStore,
+        IFileProvider fileProvider,
+        ICompilationService compilation,
+        ICatalogService catalog,
+        IMemberTableService members,
+        IFileWatcherService watcher)
     {
         _documentStore = documentStore;
         _fileProvider = fileProvider;
-    }
+        _compilation = compilation;
+        _catalog = catalog;
+        _members = members;
+        _watcher = watcher;
 
-    static void EnsureMSBuildRegistered()
-    {
-        if (_msBuildRegistered) return;
-        lock (_msBuildLock)
-        {
-            if (_msBuildRegistered) return;
-            MSBuildLocator.RegisterDefaults();
-            _msBuildRegistered = true;
-        }
+        _watcher.ExternalFileChanged += (_, _) => _isStale = true;
     }
 
     public async Task<bool> InitializeAsync(string workspaceRoot)
@@ -73,68 +61,23 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         if (_workspaceRoot is null)
             return false;
 
-        if (_isStale && _currentProjectPath is not null)
-        {
-            await ReloadAsync(_currentProjectPath);
-            _isStale = false;
-        }
-
-        var projectPath = ProjectFinder.FindProjectForFile(qmuiFilePath, _workspaceRoot, _solutionProjects);
-        if (projectPath is null)
-            return false;
-
-        if (string.Equals(_currentProjectPath, projectPath, StringComparison.OrdinalIgnoreCase) && IsLoaded)
-            return true;
-
-        return await ReloadAsync(projectPath);
-    }
-
-    /// <summary>
-    /// Full reload: rebuild Compilation, catalog, and GeneratedMemberTable from scratch.
-    /// </summary>
-    async Task<bool> ReloadAsync(string csprojPath)
-    {
-        ArgumentNullException.ThrowIfNull(csprojPath);
-
         await _loadLock.WaitAsync();
         try
         {
-            if (!File.Exists(csprojPath))
+            if (_isStale && _currentProjectPath is not null)
             {
-                _compilation = null;
-                _enrichedCompilation = null;
-                _currentProjectPath = null;
-                return false;
+                await ReloadCoreAsync(_currentProjectPath);
+                _isStale = false;
             }
 
-            _currentProjectPath = csprojPath;
-            EnsureMSBuildRegistered();
-
-            using var workspace = MSBuildWorkspace.Create();
-            var project = await workspace.OpenProjectAsync(csprojPath);
-            _compilation = await project.GetCompilationAsync();
-            if (_compilation is null)
+            var projectPath = ProjectFinder.FindProjectForFile(qmuiFilePath, _workspaceRoot, _solutionProjects);
+            if (projectPath is null)
                 return false;
 
-            // Build catalog from AdditionalDocuments
-            BuildCatalog(project);
+            if (string.Equals(_currentProjectPath, projectPath, StringComparison.OrdinalIgnoreCase) && IsLoaded)
+                return true;
 
-            // Build GeneratedMemberTable using enriched compilation
-            // (so .qmui types from other files are resolvable)
-            _enrichedCompilation = await GetEnrichedCompilationAsync();
-            _generatedMemberTable = GeneratedMemberTableBuilder.Build(
-                _catalog, _documentStore, _fileProvider, _enrichedCompilation ?? _compilation);
-
-            // Wire up file watcher
-            WatchProjectChanges(csprojPath);
-
-            return true;
-        }
-        catch
-        {
-            _compilation = null;
-            _enrichedCompilation = null;
-            return false;
+            return await ReloadCoreAsync(projectPath);
         }
         finally
         {
@@ -142,201 +85,97 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         }
     }
 
-    void BuildCatalog(Microsoft.CodeAnalysis.Project project)
+    async Task<bool> ReloadAsync(string csprojPath)
     {
-        // Build from AdditionalDocuments first
-        bool hasAdditionalDocs = false;
-        foreach (var doc in project.AdditionalDocuments)
+        await _loadLock.WaitAsync();
+        try
         {
-            if (!doc.Name.EndsWith(".qmui", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            hasAdditionalDocs = true;
-            try
-            {
-                var filePath = doc.FilePath ?? doc.Name;
-                Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
-                var content = GetQmuiContent(filePath);
-                _catalog.AddOrUpdateQmuiFile(filePath, content);
-            }
-            catch
-            {
-                // Skip unparsable files
-            }
+            return await ReloadCoreAsync(csprojPath);
         }
-
-        // Fallback: if no AdditionalDocuments found, glob filesystem
-        if (!hasAdditionalDocs && !string.IsNullOrEmpty(_workspaceRoot) && _fileProvider.DirectoryExists(_workspaceRoot))
+        finally
         {
-            var qmuiFiles = _fileProvider.GetFiles(_workspaceRoot, "*.qmui", recursive: true);
-            foreach (var file in qmuiFiles)
-            {
-                try
-                {
-                    Console.Error.WriteLine($"[QuickMarkup] Parsing {file}");
-                    var content = GetQmuiContent(file);
-                    _catalog.AddOrUpdateQmuiFile(file, content);
-                }
-                catch
-                {
-                    // Skip unparsable files
-                }
-            }
+            _loadLock.Release();
         }
     }
 
-    /// <summary>
-    /// Gets .qmui content from the document store (open files) or disk (closed files).
-    /// </summary>
-    string GetQmuiContent(string filePath)
+    async Task<bool> ReloadCoreAsync(string csprojPath)
     {
-        var storeTask = _documentStore.GetTextAsync(filePath);
-        if (storeTask.IsCompletedSuccessfully && storeTask.Result is { } inMemory)
-            return inMemory;
-        return _fileProvider.ReadAllText(filePath);
+        if (!File.Exists(csprojPath))
+        {
+            _currentProjectPath = null;
+            return false;
+        }
+
+        _currentProjectPath = csprojPath;
+        try
+        {
+            var loaded = await _compilation.LoadProjectAsync(csprojPath, _workspaceRoot!);
+            if (!loaded)
+            {
+                _currentProjectPath = null;
+                return false;
+            }
+
+            var enriched = await _compilation.GetEnrichedCompilationAsync();
+            if (enriched is null)
+                return false;
+
+            await _members.RebuildAllAsync(enriched);
+            _watcher.Start(Path.GetDirectoryName(csprojPath)!);
+            return true;
+        }
+        catch
+        {
+            _currentProjectPath = null;
+            return false;
+        }
     }
 
-    /// <summary>
-    /// Handles a .qmui document change: incrementally updates the catalog entry
-    /// and GeneratedMemberTable entry for the changed type only.
-    /// </summary>
-    public void OnQmuiContentChanged(string filePath, string newContent)
+    public async Task OnQmuiContentChangedAsync(string filePath, string newContent, CancellationToken ct = default)
     {
-        if (_compilation is null)
+        if (_compilation.Compilation is null)
             return;
 
-        // Remove old type from member table before updating catalog
-        RemoveTypeFromMemberTable(filePath);
+        _catalog.OnContentChanged(filePath, newContent);
+        _compilation.InvalidateEnrichment();
 
-        // Update catalog (parses once, caches AST)
-        Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
-        _catalog.AddOrUpdateQmuiFile(filePath, newContent);
-
-        // Rebuild GeneratedTypeMembers for this type using cached AST
-        if (!_catalog.TryGetCachedAst(filePath, out var sfc) || sfc?.ClassDeclaration is null)
-            return;
-
-        var ns = sfc.Namespace?.Name ?? "";
-        var typeName = sfc.ClassDeclaration.Name;
-        var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
-
-        var target = new QuickMarkupTargetContext(
-            Namespace: ns,
-            TypeName: typeName,
-            FullTypeName: fullTypeName,
-            FileName: filePath,
-            AttributeLocation: default,
-            AttributeLineSpan: default);
-
-        var members = QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
-            new QuickMarkupParsedAttribute(target, sfc), _enrichedCompilation ?? _compilation, CancellationToken.None);
-        if (members is { } m)
-            _generatedMemberTable.UpdateType(m);
-    }
-
-    void RemoveTypeFromMemberTable(string filePath)
-    {
-        foreach (var entry in _catalog.Entries)
+        await _loadLock.WaitAsync(ct);
+        try
         {
-            if (string.Equals(entry.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
-            {
-                _generatedMemberTable.RemoveType(entry.FullTypeName);
-                break;
-            }
+            var enriched = await _compilation.GetEnrichedCompilationAsync(ct);
+            if (enriched is not null)
+                await _members.InvalidateTypeAsync(filePath, enriched, ct);
+        }
+        finally
+        {
+            _loadLock.Release();
         }
     }
 
-    /// <summary>
-    /// Notifies the service that external files (.cs, .csproj) have changed.
-    /// Sets the stale flag so the next .qmui access triggers a reload.
-    /// </summary>
-    void OnExternalFileChanged()
-    {
-        _isStale = true;
-    }
-
-    public async Task<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default)
-    {
-        var compilation = _compilation;
-        if (compilation is null)
-            return null;
-
-        var astSnapshot = _catalog.CachedAst;
-        foreach (var (filePath, sfc) in astSnapshot)
-        {
-            if (sfc.ClassDeclaration is null)
-                continue;
-
-            try
-            {
-                var ns = sfc.Namespace?.Name ?? "";
-                var typeName = sfc.ClassDeclaration.Name;
-                var fullTypeName = string.IsNullOrEmpty(ns) ? typeName : $"{ns}.{typeName}";
-
-                var target = new QuickMarkupTargetContext(
-                    Namespace: ns,
-                    TypeName: typeName,
-                    FullTypeName: fullTypeName,
-                    FileName: filePath,
-                    AttributeLocation: default,
-                    AttributeLineSpan: default);
-
-                compilation = QuickMarkupCompilationEnricher.EnsureTypeSymbolInCompilation(target, sfc, compilation);
-            }
-            catch
-            {
-                // Skip problematic files
-            }
-        }
-
-        return compilation;
-    }
+    public ValueTask<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default)
+        => _compilation.GetEnrichedCompilationAsync(ct);
 
     public QuickMarkupGeneratedMemberTable GetGeneratedMemberTable()
-        => _generatedMemberTable;
+        => _members.GetTable();
 
     public IReadOnlyList<QuickMarkupTypeEntry> GetAllQmuiEntries()
-        => _catalog.Entries;
+        => _catalog.Catalog.Entries;
 
     public bool TryGetQmuiEntry(string fullTypeName, out QuickMarkupTypeEntry entry)
-        => _catalog.TryGetEntry(fullTypeName, out entry);
+        => _catalog.Catalog.TryGetEntry(fullTypeName, out entry!);
 
     public IEnumerable<QuickMarkupTypeEntry> GetQmuiEntriesByShortName(string shortName)
-        => _catalog.GetEntriesByShortName(shortName);
+        => _catalog.Catalog.GetEntriesByShortName(shortName);
 
     public string? FindFilePathForTypeName(string fullTypeName)
-        => _catalog.FindFilePathForTypeName(fullTypeName);
-
-    void WatchProjectChanges(string csprojPath)
-    {
-        _watcher?.Dispose();
-
-        var dir = Path.GetDirectoryName(csprojPath);
-        if (dir is null) return;
-
-        _watcher = new FileSystemWatcher(dir, "*.*")
-        {
-            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
-            EnableRaisingEvents = true,
-            IncludeSubdirectories = true
-        };
-
-        _watcher.Changed += (_, _) => OnExternalFileChanged();
-        _watcher.Created += (_, _) => OnExternalFileChanged();
-        _watcher.Deleted += (_, _) => OnExternalFileChanged();
-        _watcher.Renamed += (_, _) => OnExternalFileChanged();
-    }
+        => _catalog.Catalog.FindFilePathForTypeName(fullTypeName);
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        if (_watcher is not null)
-        {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
-        }
+        _watcher.Dispose();
+        _compilation.Dispose();
         _loadLock.Dispose();
     }
-
 }

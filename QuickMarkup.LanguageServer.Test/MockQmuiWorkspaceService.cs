@@ -16,8 +16,8 @@ internal class MockQmuiWorkspaceService : IQmuiWorkspaceService
     public Task<bool> InitializeAsync(string workspaceRoot) => Task.FromResult(true);
     public Task<bool> EnsureProjectForFileAsync(string qmuiFilePath) => Task.FromResult(true);
 
-    public Task<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default)
-        => Task.FromResult(Compilation);
+    public ValueTask<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default)
+        => new(Compilation);
 
     public QuickMarkupGeneratedMemberTable GetGeneratedMemberTable()
         => QuickMarkupGeneratedMemberTable.Empty;

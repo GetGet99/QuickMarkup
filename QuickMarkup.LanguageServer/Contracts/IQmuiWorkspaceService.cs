@@ -28,7 +28,7 @@ public interface IQmuiWorkspaceService
     /// Gets the compilation enriched with dummy type symbols for all .qmui files.
     /// Reads content from the document store for open files, disk for closed files.
     /// </summary>
-    Task<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default);
+    ValueTask<Compilation?> GetEnrichedCompilationAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Gets the current generated member table (ref properties, computed properties, component outputs).
