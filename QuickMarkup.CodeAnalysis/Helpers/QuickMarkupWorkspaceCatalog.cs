@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Get.Parser;
 using Get.PLShared;
 using Microsoft.CodeAnalysis;
 using QuickMarkup.AST;
@@ -9,7 +10,7 @@ namespace QuickMarkup.CodeAnalysis.Helpers;
 /// <summary>
 /// Workspace-scoped catalog of QuickMarkup types (.qmui files and [QuickMarkup] attributes).
 /// Supports full rebuild and incremental single-file updates.
-/// Caches parsed ASTs to avoid re-parsing across the LSP pipeline.
+/// Single owner of parsed ASTs — all LSP parsing goes through GetOrParse().
 /// </summary>
 public class QuickMarkupWorkspaceCatalog
 {
@@ -18,7 +19,9 @@ public class QuickMarkupWorkspaceCatalog
 
     ImmutableArray<QuickMarkupTypeEntry> _entries = ImmutableArray<QuickMarkupTypeEntry>.Empty;
     readonly Dictionary<string, QuickMarkupTypeEntry> _entriesByFilePath = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, int> _contentHashes = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, QuickMarkupSFC> _cachedAst = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, List<ErrorTerminalValue>> _cachedErrors = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, List<QuickMarkupTypeEntry>> _entriesByShortName = new();
     readonly object _lock = new();
 
@@ -39,7 +42,7 @@ public class QuickMarkupWorkspaceCatalog
     }
 
     /// <summary>
-    /// Tries to get a cached parsed AST for a file path (lock-free read of snapshot).
+    /// Tries to get a cached parsed AST for a file path.
     /// </summary>
     public bool TryGetCachedAst(string filePath, [NotNullWhen(true)] out QuickMarkupSFC? sfc)
     {
@@ -47,6 +50,40 @@ public class QuickMarkupWorkspaceCatalog
         {
             return _cachedAst.TryGetValue(filePath, out sfc);
         }
+    }
+
+    /// <summary>
+    /// Parses content and caches by content hash. Returns cached result if the same
+    /// content was already parsed. Single entry point for all LSP parsing.
+    /// </summary>
+    public (QuickMarkupSFC? Sfc, List<ErrorTerminalValue> Errors) GetOrParse(string filePath, string content)
+    {
+        var contentHash = content.GetHashCode();
+
+        lock (_lock)
+        {
+            if (_contentHashes.TryGetValue(filePath, out var cachedHash) && cachedHash == contentHash
+                && _cachedAst.TryGetValue(filePath, out var cached))
+            {
+                _cachedErrors.TryGetValue(filePath, out var errors);
+                return (cached, errors ?? []);
+            }
+        }
+
+        Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
+        var (parsedSfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
+
+        if (parsedSfc is not null)
+        {
+            lock (_lock)
+            {
+                _contentHashes[filePath] = contentHash;
+                _cachedAst[filePath] = parsedSfc;
+                _cachedErrors[filePath] = parseErrors;
+            }
+        }
+
+        return (parsedSfc, parseErrors);
     }
 
     /// <summary>
@@ -58,11 +95,12 @@ public class QuickMarkupWorkspaceCatalog
         {
             _entriesByFilePath.Clear();
             _cachedAst.Clear();
+            _cachedErrors.Clear();
+            _contentHashes.Clear();
             _entriesByShortName.Clear();
 
             var entries = ImmutableArray.CreateBuilder<QuickMarkupTypeEntry>();
 
-            // 1. Scan .qmui files under workspace
             if (!string.IsNullOrEmpty(workspaceRoot) && fileProvider.DirectoryExists(workspaceRoot))
             {
                 var qmuiFiles = fileProvider.GetFiles(workspaceRoot, QmuiFilePattern, recursive: true);
@@ -71,10 +109,13 @@ public class QuickMarkupWorkspaceCatalog
                     try
                     {
                         var content = fileProvider.ReadAllText(file);
-                        var sfc = QuickMarkupProviderExtension.Parse(content);
+                        var contentHash = content.GetHashCode();
+                        var (sfc, errors) = QuickMarkupProviderExtension.ParseWithErrors(content);
                         if (sfc?.ClassDeclaration != null)
                         {
                             AddEntry(entries, file, sfc);
+                            _contentHashes[file] = contentHash;
+                            _cachedErrors[file] = errors;
                         }
                     }
                     catch
@@ -84,7 +125,6 @@ public class QuickMarkupWorkspaceCatalog
                 }
             }
 
-            // 2. Scan [QuickMarkup] attributes in Roslyn syntax trees
             var attributeSymbol = compilation.GetTypeByMetadataName(QuickMarkupAttributeTypeName);
             if (attributeSymbol != null)
             {
@@ -127,10 +167,11 @@ public class QuickMarkupWorkspaceCatalog
 
     /// <summary>
     /// Adds or updates a single .qmui entry without rebuilding the entire catalog.
+    /// Delegates to GetOrParse for caching consistency.
     /// </summary>
     public void AddOrUpdateQmuiFile(string filePath, string content)
     {
-        var sfc = QuickMarkupProviderExtension.Parse(content);
+        var (sfc, _) = GetOrParse(filePath, content);
         if (sfc?.ClassDeclaration == null)
             return;
 
@@ -190,6 +231,8 @@ public class QuickMarkupWorkspaceCatalog
     bool RemoveEntryInternal(string filePath)
     {
         _cachedAst.Remove(filePath);
+        _cachedErrors.Remove(filePath);
+        _contentHashes.Remove(filePath);
 
         if (_entriesByFilePath.TryGetValue(filePath, out var existing))
         {

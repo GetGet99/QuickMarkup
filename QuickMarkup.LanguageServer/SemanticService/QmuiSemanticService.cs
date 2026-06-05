@@ -14,7 +14,7 @@ namespace QuickMarkup.LanguageServer.SemanticService;
 /// </summary>
 public class QmuiSemanticService : IQmuiSemanticService
 {
-    private readonly IQmuiWorkspaceService _workspace;
+    readonly IQmuiWorkspaceService _workspace;
 
     public QmuiSemanticService(IQmuiWorkspaceService workspace)
     {
@@ -28,7 +28,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         int character,
         CancellationToken ct = default)
     {
-        var (sfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
+        var (sfc, _) = _workspace.Catalog.GetOrParse(filePath, content);
         if (sfc is null)
             return null;
 

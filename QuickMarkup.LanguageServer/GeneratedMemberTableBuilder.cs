@@ -64,16 +64,12 @@ internal static class GeneratedMemberTableBuilder
         IQmuiDocumentStore documentStore,
         IFileProvider fileProvider)
     {
-        // Prefer cached AST from catalog
-        if (catalog.TryGetCachedAst(filePath, out var cached))
-            return cached;
-
-        // Fallback: read and parse (shouldn't happen in normal flow)
+        // Use catalog's GetOrParse to leverage its single cache
         var storeTask = documentStore.GetTextAsync(filePath);
         var content = storeTask.IsCompletedSuccessfully && storeTask.Result is { } inMemory
             ? inMemory
             : fileProvider.ReadAllText(filePath);
 
-        return QuickMarkupProviderExtension.Parse(content);
+        return catalog.GetOrParse(filePath, content).Sfc;
     }
 }

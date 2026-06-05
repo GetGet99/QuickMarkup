@@ -155,6 +155,7 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
             try
             {
                 var filePath = doc.FilePath ?? doc.Name;
+                Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
                 var content = GetQmuiContent(filePath);
                 _catalog.AddOrUpdateQmuiFile(filePath, content);
             }
@@ -172,6 +173,7 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
             {
                 try
                 {
+                    Console.Error.WriteLine($"[QuickMarkup] Parsing {file}");
                     var content = GetQmuiContent(file);
                     _catalog.AddOrUpdateQmuiFile(file, content);
                 }
@@ -207,6 +209,7 @@ public class QmuiWorkspaceService : IQmuiWorkspaceService, IDisposable
         RemoveTypeFromMemberTable(filePath);
 
         // Update catalog (parses once, caches AST)
+        Console.Error.WriteLine($"[QuickMarkup] Parsing {filePath}");
         _catalog.AddOrUpdateQmuiFile(filePath, newContent);
 
         // Rebuild GeneratedTypeMembers for this type using cached AST

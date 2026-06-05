@@ -512,7 +512,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         {
             foreach (var inputTerminal in inputTerminals)
             {
-                Console.WriteLine($"Reading Terminal: {inputTerminal.TokenType} ({inputTerminal.Start} - {inputTerminal.End})");
+                // Console.WriteLine($"Reading Terminal: {inputTerminal.TokenType} ({inputTerminal.Start} - {inputTerminal.End})");
                 if (inputTerminal is IToken<Terminal, int> intTok)
                     yield return CreateValue(inputTerminal.TokenType, intTok.Data, inputTerminal.Start, inputTerminal.End);
                 else if (inputTerminal is IToken<Terminal, double> doubleTok)
@@ -525,7 +525,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
                     yield return CreateValue(inputTerminal.TokenType, inputTerminal.Start, inputTerminal.End);
             }
         }
-        return Parse(TerminalValues(), debug: Debugger.IsAttached, handledErrors: handledErrors, skipErrorHandling: false);
+        return Parse(TerminalValues(), debug: false, handledErrors: handledErrors, skipErrorHandling: false);
     }
 }
 class QuickMarkupTagMismatchException(QuickMarkupParsedTag tag) : Exception

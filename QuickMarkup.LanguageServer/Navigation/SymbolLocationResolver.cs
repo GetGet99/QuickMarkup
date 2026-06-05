@@ -199,6 +199,7 @@ public class SymbolLocationResolver
             if (string.IsNullOrEmpty(markup))
                 return null;
 
+            Console.Error.WriteLine($"[QuickMarkup] Parsing {typeSymbol.Name} in {typeSymbol.Locations.FirstOrDefault()?.SourceTree?.FilePath ?? "unknown"}");
             var sfc = QuickMarkupProviderExtension.Parse(markup);
             if (sfc is null)
                 return null;

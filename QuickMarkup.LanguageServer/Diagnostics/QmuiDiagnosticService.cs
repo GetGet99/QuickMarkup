@@ -20,7 +20,10 @@ public class QmuiDiagnosticService : IQmuiDiagnosticService
     public async Task<IReadOnlyList<LspDiagnostic>> GetDiagnosticsAsync(
         string filePath, string content, CancellationToken ct)
     {
-        var (sfc, parseErrors) = QuickMarkupProviderExtension.ParseWithErrors(content);
+        var (sfc, parseErrors) = _workspace.Catalog.GetOrParse(filePath, content);
+        if (sfc is null)
+            return [];
+
         var compilation = await _workspace.GetEnrichedCompilationAsync(ct);
 
         if (sfc is null)
