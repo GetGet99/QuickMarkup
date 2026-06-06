@@ -56,14 +56,16 @@ public record class QuickMarkupParsedProperty(
     string Key,
     ParsedPropertyOperator Operator,
     QuickMarkupValue? Value,
-    bool IsAttachedPropertyKey = false
+    bool IsAttachedPropertyKey = false,
+    bool IsKeyForeign = false
 ) : QuickMarkupInlineMember
 {
     public QuickMarkupParsedProperty(
         string Key,
         ParsedPropertyOperator Operator,
-        bool Value
-    ) : this(Key, Operator, new QuickMarkupBoolean(Value)) { }
+        bool Value,
+        bool IsKeyForeign = false
+    ) : this(Key, Operator, new QuickMarkupBoolean(Value), IsKeyForeign: IsKeyForeign) { }
 }
 
 public record class QuickMarkupCallback(string Code) : QuickMarkupInlineMember, IQMNodeChild;

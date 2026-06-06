@@ -527,7 +527,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             propertyTargetType = tagInfo.ComponentOutputType;
         }
         if (targetPropSymbol is null &&
-            property.Operator is ParsedPropertyOperator.Assign or ParsedPropertyOperator.BindBack or ParsedPropertyOperator.BindTwoWay)
+            property.Operator is ParsedPropertyOperator.Assign or ParsedPropertyOperator.BindBack or ParsedPropertyOperator.BindTwoWay &&
+            !property.IsKeyForeign)
         {
             ErrorUnknownProperty(property, tagInfo, property.Key);
         }

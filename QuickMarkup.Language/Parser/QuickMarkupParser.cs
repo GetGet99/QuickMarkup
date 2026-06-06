@@ -266,6 +266,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             Terminal.Foreign, AS, nameof(QuickMarkupParsedProperty.Key),
             PropertyOperator, AS, nameof(QuickMarkupParsedProperty.Operator),
             QMValue, AS, nameof(QuickMarkupParsedProperty.Value),
+            WITHPARAM, nameof(QuickMarkupParsedProperty.IsKeyForeign), true,
             typeof(QuickMarkupParsedProperty)
         )]
         [Rule(
@@ -297,6 +298,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             Terminal.Foreign, AS, nameof(QuickMarkupParsedProperty.Key),
             WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.Assign,
             WITHPARAM, nameof(QuickMarkupParsedProperty.Value), false,
+            WITHPARAM, nameof(QuickMarkupParsedProperty.IsKeyForeign), true,
             typeof(QuickMarkupParsedProperty)
         )]
         InlineMember,
