@@ -279,7 +279,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                         Bind(new QuickMarkupParsedProperty(
                             $"{attStart.TypeName}.{attStart.PropertyName}",
                             ParsedPropertyOperator.Assign,
-                            attValue
+                            attValue,
+                            IsAttachedPropertyKey: true
                         ), tagInfo, targetCollection);
                 }
                 return true;
@@ -447,10 +448,9 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         if (inlineMember is not QuickMarkupParsedProperty property)
             throw new NotImplementedException();
 
-        // Check for attached property syntax: Type.Property=Value
-        var dotIndex = property.Key.IndexOf('.');
-        if (dotIndex > 0)
+        if (property.IsAttachedPropertyKey)
         {
+            var dotIndex = property.Key.IndexOf('.');
             var typeName = property.Key[..dotIndex];
             var propName = property.Key[(dotIndex + 1)..];
             var attachedType = resolver.GetTypeSymbol(typeName);

@@ -614,3 +614,11 @@ public partial class RefNamedTagCase : TestRoot;
     </root>
     """)]
 public partial class RefNamedTagBindingCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText `Nested.Text`="from foreign key" />
+    </root>
+    """)]
+public partial class ForeignDottedKeyCase : TestRoot;

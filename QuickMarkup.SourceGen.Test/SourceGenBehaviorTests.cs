@@ -628,4 +628,13 @@ public sealed class SourceGenBehaviorTests
 
         Assert.AreEqual("ref updated", text.Text);
     }
+
+    [TestMethod]
+    public void ForeignExpressionWithDotAsKeyIsNotTreatedAsAttachedProperty()
+    {
+        var page = new ForeignDottedKeyCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("from foreign key", text.Nested.Text);
+    }
 }

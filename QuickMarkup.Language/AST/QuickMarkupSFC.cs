@@ -55,7 +55,8 @@ public record class QuickMarkupInlineMember : AST;
 public record class QuickMarkupParsedProperty(
     string Key,
     ParsedPropertyOperator Operator,
-    QuickMarkupValue? Value
+    QuickMarkupValue? Value,
+    bool IsAttachedPropertyKey = false
 ) : QuickMarkupInlineMember
 {
     public QuickMarkupParsedProperty(

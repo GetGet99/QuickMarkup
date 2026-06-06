@@ -249,7 +249,21 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         PropertyOperator,
         [Type<QuickMarkupInlineMember>]
         [Rule(
-            ParsedPropertyKey, AS, nameof(QuickMarkupParsedProperty.Key),
+            Terminal.Identifier, AS, "typeName",
+            Terminal.Dot,
+            Terminal.Identifier, AS, "propName",
+            PropertyOperator, AS, "op",
+            QMValue, AS, "value",
+            nameof(MakeAttachedProperty)
+        )]
+        [Rule(
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            PropertyOperator, AS, nameof(QuickMarkupParsedProperty.Operator),
+            QMValue, AS, nameof(QuickMarkupParsedProperty.Value),
+            typeof(QuickMarkupParsedProperty)
+        )]
+        [Rule(
+            Terminal.Foreign, AS, nameof(QuickMarkupParsedProperty.Key),
             PropertyOperator, AS, nameof(QuickMarkupParsedProperty.Operator),
             QMValue, AS, nameof(QuickMarkupParsedProperty.Value),
             typeof(QuickMarkupParsedProperty)
@@ -266,17 +280,26 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         [Rule(
             Terminal.Not,
-            ParsedPropertyKey, AS, nameof(QuickMarkupParsedProperty.Key),
+            Terminal.Identifier, AS, "typeName",
+            Terminal.Dot,
+            Terminal.Identifier, AS, "propName",
+            nameof(MakeNegatedAttachedProperty)
+        )]
+        [Rule(
+            Terminal.Not,
+            Terminal.Identifier, AS, nameof(QuickMarkupParsedProperty.Key),
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.Assign,
+            WITHPARAM, nameof(QuickMarkupParsedProperty.Value), false,
+            typeof(QuickMarkupParsedProperty)
+        )]
+        [Rule(
+            Terminal.Not,
+            Terminal.Foreign, AS, nameof(QuickMarkupParsedProperty.Key),
             WITHPARAM, nameof(QuickMarkupParsedProperty.Operator), ParsedPropertyOperator.Assign,
             WITHPARAM, nameof(QuickMarkupParsedProperty.Value), false,
             typeof(QuickMarkupParsedProperty)
         )]
         InlineMember,
-        [Type<string>]
-        [Rule(Terminal.Identifier, AS, "typeName", Terminal.Dot, Terminal.Identifier, AS, "propName", nameof(CombineDottedPropertyKey))]
-        [Rule(Terminal.Identifier, AS, VALUE, IDENTITY)]
-        [Rule(Terminal.Foreign, AS, VALUE, IDENTITY)]
-        ParsedPropertyKey,
         [Type<ListAST<QuickMarkupInlineMember>>]
         [Rule(InlineMember, AS, VALUE, SINGLELIST)]
         [Rule(InlineMembersInner, AS, LIST, InlineMember, AS, VALUE, APPENDLIST)]
@@ -478,6 +501,15 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         => new($"{typeName}.{tagName}");
     static string CombineDottedPropertyKey(string typeName, string propName)
         => $"{typeName}.{propName}";
+    static QuickMarkupParsedProperty MakeAttachedProperty(string typeName, string propName, ParsedPropertyOperator op, QuickMarkupValue? value)
+        => new($"{typeName}.{propName}", op, value, IsAttachedPropertyKey: true);
+    static QuickMarkupParsedProperty MakeNegatedAttachedProperty(string typeName, string propName)
+        => new(
+            $"{typeName}.{propName}",
+            ParsedPropertyOperator.Assign,
+            new QuickMarkupBoolean(false),
+            IsAttachedPropertyKey: true
+        );
     static QuickMarkupParsedTag ValidateTag(QuickMarkupParsedTag tag)
     {
         if (tag.HasMismatchedEndTag)

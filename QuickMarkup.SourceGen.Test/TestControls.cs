@@ -90,6 +90,12 @@ public sealed class TestText : TestElement
     public string? Text { get; set; }
     public int Number { get; set; }
     public bool Flag { get; set; }
+    public NestedData Nested { get; set; } = new();
+}
+
+public sealed class NestedData
+{
+    public string? Text { get; set; }
 }
 
 public enum TestKind
