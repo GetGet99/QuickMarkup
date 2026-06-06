@@ -2,7 +2,7 @@
   "name": "quickmarkup-lsp",
   "displayName": "QuickMarkup LSP",
   "description": "QuickMarkup language support with real-time diagnostics",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "engines": {
     "vscode": "^1.120.0"
   },
