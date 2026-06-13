@@ -51,7 +51,12 @@ static class QuickMarkupDiagnosticReporter
             return true;
         }
 
-        return false;
+        report(Diagnostic.Create(
+            QuickMarkupAnalyzer.BindErrorGeneral,
+            loc.Fallback,
+            $"Internal parser error: {e.Message}"
+        ));
+        return true;
     }
 
     public static void ReportErrorTerminals(List<ErrorTerminalValue> errors, IQuickMarkupLocationProvider loc, Action<Diagnostic> report)
