@@ -461,6 +461,148 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_EmptyContent_ReturnsNullTemplate()
+        {
+            var sfc = Parse("");
+            Assert.IsNull(sfc.Namespace);
+            Assert.IsNull(sfc.ClassDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_WhitespaceOnly_ReturnsNullTemplate()
+        {
+            var sfc = Parse("   \n  \t  ");
+            Assert.IsNull(sfc.Template);
+        }
+
+        [TestMethod]
+        [Ignore("Lexer does not currently support Unicode identifiers")]
+        public void Lex_UnicodeIdentifier_TokenizesCorrectly()
+        {
+            var output = Lex("<按钮 Text=\"Hello\" />", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagOpen, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[1].TokenType);
+        }
+
+        [TestMethod]
+        public void Lex_MultipleIdentifiers_TokenizesCorrectly()
+        {
+            var output = Lex("<Test A B />", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagOpen, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[1].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[3].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagCloseAuto, output[4].TokenType);
+        }
+
+        [TestMethod]
+        public void Parse_ForeignExpressionAsPropertyValue()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Text=`"Hello " + name` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.HasCount(1, tag.InlineMembers);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Text", prop.Key);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
+        public void Parse_InterpolatedStringPropertyValue()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Text=`$"Hello {name}"` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
+        public void Parse_NestedTags_DeepHierarchy()
+        {
+            var sfc = Parse("""
+                <root>
+                    <A>
+                        <B>
+                            <C>
+                                <D />
+                            </C>
+                        </B>
+                    </A>
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var a = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(a);
+            var b = a.Children![0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(b);
+            var c = b.Children![0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(c);
+            var d = c.Children![0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(d);
+        }
+
+        [TestMethod]
+        public void Parse_SelfClosingTag_HasNoChildren()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test />
+                </root>
+                """);
+
+            var tag = sfc.Template!.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.IsTrue(tag.IsSelfClosing);
+        }
+
+        [TestMethod]
+        public void Parse_MultiplePropertyValuesOnSameTag()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test A="1" B="2" C="3" />
+                </root>
+                """);
+
+            var tag = sfc.Template!.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            Assert.HasCount(3, tag.InlineMembers);
+        }
+
+        [TestMethod]
+        public void Parse_ForeignExpressionWithMethodCall()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Text=`GetGreeting(name)` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
         [Ignore("Current parser error recovery throws before returning handled errors.")]
         public void Parse_Ref_NamedBeforePositional_YieldsErrors()
         {

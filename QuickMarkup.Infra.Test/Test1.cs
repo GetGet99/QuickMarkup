@@ -1289,6 +1289,144 @@ namespace QuickMarkup.Infra.Test
             return new ScopedValue<TextBlock>(value, scope);
         }
 
+        [TestMethod]
+        public void ReferenceWithNullValue_StoresAndReturnsNull()
+        {
+            Reference<string?> value = new(null);
+            Assert.IsNull(value.Value);
+        }
+
+        [TestMethod]
+        public void ReferenceWithNullInitial_CanBeSetToString()
+        {
+            Reference<string?> value = new(null);
+            value.Value = "hello";
+            Assert.AreEqual("hello", value.Value);
+        }
+
+        [TestMethod]
+        public void ComputedWithThrowingExpression_ThrowsDuringConstruction()
+        {
+            Func<int> throwing = () => throw new InvalidOperationException("fail");
+            try
+            {
+                _ = new Computed<int>(throwing);
+                Assert.Fail("Expected InvalidOperationException during construction");
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        [TestMethod]
+        public void ComputedWithDivisionByZero_ThrowsDuringConstruction()
+        {
+            Reference<int> divisor = new(0);
+            try
+            {
+                _ = new Computed<int>(() => 10 / divisor.Value);
+                Assert.Fail("Expected DivideByZeroException during construction");
+            }
+            catch (DivideByZeroException) { }
+        }
+
+        [TestMethod]
+        public void ForBlock_EmptyCollection_AddsNoChildren()
+        {
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<string, TextBlock>(
+                new ReactiveScope(),
+                [],
+                _ => new StaticBlock<TextBlock>(new ReactiveScope(), [])));
+
+            Assert.IsEmpty(target);
+        }
+
+        [TestMethod]
+        public void ForBlock_SingleItem_AddsOneChild()
+        {
+            System.Collections.ObjectModel.ObservableCollection<string> source = ["only"];
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new ForBlock<string, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateTextBlock(itemRef, value => value, () => 0)));
+
+            Assert.AreEqual("only", target[0].Text);
+            Assert.HasCount(1, target);
+        }
+
+        [TestMethod]
+        public void FragmentBlock_Empty_AddsNoChildren()
+        {
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new FragmentBlock<TextBlock>(
+                new ReactiveScope(),
+                (_, _) => { }));
+
+            Assert.IsEmpty(target);
+        }
+
+        [TestMethod]
+        public void FragmentBlock_AddsBlocksAfterHostIsReady()
+        {
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new FragmentBlock<TextBlock>(
+                new ReactiveScope(),
+                (fragmentHost, _) =>
+                {
+                    fragmentHost.AddBlock(new StaticBlock<TextBlock>(
+                        new ReactiveScope(),
+                        [new TextBlock { Text = "alpha" }]));
+                    fragmentHost.AddBlock(new StaticBlock<TextBlock>(
+                        new ReactiveScope(),
+                        [new TextBlock { Text = "beta" }]));
+                }));
+
+            Assert.AreEqual("alpha", target[0].Text);
+            Assert.AreEqual("beta", target[1].Text);
+        }
+
+        [TestMethod]
+        public void ConditionalBlock_ToggleBackAndForth_MultipleTimes()
+        {
+            Reference<bool> condition = new(true);
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+            var trueCreated = 0;
+            var falseCreated = 0;
+
+            var block = new ConditionalBlock<TextBlock>(
+                new ReactiveScope(),
+                () => condition.Value,
+                () => new StaticBlock<TextBlock>(new ReactiveScope(), [new TextBlock { Text = $"true-{++trueCreated}" }]),
+                () => new StaticBlock<TextBlock>(new ReactiveScope(), [new TextBlock { Text = $"false-{++falseCreated}" }]));
+
+            host.AddBlock(block);
+
+            Assert.HasCount(1, target);
+            Assert.AreEqual("true-1", target[0].Text);
+
+            for (int i = 0; i < 3; i++)
+            {
+                condition.Value = false;
+                ReactiveScheduler.Tick();
+                Assert.HasCount(1, target);
+                Assert.AreEqual($"false-{i + 1}", target[0].Text);
+
+                condition.Value = true;
+                ReactiveScheduler.Tick();
+                Assert.HasCount(1, target);
+                Assert.AreEqual($"true-{i + 2}", target[0].Text);
+            }
+        }
+
         void OnNextTick(Action callback)
         {
             RefEffect effect = new(_ => callback());

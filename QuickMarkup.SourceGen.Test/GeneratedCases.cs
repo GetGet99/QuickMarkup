@@ -622,3 +622,22 @@ public partial class RefNamedTagBindingCase : TestRoot;
     </root>
     """)]
 public partial class ForeignDottedKeyCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    NullableRefItem? NullItem = null;
+    <root>
+    </root>
+    """)]
+public partial class NullRefDeclarationCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+        </TestPanel>
+    </root>
+    """)]
+public partial class EmptyPanelCase : TestRoot;
+
+

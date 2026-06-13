@@ -637,4 +637,33 @@ public sealed class SourceGenBehaviorTests
 
         Assert.AreEqual("from foreign key", text.Nested.Text);
     }
+
+    [TestMethod]
+    public void NullRefDeclaration_DefaultsToNull()
+    {
+        var page = new NullRefDeclarationCase();
+
+        Assert.IsNull(page.NullItem);
+    }
+
+    [TestMethod]
+    public void EmptyPanel_HasNoChildren()
+    {
+        var page = new EmptyPanelCase();
+
+        Assert.IsNotNull(page.Children);
+        Assert.HasCount(1, page.Children);
+
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        Assert.IsEmpty(panel.Children);
+    }
+
+    [TestMethod]
+    public void AttachedPropertyColumnDefaultsToZero()
+    {
+        var page = new AttachedPropertyAssignCase();
+        var first = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual(0, Grid.GetColumn(first));
+    }
 }

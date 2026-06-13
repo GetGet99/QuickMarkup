@@ -1,0 +1,10 @@
+namespace QuickMarkup.SourceGen.Test;
+class SetupBlockCaseQmui : TestRoot;
+<setup>
+var greeting = "Hi";
+</setup>
+<root>
+    <TestPanel>
+        <TestText Text=`greeting` />
+    </TestPanel>
+</root>

@@ -1,5 +1,6 @@
 namespace QuickMarkup.SourceGen.Test;
 class StaticTreeCaseQmui : TestRoot;
+int Integer = 0;
 <root>
     <TestPanel>
         <TestText Text="A" />

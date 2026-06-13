@@ -1,0 +1,8 @@
+using System.Linq;
+namespace QuickMarkup.SourceGen.Test;
+class UsingStatementCaseQmui : TestRoot;
+<root>
+    <TestPanel>
+        <TestText Text="using test" />
+    </TestPanel>
+</root>

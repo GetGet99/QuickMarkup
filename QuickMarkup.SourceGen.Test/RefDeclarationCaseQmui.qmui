@@ -1,0 +1,10 @@
+namespace QuickMarkup.SourceGen.Test;
+class RefDeclarationCaseQmui : TestRoot;
+int Counter = 0;
+string Label = "hello";
+<root>
+    <TestPanel>
+        <TestText Text=`Label` />
+        <TestText Text=`Counter.ToString()` />
+    </TestPanel>
+</root>

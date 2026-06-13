@@ -1,0 +1,11 @@
+namespace QuickMarkup.SourceGen.Test;
+class ConditionalForeachCaseQmui : TestRoot;
+bool ShowItems = true;
+<root>
+    <TestPanel>
+        if (`ShowItems`) {
+            <TestText Text="A" />
+            <TestText Text="B" />
+        }
+    </TestPanel>
+</root>
