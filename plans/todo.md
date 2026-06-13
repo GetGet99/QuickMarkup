@@ -1,0 +1,1 @@
+- `class/component` line in .qmui must be able to hover and ctrl + click on type names
