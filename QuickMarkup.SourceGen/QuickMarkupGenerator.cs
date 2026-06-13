@@ -133,7 +133,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         StringBuilder codeBuilder = new();
         generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
         var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
-        var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName);
+        var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
+        var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName, frameworkConfig);
         var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
         var shouldGenerateComponentOutput = componentKind is not QMComponentKind.None && QuickMarkupGeneratedMemberTableBuilder.HasComponentRootOutput(template, componentKind);
         if (shouldGenerateComponentOutput)
@@ -218,9 +219,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         QuickMarkupGeneratedMemberTable? generatedMembers,
         CancellationToken ct)
     {
+        var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
         var analysis = QuickMarkupFileAnalyzer.Analyze(
             sfc, target.FileName ?? "", target.Namespace, compilation,
-            generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty, failFast: true);
+            generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty, frameworkConfig, failFast: true);
 
         StringBuilder sb = new();
         var rgen = new RefsGenContext(sb, target.FullTypeName);

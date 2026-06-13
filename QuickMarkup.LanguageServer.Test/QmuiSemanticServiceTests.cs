@@ -88,7 +88,7 @@ public sealed class QmuiSemanticServiceTests
         Assert.IsTrue(result.IsProperty);
         Assert.AreEqual("Name", result.Property!.RawPropertyName);
         Assert.AreEqual(PropertyResolutionKind.RefDeclaration, result.Property.Kind);
-        Assert.IsTrue(result.Property.DisplayString.Contains("(reactive)"));
+        Assert.Contains("(reactive)", result.Property.DisplayString);
     }
 
     [TestMethod]
@@ -109,7 +109,7 @@ public sealed class QmuiSemanticServiceTests
         Assert.IsTrue(result.IsProperty);
         Assert.AreEqual("FullName", result.Property!.RawPropertyName);
         Assert.AreEqual(PropertyResolutionKind.RefDeclaration, result.Property.Kind);
-        Assert.IsTrue(result.Property.DisplayString.Contains("(computed)"));
+        Assert.Contains("(computed)", result.Property.DisplayString);
     }
 
     [TestMethod]

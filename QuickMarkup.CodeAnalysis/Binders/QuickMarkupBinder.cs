@@ -614,7 +614,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                 bool isDependencyProp;
                 string depName = "";
                 {
-                    isDependencyProp = CodeTypeResolver.TryGetDependencyProperty(
+                    isDependencyProp = resolver.TryGetDependencyProperty(
                         propertyTargetType,
                         property.Key,
                         out var dependencyPropertyName);

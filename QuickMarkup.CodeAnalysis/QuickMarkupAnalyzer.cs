@@ -14,6 +14,7 @@ public static class QuickMarkupFileAnalyzer
         string @namespace,
         Compilation compilation,
         QuickMarkupGeneratedMemberTable generatedMemberTable,
+        FrameworkConfiguration? frameworkConfiguration = null,
         bool failFast = false)
     {
         var (sfc, _) = QuickMarkupProviderExtension.ParseWithErrors(qmuiContent);
@@ -22,7 +23,7 @@ public static class QuickMarkupFileAnalyzer
             var emptyCtx = CreateTargetContext(filePath, @namespace, "");
             return new QuickMarkupFileAnalysis(null!, emptyCtx, [], null, [], null, false);
         }
-        return Analyze(sfc, filePath, @namespace, compilation, generatedMemberTable, failFast);
+        return Analyze(sfc, filePath, @namespace, compilation, generatedMemberTable, frameworkConfiguration, failFast);
     }
 
     public static QuickMarkupFileAnalysis Analyze(
@@ -31,12 +32,13 @@ public static class QuickMarkupFileAnalyzer
         string @namespace,
         Compilation compilation,
         QuickMarkupGeneratedMemberTable generatedMemberTable,
+        FrameworkConfiguration? frameworkConfiguration = null,
         bool failFast = false)
     {
         var typeName = sfc.ClassDeclaration?.Name ?? "";
         var target = CreateTargetContext(filePath, @namespace, typeName);
 
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, @namespace, generatedMemberTable);
+        var resolver = new CodeTypeResolver(compilation, sfc.Usings, @namespace, generatedMemberTable, frameworkConfiguration: frameworkConfiguration);
         var containingType = TryGetContainingType(compilation, target.FullTypeName);
         var binder = new QuickMarkupBinder(resolver, failFast ? Binder.FailFast : Binder.Collect);
 

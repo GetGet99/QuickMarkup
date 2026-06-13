@@ -17,6 +17,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)binders\QuickMarkupBinderUtilities.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\RefAttributeBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeTypeResolver.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FrameworkConfiguration.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FrameworkConfigurationReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupGeneratedMemberTable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupGeneratedMemberTableBuilder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\AddAttributeConverterAttribute.cs" />

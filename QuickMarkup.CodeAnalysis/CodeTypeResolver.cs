@@ -13,8 +13,10 @@ class CodeTypeResolver(
     string usings,
     string @namespace,
     QuickMarkupGeneratedMemberTable? generatedMembers = null,
-    string? currentTypeName = null)
+    string? currentTypeName = null,
+    FrameworkConfiguration? frameworkConfiguration = null)
 {
+    readonly FrameworkConfiguration frameworkConfig = frameworkConfiguration ?? FrameworkConfiguration.Default;
     readonly QuickMarkupGeneratedMemberTable generatedMembers = generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty;
     public const string ComponentOutputPropertyName = "MarkupNode";
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName!);
@@ -67,7 +69,27 @@ class CodeTypeResolver(
             childrenMode = ChildrenModes.None;
             return false;
         }
-        if (FindContentAttirbute(symbol) is { } result)
+
+        // Step 1: Property-level marker attributes
+        if (TryGetMarkerProperty(symbol, frameworkConfig.ChildrenPropertyMarkerAttribute, ChildrenModes.Add, out propertySymbol, out childrenMode))
+            return true;
+        if (TryGetMarkerProperty(symbol, frameworkConfig.ContentPropertyMarkerAttribute, ChildrenModes.Assignment, out propertySymbol, out childrenMode))
+            return true;
+
+        // Step 2: Type-specific overrides from framework config
+        var fullTypeName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (frameworkConfig.TypeSpecificOverrides.TryGetValue(fullTypeName, out var typeOverride))
+        {
+            propertySymbol = FindProperty(symbol, typeOverride.PropertyName);
+            if (propertySymbol is not null)
+            {
+                childrenMode = typeOverride.Mode;
+                return true;
+            }
+        }
+
+        // Step 3: External framework attributes (like ContentPropertyAttribute)
+        if (FindContentAttribute(symbol, frameworkConfig.ExternalContentPropertyAttributeFullNames) is { } result)
         {
             ResolvedProperty? property = null;
             if (result.ConstructorArguments.Length > 0)
@@ -78,22 +100,22 @@ class CodeTypeResolver(
             childrenMode = FindMethod(propertySymbol?.Type, "Add") is not null ? ChildrenModes.Add : ChildrenModes.Assignment;
             return propertySymbol is not null;
         }
-        childrenMode = ChildrenModes.Add;
-        propertySymbol = FindProperty(symbol, "Children") ?? FindProperty(symbol, "Items");
-        if (propertySymbol is null)
-        {
-            propertySymbol = FindProperty(symbol, "Child");
-            childrenMode = ChildrenModes.Assignment;
-        }
-        if (propertySymbol is null)
-        {
-            propertySymbol = FindProperty(symbol, "Content");
-            childrenMode = ChildrenModes.Assignment;
-        }
-        if (propertySymbol is null)
-            return false;
 
-        return true;
+        // Step 4: Framework default property names
+        foreach (var rule in frameworkConfig.DefaultContentPropertyNames)
+        {
+            propertySymbol = FindProperty(symbol, rule.PropertyName);
+            if (propertySymbol is not null)
+            {
+                childrenMode = rule.Mode;
+                return true;
+            }
+        }
+
+        // Step 5: No match
+        propertySymbol = null;
+        childrenMode = ChildrenModes.None;
+        return false;
     }
 
     public QMComponentKind GetComponentKind(ITypeSymbol? symbol, out ITypeSymbol? outputType)
@@ -181,21 +203,52 @@ class CodeTypeResolver(
         return null;
     }
 
-    static AttributeData? FindContentAttirbute(ITypeSymbol type)
+    AttributeData? FindContentAttribute(ITypeSymbol type, IReadOnlyList<string> externalAttributeFullNames)
     {
-        for (ITypeSymbol? current = type;
-             current != null;
-             current = current.BaseType)
+        foreach (var attrFullName in externalAttributeFullNames)
         {
-            foreach (var attr in current.GetAttributes())
+            for (ITypeSymbol? current = type; current != null; current = current.BaseType)
             {
-                if (attr.AttributeClass?.FullName() is "global::Windows.UI.Xaml.Markup.ContentPropertyAttribute" or "global::Microsoft.UI.Xaml.Markup.ContentPropertyAttribute")
+                foreach (var attr in current.GetAttributes())
                 {
-                    return attr;
+                    if (attr.AttributeClass?.FullName() == attrFullName)
+                        return attr;
                 }
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Checks if the type has a property marked with the specified marker attribute.
+    /// Returns true if found, with the property and mode.
+    /// </summary>
+    bool TryGetMarkerProperty(ITypeSymbol type, string markerAttributeFullName, ChildrenModes mode, [MaybeNullWhen(false)] out ResolvedProperty? propertySymbol, out ChildrenModes childrenMode)
+    {
+        for (ITypeSymbol? current = type; current != null; current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers())
+            {
+                if (member is IPropertySymbol prop)
+                {
+                    foreach (var attr in prop.GetAttributes())
+                    {
+                        if (attr.AttributeClass?.FullName() == markerAttributeFullName)
+                        {
+                            propertySymbol = FindProperty(type, prop.Name);
+                            if (propertySymbol is not null)
+                            {
+                                childrenMode = mode;
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        propertySymbol = null;
+        childrenMode = ChildrenModes.None;
+        return false;
     }
 
     public ResolvedProperty? FindProperty(ITypeSymbol? type, string property)
@@ -310,14 +363,16 @@ class CodeTypeResolver(
         return null;
     }
 
-    public static bool TryGetDependencyProperty(ITypeSymbol? type, string property, [NotNullWhen(true)] out string? dependencyPropertyName)
+    public bool TryGetDependencyProperty(ITypeSymbol? type, string property, [NotNullWhen(true)] out string? dependencyPropertyName)
     {
         dependencyPropertyName = null;
-        var memberName = $"{property}Property";
+        var suffix = frameworkConfig.DependencyProperty.Suffix;
+        var typeName = frameworkConfig.DependencyProperty.TypeName;
+        var memberName = $"{property}{suffix}";
         var prop = FindRoslynProperty(type, memberName);
         var field = FindField(type, memberName);
         var memberType = prop?.Type ?? field?.Type;
-        if (memberType?.Name is not "DependencyProperty")
+        if (memberType is null || memberType.Name != typeName)
             return false;
 
         if (prop is { IsStatic: false } || field is { IsStatic: false })
@@ -352,8 +407,8 @@ class CodeTypeResolver(
         if (attachedType is null)
             return false;
 
-        // Look for Set{PropertyName}(DependencyObject, valueType) static method
-        var setMethod = FindMethod(attachedType, $"Set{propertyName}");
+        var prefix = frameworkConfig.AttachedProperty.SetPrefix;
+        var setMethod = FindMethod(attachedType, $"{prefix}{propertyName}");
         if (setMethod is { IsStatic: true, Parameters.Length: 2 })
         {
             valueType = setMethod.Parameters[1].Type;
