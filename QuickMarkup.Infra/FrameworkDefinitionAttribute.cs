@@ -13,7 +13,7 @@ namespace QuickMarkup.Infra;
 /// </example>
 #pragma warning disable CS9113 // Parameter is unread.
 [AttributeUsage(AttributeTargets.Assembly)]
-public class QuickMarkupFrameworkAttribute(Type frameworkType) : Attribute;
+public sealed class QuickMarkupFrameworkAttribute(Type frameworkType) : Attribute;
 #pragma warning restore CS9113 // Parameter is unread.
 
 /// <summary>
@@ -23,7 +23,7 @@ public class QuickMarkupFrameworkAttribute(Type frameworkType) : Attribute;
 /// or as a type-specific override (<c>[QuickMarkupChildrenProperty(typeof(Panel), "Children")]</c>).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class QuickMarkupChildrenPropertyAttribute(string propertyName) : Attribute
+public sealed class QuickMarkupChildrenPropertyAttribute(string propertyName) : Attribute
 {
     /// <summary>
     /// Creates a type-specific override for <paramref name="type"/>.
@@ -45,7 +45,7 @@ public class QuickMarkupChildrenPropertyAttribute(string propertyName) : Attribu
 /// Can be used as a default or as a type-specific override.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class QuickMarkupContentPropertyAttribute(string propertyName) : Attribute
+public sealed class QuickMarkupContentPropertyAttribute(string propertyName) : Attribute
 {
     /// <summary>
     /// Creates a type-specific override for <paramref name="type"/>.
@@ -68,7 +68,7 @@ public class QuickMarkupContentPropertyAttribute(string propertyName) : Attribut
 /// </summary>
 #pragma warning disable CS9113 // Parameter is unread.
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class QuickMarkupExternalContentPropertyAttribute(Type externalAttributeType) : Attribute;
+public sealed class QuickMarkupExternalContentPropertyAttribute(Type externalAttributeType) : Attribute;
 #pragma warning restore CS9113 // Parameter is unread.
 
 /// <summary>
@@ -77,7 +77,7 @@ public class QuickMarkupExternalContentPropertyAttribute(Type externalAttributeT
 /// whose type matches <c>TypeName</c>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public class QuickMarkupDependencyPropertyAttribute(Type typeName, string suffix) : Attribute
+public sealed class QuickMarkupDependencyPropertyAttribute(Type typeName, string suffix) : Attribute
 {
     /// <summary>The expected type of the dependency property member (e.g., <c>typeof(DependencyProperty)</c>).</summary>
     public Type TypeName { get; } = typeName;
@@ -90,7 +90,7 @@ public class QuickMarkupDependencyPropertyAttribute(Type typeName, string suffix
 /// The generator looks for a static <c>Set{SetPrefix}{PropertyName}</c> method.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public class QuickMarkupAttachedPropertyAttribute(string setPrefix) : Attribute
+public sealed class QuickMarkupAttachedPropertyAttribute(string setPrefix) : Attribute
 {
     /// <summary>The prefix before the property name (e.g., <c>"Set"</c>).</summary>
     public string SetPrefix { get; } = setPrefix;
@@ -102,7 +102,7 @@ public class QuickMarkupAttachedPropertyAttribute(string setPrefix) : Attribute
 /// children collection for that type, taking priority over default rules.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-public class QuickMarkupChildrenAttribute : Attribute;
+public sealed class QuickMarkupChildrenAttribute : Attribute;
 
 /// <summary>
 /// Marks a property as a content (single-assignment) property.
@@ -110,4 +110,4 @@ public class QuickMarkupChildrenAttribute : Attribute;
 /// content property for that type, taking priority over default rules.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-public class QuickMarkupContentAttribute : Attribute;
+public sealed class QuickMarkupContentAttribute : Attribute;

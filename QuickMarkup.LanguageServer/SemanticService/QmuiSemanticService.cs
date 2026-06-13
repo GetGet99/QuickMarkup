@@ -21,6 +21,12 @@ public class QmuiSemanticService : IQmuiSemanticService
         _workspace = workspace;
     }
 
+    static CodeTypeResolver CreateResolver(Compilation compilation, QuickMarkupSFC sfc, QuickMarkupGeneratedMemberTable generatedMembers)
+    {
+        var config = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
+        return new CodeTypeResolver(compilation, sfc.Usings, sfc.Namespace?.Name ?? "", generatedMembers, frameworkConfiguration: config);
+    }
+
     public async Task<CursorResolutionResult?> TryResolveAtPositionAsync(
         string filePath,
         string content,
@@ -274,7 +280,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         if (tagType is null)
             return null;
 
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, sfc.Namespace?.Name ?? "", generatedMembers);
+        var resolver = CreateResolver(compilation, sfc, generatedMembers);
         var resolvedProperty = resolver.FindProperty(tagType, property.Key);
 
         if (resolvedProperty is { } prop)
@@ -306,7 +312,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         if (tagType is null)
             return null;
 
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, sfc.Namespace?.Name ?? "", generatedMembers);
+        var resolver = CreateResolver(compilation, sfc, generatedMembers);
         var resolvedProperty = resolver.FindProperty(tagType, propertyName);
 
         if (resolvedProperty is { } prop)
@@ -328,7 +334,7 @@ public class QmuiSemanticService : IQmuiSemanticService
         if (attachedType is null)
             return null;
 
-        var resolver = new CodeTypeResolver(compilation, sfc.Usings, sfc.Namespace?.Name ?? "", generatedMembers);
+        var resolver = CreateResolver(compilation, sfc, generatedMembers);
         if (resolver.TryGetAttachedPropertyInfo(attachedType, attachedTagStart.PropertyName, out var valueType, out _, out _))
         {
             var fullPropertyName = $"{attachedTagStart.TypeName}.{attachedTagStart.PropertyName}";

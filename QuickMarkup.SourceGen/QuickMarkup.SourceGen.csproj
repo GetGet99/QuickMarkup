@@ -19,5 +19,9 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="QuickMarkup.SourceGen.Test" />
+	</ItemGroup>
 </Project>
 
