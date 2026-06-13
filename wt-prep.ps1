@@ -34,7 +34,7 @@ git fetch origin master
 if ($LASTEXITCODE -ne 0) { Write-Host "Fetch failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Creating branch '$branchName' from origin/master..." -ForegroundColor Green
-git checkout -b $branchName origin/master
+git checkout --no-track -b $branchName origin/master
 if ($LASTEXITCODE -ne 0) { Write-Host "Failed to create branch." -ForegroundColor Red; exit 1 }
 
 Write-Host "Updating Parser submodule..." -ForegroundColor Green
