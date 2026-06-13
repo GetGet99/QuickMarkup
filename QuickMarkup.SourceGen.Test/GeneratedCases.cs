@@ -640,4 +640,27 @@ public partial class NullRefDeclarationCase : TestRoot;
     """)]
 public partial class EmptyPanelCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    // 你好, this is a line comment with Unicode
+    <root>
+        <TestText Text="café" />
+        <TestText Text="你好，世界" />
+        <TestText Text="🌟✨🌍" />
+    </root>
+    """)]
+public partial class UnicodeStringCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    // コメント with Unicode
+    /* 这是一个块注释
+       with Unicode: ñoño */
+    <root>
+        <TestText Text="Unicode in string: 文字列テスト" />
+        <TestText Text="Accented: résumé méil Çç ñ" />
+    </root>
+    """)]
+public partial class UnicodeCommentCase : TestRoot;
+
 

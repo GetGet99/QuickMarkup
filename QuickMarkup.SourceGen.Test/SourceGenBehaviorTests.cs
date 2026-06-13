@@ -666,4 +666,31 @@ public sealed class SourceGenBehaviorTests
 
         Assert.AreEqual(0, Grid.GetColumn(first));
     }
+
+    [TestMethod]
+    public void UnicodeInStringLiteral_RendersCorrectCharacters()
+    {
+        var page = new UnicodeStringCase();
+        var first = TestTreeAssert.Child<TestText>(page.Children, 0);
+        var second = TestTreeAssert.Child<TestText>(page.Children, 1);
+        var third = TestTreeAssert.Child<TestText>(page.Children, 2);
+
+        Assert.AreEqual("café", first.Text);
+        Assert.AreEqual("你好，世界", second.Text);
+        Assert.AreEqual("🌟✨🌍", third.Text);
+    }
+
+    [TestMethod]
+    public void UnicodeInComment_StillGeneratesCorrectTree()
+    {
+        var page = new UnicodeCommentCase();
+
+        Assert.HasCount(2, page.Children);
+
+        var first = TestTreeAssert.Child<TestText>(page.Children, 0);
+        var second = TestTreeAssert.Child<TestText>(page.Children, 1);
+
+        Assert.AreEqual("Unicode in string: 文字列テスト", first.Text);
+        Assert.AreEqual("Accented: résumé méil Çç ñ", second.Text);
+    }
 }
