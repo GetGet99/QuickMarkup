@@ -203,7 +203,7 @@ foreach (var i in ..3) { <TextBlock Text=/-$"Row {i}"-/ /> }
 foreach (var i in 1..4) { <TextBlock Text=/-$"Item {i}"-/ /> }
 
 // Iterable — reactive when source implements INotifyCollectionChanged
-foreach (var item in items) { <TextBlock Text=/-item-/ /> }
+foreach (var item in `items`) { <TextBlock Text=/-item-/ /> }
 
 // With key expression (for stable identity across collection changes), source still must implement INotifyCollectionChanged, but will use id as identity in case of collection reset
 foreach (var item in `animals`; `item.Id`) { <TextBlock Text=`item.Name` /> }
@@ -270,6 +270,57 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 
 4. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
 
+### Reference Variables Contains Default Values
+
+IMPORTANT: by the default behavior or when `Init()` call is called at the constructor, if you define a reference class, it may be null, because `Init()` is called before any properties from the parents are set.
+
+For example,
+```csharp
+record class Card(string Name, string Description);
+```
+
+```csharp
+[QuickMarkup("""
+    Card Card;
+    <root>
+        // This will crash the app with NullReferenceException, because Card was not yet set on the constructor.
+        <TextBlock Text=`Card.Name` />
+        // This as well.
+        <TextBlock Text=`Card.Description` />
+    </root>
+    """)]
+public partial class CardDisplay : StackPanel;
+
+[QuickMarkup("""
+    <root>
+        // even if all usage sets the property
+        <CardDisplay Card=`new Card("MyCard", "My card description")` />
+    </root>
+    """)]
+public partial class MainPage : Page;
+```
+
+In most case, you will need to do null guard or nullable reference type.
+
+```csharp
+[QuickMarkup("""
+    // good practice to declare as nullable
+    Card? Card;
+    <root>
+        // easiest way is to do if statement around components.
+        if (`Card is not null`) {
+            <TextBlock Text=`Card.Name` />
+            <TextBlock Text=`Card.Description` />
+        }
+
+        // alternateively, you may handle it a different way so it does not crash depending on your use case
+        <TextBlock Text=`Card?.Name` />
+        <TextBlock Text=`Card?.Description` />
+    </root>
+    """)]
+public partial class CardDisplay : StackPanel;
+```
+
 ## Components
 
 Reusable QuickMarkup components implement one of two interfaces (from `QuickMarkup.WinUI` / `QuickMarkup.UWP`):
@@ -314,8 +365,6 @@ public partial class Label : IQuickMarkupComponent<UIElement>;
 public partial class ItemList : IQuickMarkupFragmentComponent<TextBlock>;
 ```
 
-Note: subclassing regular UI still requires `<root>` tag if you have UI markup. Only QuickMarkup components may omit root tags and have non-root tag directly.
-
 Consuming a component:
 
 ```
@@ -336,9 +385,13 @@ For WinUI/UWP project with platform specific package installed, Non-generic vers
 
 Depending on your target UI framework, sometimes subclassing elements directly may make it easier to work with, ie. `partial class MyComponent : Grid`, but for case of sealed elements (ie. WinUI `Border`/`TextBlock` are sealed) or multiple children component/fragment, you may need these.
 
-For WinUI/UWP, we usually prefer using `IQuickMarkupComponent<T>` instead of subclassing, since subclassing without XMAL can trigger multiple bugs, especially on top of styled or templated control.
+However, for WinUI/UWP, we usually prefer using `IQuickMarkupComponent<T>` instead of subclassing, since subclassing without XMAL can trigger multiple bugs, especially on top of styled or templated control.
 
 A class may implement at most **one** of the two interfaces. Implementing both produces a compile-time error.
+
+Note:
+- `if`/`else`/`foreach` directly on top level without `<root>` tag is currently not supported due to a bug. If you need to use them, you can add `<root>` tag.
+- subclassing regular UI still requires `<root>` tag if you have UI markup. Only QuickMarkup components may omit root tags and have non-root tag directly.
 
 ## Reactivity Infrastructure
 
