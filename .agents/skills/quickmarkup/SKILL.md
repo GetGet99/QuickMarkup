@@ -237,11 +237,16 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 
 ## Order of operations
 
-Inside the `Init()` call or implicitly created constructor,
+Order of operations for new code:
 
-1. `<setup>` tag is run.
-2. QuickMarkup goes through each element, one by one, running in order.
-For example:
+1. Component is initalized.
+2. If exists, user constructor with `[QuickMarkupConstructor]` is run. (upstream properties are not yet assigned)
+3. Properties from upstream QuickMarkup are evaluated and assigned.*
+4. `<setup>` tag is run.
+5. QuickMarkup goes through each element, one by one, running in order.
+  - Properties are evalulated in order of declartion (basically left to right)
+  - Children are evaluated in order of declaration (basically up to down)
+Example:
 ```
 <root> // 1.
     <StackPanel> // 2.
@@ -257,7 +262,7 @@ For example:
 
 `stack` variable is assigned and is not null from point `5.` onwards only.
 
-3. For each element, properties and extension methods are evaluated from left to right.
+6. For each element, properties and extension methods are evaluated from left to right.
 
 ```
 // 0. StackPanel is initialized, and `sp` is set to a new stack panel
@@ -268,11 +273,19 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 />
 ```
 
-4. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
+7. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
 
-### Reference Variables Contains Default Values
+*This behavor is only guaranteed from generated code. If user calls generated constructor themselves, just note that the evaluation step depends on user code.
 
-IMPORTANT: by the default behavior or when `Init()` call is called at the constructor, if you define a reference class, it may be null, because `Init()` is called before any properties from the parents are set.
+### Backward Compatability Mode
+
+In Backward compatibility mode, when C# constructors (not `[QuickMarkupConstructor]`) are present.
+
+1. User owned constructor is called.
+2. User must at some point call `Init()` method.
+3. When `Init()` is called, step 4-6 above models the behavior.
+
+IMPORTANT: This means that by the default behavior or when `Init()` call is called at the constructor, if you define a reference property, it may be null, because `Init()` is called before any properties from the parents are set. This is given assumption that parent sets property after `Init()` is called, because `Init()` function is defined inside constructor.
 
 For example,
 ```csharp
@@ -320,6 +333,8 @@ In most case, you will need to do null guard or nullable reference type.
     """)]
 public partial class CardDisplay : StackPanel;
 ```
+
+Therefore, it is much more recommended to migrate to the new structure.
 
 ## Components
 
