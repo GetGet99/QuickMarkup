@@ -802,4 +802,58 @@ public sealed class SourceGenBehaviorTests
         // which was set before InternalInit() ran, so it should be visible.
         Assert.AreEqual("set before init", text.Text);
     }
+
+    [TestMethod]
+    public void CtorArgWithRefs_ConstructorArgAndPropertySetBeforeInit()
+    {
+        var page = new CtorArgWithRefsConsumerCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        // The consumer markup passes "hello" as constructor arg and Extra="world" as property.
+        // CGenDeferredInit must preserve the constructor arg when generating the Action<T> pattern.
+        // Result: Text=$"{Label}: {Extra}" → "hello: world"
+        Assert.AreEqual("hello: world", text.Text);
+    }
+
+    [TestMethod]
+    public void CtorArgWithRequired_PrimaryConstructor()
+    {
+        var comp = new CtorArgWithRequiredTarget("hello", 42);
+
+        // Primary constructor: Init("hello") sets Label, this.RequiredCount = 42
+        Assert.AreEqual("hello: 42", comp.MarkupNode.Text);
+    }
+
+    [TestMethod]
+    public void CtorArgWithRequired_ActionConstructor()
+    {
+        var comp = new CtorArgWithRequiredTarget("hello", x =>
+        {
+            x.RequiredCount = 42;
+        });
+
+        // Action constructor: Init("hello") sets Label, action sets RequiredCount, then InternalInit evaluates template
+        Assert.AreEqual("hello: 42", comp.MarkupNode.Text);
+    }
+
+    [TestMethod]
+    public void DeferredInit_NamedVariableAssignedBeforeCallback()
+    {
+        DeferredInitNamedAssignmentCase.NamedResult = false;
+        var page = new DeferredInitNamedAssignmentCase();
+
+        // The named variable assignment should execute before the callback inside
+        // the DeferredInit lambda, so x == namedBtn evaluates to true.
+        Assert.IsTrue(DeferredInitNamedAssignmentCase.NamedResult);
+    }
+
+    [TestMethod]
+    public void DeferredInit_RefVariableAssignedBeforeCallback()
+    {
+        DeferredInitRefAssignmentCase.RefResult = false;
+        var page = new DeferredInitRefAssignmentCase();
+
+        // For ref captures, btnProp.Value should be set before the callback.
+        Assert.IsTrue(DeferredInitRefAssignmentCase.RefResult);
+    }
 }

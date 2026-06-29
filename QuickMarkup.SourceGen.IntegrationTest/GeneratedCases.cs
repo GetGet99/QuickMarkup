@@ -783,4 +783,64 @@ public partial class RequiredRefsTarget : IQuickMarkupComponent<TestText>;
     """)]
 public partial class RequiredRefsConsumerCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Label = "";
+    string Extra = "";
+    <TestText Text=`$"{Label}: {Extra}"` />
+    """)]
+public partial class CtorArgWithRefsTarget : IQuickMarkupComponent<TestText>
+{
+    [QuickMarkupConstructor]
+    private void Init(string label)
+    {
+        Label = label;
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <CtorArgWithRefsTarget("hello") Extra="world" />
+    </root>
+    """)]
+public partial class CtorArgWithRefsConsumerCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Label = "";
+    required int RequiredCount = 0;
+    <TestText Text=`$"{Label}: {RequiredCount}"` />
+    """)]
+public partial class CtorArgWithRequiredTarget : IQuickMarkupComponent<TestText>
+{
+    [QuickMarkupConstructor]
+    private void Init(string label)
+    {
+        Label = label;
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        namedBtn = <DeferredPreInitTarget DeferredPreInitValue="test" `x => DeferredInitNamedAssignmentCase.NamedResult = x == namedBtn` />
+    </root>
+    """)]
+public partial class DeferredInitNamedAssignmentCase : TestRoot
+{
+    public static bool NamedResult { get; set; }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        ref refBtn = <DeferredPreInitTarget DeferredPreInitValue="test" `x => DeferredInitRefAssignmentCase.RefResult = x == refBtn` />
+    </root>
+    """)]
+public partial class DeferredInitRefAssignmentCase : TestRoot
+{
+    public static bool RefResult { get; set; }
+}
+
 

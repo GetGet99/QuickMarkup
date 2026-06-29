@@ -21,13 +21,33 @@ QuickMarkup code is placed inside a `[QuickMarkup("""...""")]` attribute on a `p
         </StackPanel>
     </root>
     """)]
-partial class CounterPage : Page
+partial class CounterPage : Page;
+```
+
+A source generator processes the attribute and generates public constructors automatically. If you need custom initialization logic (e.g., setting up services, loading data), mark a method with `[QuickMarkupConstructor]`:
+
+```csharp
+[QuickMarkup("""
+    int Counter = 0;
+    <root>/* ... */</root>
+    """)]
+partial class MyPage : Page
 {
-    public CounterPage() { Init(); }
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        // Runs at the start of the generated constructor, before markup setup
+        LoadSettings();
+    }
 }
 ```
 
-A source generator processes the attribute. If the class has at least one user-defined constructor (including primary constructors and record syntax), it generates an `Init()` method the class must call (typically at the end of the constructor, after all other setup). If there are no constructors, it generates a public constructor automatically.
+The generated constructor:
+- Runs the `[QuickMarkupConstructor]` method (if present).
+- Evaluates properties from upstream QuickMarkup markup (if called with the `Action<T>` overload).
+- Runs `<setup>` and builds the UI tree.
+
+**Fallback (backward-compatible) mode:** If you declare an explicit C# constructor without `[QuickMarkupConstructor]`, the generator emits a `private void Init()` method that you must call manually from your constructor (typically at the end). This is supported for legacy code but not recommended for new code.
 
 ## Sections (in order)
 
@@ -48,6 +68,62 @@ double Output => `A + B`;  // creates Computed<double>, property Output, backing
 References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change. Computed variables are lazily initialized — not evaluated until first accessed.
 
 References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed.
+
+## Required Properties
+
+Mark a reference declaration with the `required` keyword to make it a **required** for consumers to provide:
+
+```csharp
+[QuickMarkup("""
+    required string Title;
+    <TextBlock Text=`Title` />
+    """)]
+partial class MyLabel : IQuickMarkupComponent<TextBlock>;
+```
+
+In QuickMarkup code, the consumer must set `Title` on the markup.
+
+```quickmarkup
+// Markup consumer
+<MyLabel Title="Welcome" />
+```
+
+In C# code, the value must be put as a constructor argument.
+
+```csharp
+// C# consumer
+var label = new MyLabel("Welcome");
+```
+
+If a required property is not provided in markup, the binder reports error at compile time.
+
+### Rules
+
+- `required` only applies to non-computed, non-static reference declarations.
+- You cannot use backward compatible constructor mode with required properties. That means, you cannot declare C# constructor. If you have an explicit constructor, migrate to a `[QuickMarkupConstructor]` method instead.
+- The `[QuickMarkupRequiredProperty]` attribute is emitted on the generated C# property, enabling the binder to enforce requiredness on compiled library types.
+
+### Constructor Arguments + Required Refs
+
+When you also have a `[QuickMarkupConstructor]` method, required refs are appended as extra parameters:
+
+```csharp
+[QuickMarkup("""
+    required string Title;
+    <TextBlock Text=`Title` />
+    """)]
+partial class MyLabel : IQuickMarkupComponent<TextBlock>
+{
+    [QuickMarkupConstructor]
+    private void Init(int fontSize)
+    {
+        // Custom setup with fontSize
+    }
+}
+
+// Usage: [QuickMarkupConstructor] params first, then required refs
+var label = new MyLabel(14, "Welcome");
+```
 
 ## Markup Syntax
 
@@ -235,17 +311,20 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 });
 ```
 
-## Order of operations
+## Order of Operations
 
-Order of operations for new code:
+### Recommended Pattern (`[QuickMarkupConstructor]` / no explicit constructor)
 
-1. Component is initalized.
-2. If exists, user constructor with `[QuickMarkupConstructor]` is run. (upstream properties are not yet assigned)
-3. Properties from upstream QuickMarkup are evaluated and assigned.*
+When using `[QuickMarkupConstructor]` or no explicit constructor:
+
+1. Component is initialized.
+2. If a `[QuickMarkupConstructor]` method exists, it runs. (upstream properties are not yet assigned)
+3. If the component was created with QuickMarkup, parent consumers will set properties at this time (details on no. 6).
 4. `<setup>` tag is run.
 5. QuickMarkup goes through each element, one by one, running in order.
-  - Properties are evalulated in order of declartion (basically left to right)
-  - Children are evaluated in order of declaration (basically up to down)
+   - Properties are evaluated in order of declaration (left to right)
+   - Children are evaluated in order of declaration (top to bottom)
+
 Example:
 ```
 <root> // 1.
@@ -275,66 +354,115 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 
 7. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
 
-*This behavor is only guaranteed from generated code. If user calls generated constructor themselves, just note that the evaluation step depends on user code.
+*This behavior is only guaranteed from generated code. If user calls generated constructor themselves, just note that the evaluation step depends on user code.
 
-### Backward Compatability Mode
+### Backward Compatibility Mode (explicit `Init()` call)
 
-In Backward compatibility mode, when C# constructors (not `[QuickMarkupConstructor]`) are present.
+When you declare a C# constructor **without** `[QuickMarkupConstructor]`, the generator falls back to backward-compatible mode:
 
-1. User owned constructor is called.
+1. User's constructor is called.
 2. User must at some point call `Init()` method.
-3. When `Init()` is called, step 4-6 above models the behavior.
+3. When `Init()` is called, steps 4-7 above apply.
 
-IMPORTANT: This means that by the default behavior or when `Init()` call is called at the constructor, if you define a reference property, it may be null, because `Init()` is called before any properties from the parents are set. This is given assumption that parent sets property after `Init()` is called, because `Init()` function is defined inside constructor.
-
-For example,
 ```csharp
-record class Card(string Name, string Description);
+[QuickMarkup("""
+    <root>
+        <TextBlock Text="Hello" />
+    </root>
+    """)]
+partial class MyPage : Page
+{
+    public MyPage()
+    {
+        // Custom logic before init
+        Init(); // Must call this
+    }
+}
 ```
 
+> **Warning:** In backward-compatible mode, `Init()` runs inside the constructor, before any upstream properties are set. This means reference properties will be `null` or `default` during `<setup>` and UI tree building. Parents set properties *after* the constructor returns. See the example below.
+
 ```csharp
+record class Card(string Name, string Description);
+
 [QuickMarkup("""
     Card Card;
     <root>
-        // This will crash the app with NullReferenceException, because Card was not yet set on the constructor.
+        // This will crash with NullReferenceException — Card is not yet set
         <TextBlock Text=`Card.Name` />
-        // This as well.
-        <TextBlock Text=`Card.Description` />
     </root>
     """)]
-public partial class CardDisplay : StackPanel;
-
-[QuickMarkup("""
-    <root>
-        // even if all usage sets the property
-        <CardDisplay Card=`new Card("MyCard", "My card description")` />
-    </root>
-    """)]
-public partial class MainPage : Page;
+public partial class CardDisplay : StackPanel
+{
+    public CardDisplay() { Init(); }
+}
 ```
 
-In most case, you will need to do null guard or nullable reference type.
+To guard against this, use nullable types and conditional rendering:
 
 ```csharp
 [QuickMarkup("""
-    // good practice to declare as nullable
     Card? Card;
     <root>
-        // easiest way is to do if statement around components.
         if (`Card is not null`) {
             <TextBlock Text=`Card.Name` />
             <TextBlock Text=`Card.Description` />
         }
-
-        // alternateively, you may handle it a different way so it does not crash depending on your use case
-        <TextBlock Text=`Card?.Name` />
-        <TextBlock Text=`Card?.Description` />
     </root>
     """)]
-public partial class CardDisplay : StackPanel;
+public partial class CardDisplay : StackPanel
+{
+    public CardDisplay() { Init(); }
+}
 ```
 
-Therefore, it is much more recommended to migrate to the new structure.
+> **Recommendation:** Migrate to `[QuickMarkupConstructor]` or remove explicit constructors entirely to avoid this pitfall. With the recommended pattern, upstream properties are always assigned before `<setup>` runs (when the `Action<T>` constructor is used), or required refs are guaranteed by the compiler.
+
+## Generated Constructors
+
+In new code (not backward compatible mode). The source generator emits two constructors:
+
+**Primary constructor** — accepts required refs and any `[QuickMarkupConstructor]` parameters:
+
+```csharp
+// Example: required string Title + [QuickMarkupConstructor(int id)]
+public Component(int id, string Title) { ... }
+```
+
+**Action constructor** — accepts any `[QuickMarkupConstructor]` parameters followed by an `Action<T>` to let consumers set properties before `<setup>` runs:
+
+```csharp
+// Example: with [QuickMarkupConstructor(int id)] parameters
+public Component(int id, Action<Component> quickMarkupInitializer) { ... }
+
+// Example: without [QuickMarkupConstructor] parameters
+public Component(Action<Component> quickMarkupInitializer) { ... }
+```
+
+**WARNING: Action constructor is only meant to be called by QuickMarkup. User code is not intended to call this and QuickMarkup reserve rights to make breaking change to how Action initializer behaves.**
+
+If a `[QuickMarkupConstructor]` method declares parameters, those become parameters on both constructors (before required refs on the primary, before `Action<T>` on the action constructor). For example:
+
+```csharp
+[QuickMarkup("""
+    string Label = "";
+    <TextBlock Text=`Label` />
+    """)]
+partial class LabeledItem : IQuickMarkupComponent<TextBlock>
+{
+    [QuickMarkupConstructor]
+    private void Init(string label)
+    {
+        Label = label;
+    }
+}
+
+// Usage:
+var item = new LabeledItem("My Label");                             // primary constructor
+var item2 = new LabeledItem("My Label", x => { x.Label = "X"; });  // action constructor
+```
+
+
 
 ## Components
 
@@ -439,13 +567,8 @@ Namespace `QuickMarkup.WinUI`:
 The entry page must initialize the reactive scheduler. The simplest way is via `ReactiveInitializer.InitReactiveScheduler()`:
 
 ```csharp
-// App.xaml.cs or MainWindow.xaml.cs
-public MainWindow()
-{
-    this.InitializeComponent();
-    QuickMarkup.WinUI.ReactiveInitializer.InitReactiveScheduler();
-    Init();
-}
+// App.xaml.cs, for example of WinUI/UWP
+QuickMarkup.WinUI.ReactiveInitializer.InitReactiveScheduler();
 ```
 
 Only relevant if you start a new project from scratch.
@@ -462,14 +585,13 @@ Only relevant if you start a new project from scratch.
         <TextBlock Foreground=`theme.PrimaryText` Text="Hello" />
     </root>
     """)]
-partial class MyPage : Page
-{
-    public MyPage() { Init(); }
-}
+partial class MyPage : Page;
 ```
 
 ## Best Practices
 
+- **Prefer the recommended pattern** — omit explicit constructors or use `[QuickMarkupConstructor]` instead of manually calling `Init()`.
+- Use `required` on reference declarations that the consumer must provide, to get compile-time safety and cleaner constructor APIs.
 - Define **global usings** for common namespaces (`QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`, etc.) so markup stays clean.
 - Define **C# extension methods** like (`CenterH`, `CenterV`, `Center`, `Right`, `Bottom`, `StretchH`, `StretchV`) for layout shortcuts.
 - The class must be `partial` (source generator emits the other part). The base class should be a UI element (`Page`, `Grid`, `StackPanel`, etc.) or QuickMarkup component interface mentioned above.

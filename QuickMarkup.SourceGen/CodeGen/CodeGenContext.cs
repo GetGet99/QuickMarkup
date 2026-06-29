@@ -113,25 +113,37 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 postInitMembers.Add(member);
         }
 
+        var varTarget = varName.EndsWith("!") ? varName[..^1] : varName;
         if (initMembers.Count > 0)
         {
             // Build lambda body for property initializers
+            var lambdaParam = NewVariable();
             var lambdaBuilder = new StringBuilder();
             var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible)
             {
                 counterRef = counterRef,
                 disposableAddTarget = disposableAddTarget
             };
-            lambdaCtx.CGenWrite(initMembers, "x");
+            // Assign outer variable before property initializers to match order-of-operations promise
+            lambdaBuilder.AppendLine($"{varTarget} = {lambdaParam};");
+            lambdaCtx.CGenWrite(initMembers, lambdaParam);
             counterRef = lambdaCtx.counterRef;
 
-            codeBuilder.AppendLine($"{varName} = new {typeName}(x => {{");
+            if (node.Constructor.Parameters.Count > 0)
+            {
+                var ctorArgs = string.Join(", ", node.Constructor.Parameters.Select(p => CGen(p)));
+                codeBuilder.AppendLine($"{varTarget} = new {typeName}({ctorArgs}, {lambdaParam} => {{");
+            }
+            else
+            {
+                codeBuilder.AppendLine($"{varTarget} = new {typeName}({lambdaParam} => {{");
+            }
             codeBuilder.Append(lambdaBuilder.ToString().IndentWOF(2));
             codeBuilder.AppendLine("});");
         }
         else
         {
-            codeBuilder.AppendLine($"{varName} = {constructorExpr};");
+            codeBuilder.AppendLine($"{varTarget} = {constructorExpr};");
         }
 
         // Process post-init members (children, events, etc.)
