@@ -167,6 +167,7 @@ public record class RefDeclaration(
     QuickMarkupValue? DefaultValue,
     bool IsPrivate,
     bool IsStatic,
+    bool IsRequired,
     bool IsComputedDeclaration,
     ListAST<QMAttribute> Attributes);
 public interface ISFCTag;

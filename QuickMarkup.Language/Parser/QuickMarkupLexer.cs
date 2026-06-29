@@ -105,6 +105,9 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
             """, nameof(StringUnescape), State = LexerStates.InsideQMOpenTag)]
         [QuickMarkupStringQuotedScope(StringQuotedType.Double, Priority = (int)TextmateOrder.StringChar)]
         String,
+        [Regex(@"required", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Required,
         [Regex(@"private", State = LexerStates.Props, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
         Private,

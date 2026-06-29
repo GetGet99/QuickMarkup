@@ -188,11 +188,33 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return (target, usings, "", error, componentKind is not QMComponentKind.None);
         }
 
-        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder);
+        var requiredRefs = GetRequiredRefs(typeMembers);
+        if (requiredRefs.Count > 0 && initMode is QuickMarkupInitializationMode.BackwardCompatible)
+        {
+            var error = $"Type {target.FullTypeName} has required properties but uses BackwardCompatible init mode (has explicit constructors). To use required properties, remove explicit constructors or add a [QuickMarkupConstructor] method to control initialization.";
+            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+        }
+
+        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder, requiredRefs);
         return (target, usings, $$"""
                     {{generatedProperties}}
                     {{generatedMethod}}
                     """, default(string), componentKind is not QMComponentKind.None);
+    }
+
+    static List<(string TypeName, string Name)> GetRequiredRefs(QuickMarkupGeneratedTypeMembers? typeMembers)
+    {
+        if (!typeMembers.HasValue) return [];
+        var result = new List<(string TypeName, string Name)>();
+        foreach (var kvp in typeMembers.Value.Properties)
+        {
+            // TypeName may be null for unresolved types; skip — we can't emit a typed constructor parameter without it
+            if (kvp.Value.Kind is QuickMarkupGeneratedPropertyKind.RefValue && kvp.Value.IsRequired && kvp.Value.TypeName is not null)
+            {
+                result.Add((kvp.Value.TypeName, kvp.Key));
+            }
+        }
+        return result;
     }
 
     static string GenerateInitMethod(
@@ -200,7 +222,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         QuickMarkupInitializationMode initMode,
         QuickMarkupGeneratedTypeMembers? typeMembers,
         string? script,
-        StringBuilder codeBuilder)
+        StringBuilder codeBuilder,
+        List<(string TypeName, string Name)> requiredRefs)
     {
         var typeName = typeSymbol.Name;
         var scriptBody = script ?? "// No raw scripts was provided";
@@ -229,90 +252,118 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         // DeferredInit mode
         var ctorMethodName = typeMembers?.QuickMarkupConstructorMethodName;
         var ctorParams = typeMembers?.ConstructorParameters;
-        var paramList = ctorParams is { Count: > 0 }
-            ? string.Join(", ", ctorParams.Select(p => $"{p.TypeName} {p.Name}"))
-            : "";
-        var argList = ctorParams is { Count: > 0 }
-            ? string.Join(", ", ctorParams.Select(p => p.Name))
-            : "";
-
         var attrGlobalName = "global::QuickMarkup.SourceGen.QuickMarkupGeneratedConstructor";
-        string noParamCtor, actionCtor, internalInit;
+
+        // Build required-ref parameter list and assignment statements
+        var reqParamList = requiredRefs.Count > 0
+            ? string.Join(", ", requiredRefs.Select(p => $"{p.TypeName} {p.Name}"))
+            : "";
+        var reqAssignLines = requiredRefs.Select(r => $"                this.{r.Name} = {r.Name};").ToList();
+        var reqAssignmentsBlock = string.Join("\n", reqAssignLines);
+
+        string primaryParamSig, primaryBody, actionParamSig, actionBody;
+        string? internalInitParams;
 
         if (ctorParams is { Count: > 0 })
         {
             // User has [QuickMarkupConstructor] with parameters
-            var ctorParamSig = string.IsNullOrEmpty(paramList) ? "" : $"({paramList})";
-            var actionParamSig = string.IsNullOrEmpty(paramList)
-                ? $"(global::System.Action<{typeName}> quickMarkupInitializer)"
-                : $"({paramList}, global::System.Action<{typeName}> quickMarkupInitializer)";
+            var allParamList = ctorParams.Select(p => $"{p.TypeName} {p.Name}")
+                .Concat(requiredRefs.Select(p => $"{p.TypeName} {p.Name}"));
+            primaryParamSig = string.Join(", ", allParamList);
+            actionParamSig = $"{string.Join(", ", ctorParams.Select(p => $"{p.TypeName} {p.Name}"))}, global::System.Action<{typeName}> quickMarkupInitializer";
+            var constructorCall = ctorParams.Count > 0
+                ? $"{ctorMethodName}({string.Join(", ", ctorParams.Select(p => p.Name))});"
+                : $"{ctorMethodName}();";
 
-            var constructorCall = string.IsNullOrEmpty(argList)
-                ? $"{ctorMethodName}();"
-                : $"{ctorMethodName}({argList});";
+            primaryBody = $$"""
+                {{constructorCall}}
+                {{reqAssignmentsBlock}}
+                InternalInit({{string.Join(", ", ctorParams.Select(p => p.Name))}});
+                """;
 
-            noParamCtor = $$"""
-            [{{attrGlobalName}}]
-            public {{typeName}}{{ctorParamSig}} {
-                {{constructorCall.IndentWOF()}}
-                InternalInit({{argList}});
-            }
-            """;
-
-            actionCtor = $$"""
-            [{{attrGlobalName}}]
-            public {{typeName}}{{actionParamSig}} {
-                {{constructorCall.IndentWOF()}}
+            actionBody = $$"""
+                {{constructorCall}}
                 quickMarkupInitializer(this);
-                InternalInit({{argList}});
-            }
-            """;
+                InternalInit({{string.Join(", ", ctorParams.Select(p => p.Name))}});
+                """;
 
-            internalInit = $$"""
-            private void InternalInit({{paramList}}) {
-                {{cleanupBlock.IndentWOF()}}
-                {{scriptBody.IndentWOF()}}
-                {{initBody.IndentWOF()}}
-            }
-            """;
+            internalInitParams = string.Join(", ", ctorParams.Select(p => $"{p.TypeName} {p.Name}"));
+        }
+        else if (requiredRefs.Count > 0)
+        {
+            // Required refs but no [QuickMarkupConstructor] params
+            primaryParamSig = reqParamList;
+            actionParamSig = $"global::System.Action<{typeName}> quickMarkupInitializer";
+
+            primaryBody = $$"""
+                {{reqAssignmentsBlock}}
+                InternalInit();
+                """;
+
+            actionBody = $$"""
+                quickMarkupInitializer(this);
+                InternalInit();
+                """;
+
+            internalInitParams = null;
         }
         else
         {
-            // No user constructor or parameterless [QuickMarkupConstructor]
+            // No required refs, no [QuickMarkupConstructor] params - standard DeferredInit
             var hasCtorMethod = ctorMethodName is not null;
 
-            noParamCtor = $$"""
-            [{{attrGlobalName}}]
-            public {{typeName}}() {
-                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
-                InternalInit();
-            }
-            """;
+            primaryParamSig = "";
+            actionParamSig = $"global::System.Action<{typeName}> quickMarkupInitializer";
 
-            actionCtor = $$"""
-            [{{attrGlobalName}}]
-            public {{typeName}}(global::System.Action<{{typeName}}> quickMarkupInitializer) {
-                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
+            primaryBody = hasCtorMethod
+                ? $$"""
+                {{$"{ctorMethodName}();"}}
+                InternalInit();
+                """
+                : "InternalInit();";
+
+            actionBody = hasCtorMethod
+                ? $$"""
+                {{$"{ctorMethodName}();"}}
                 quickMarkupInitializer(this);
                 InternalInit();
-            }
-            """;
+                """
+                : $$"""
+                quickMarkupInitializer(this);
+                InternalInit();
+                """;
 
-            internalInit = $$"""
-            private void InternalInit() {
-                {{cleanupBlock.IndentWOF()}}
-                {{scriptBody.IndentWOF()}}
-                {{initBody.IndentWOF()}}
-            }
-            """;
+            internalInitParams = null;
         }
 
+        return $"""
+        {GenerateCtor(attrGlobalName, typeName, primaryParamSig, primaryBody)}
+
+        {GenerateCtor(attrGlobalName, typeName, actionParamSig, actionBody)}
+
+        {GenerateInternalInit(internalInitParams, cleanupBlock, scriptBody, initBody)}
+        """;
+    }
+
+    static string GenerateCtor(string attrGlobalName, string typeName, string paramSig, string body)
+    {
         return $$"""
-        {{noParamCtor}}
+        [{{attrGlobalName}}]
+        public {{typeName}}({{paramSig}}) {
+            {{body.IndentWOF()}}
+        }
+        """;
+    }
 
-        {{actionCtor}}
-
-        {{internalInit}}
+    static string GenerateInternalInit(string? internalInitParams, string cleanupBlock, string scriptBody, string initBody)
+    {
+        var paramStr = internalInitParams is not null ? $"({internalInitParams})" : "()";
+        return $$"""
+        private void InternalInit{{paramStr}} {
+            {{cleanupBlock.IndentWOF()}}
+            {{scriptBody.IndentWOF()}}
+            {{initBody.IndentWOF()}}
+        }
         """;
     }
 

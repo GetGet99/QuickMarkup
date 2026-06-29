@@ -17,21 +17,23 @@ public readonly record struct QuickMarkupGeneratedPropertySymbol(
     string Name,
     string? TypeName,
     bool IsPrivate,
-    QuickMarkupGeneratedPropertyKind Kind
+    QuickMarkupGeneratedPropertyKind Kind,
+    bool IsRequired = false
 );
 
 public readonly record struct ResolvedProperty(
     string Name,
     ITypeSymbol? Type,
     IPropertySymbol? RoslynSymbol,
-    QuickMarkupGeneratedPropertySymbol? GeneratedSymbol
+    QuickMarkupGeneratedPropertySymbol? GeneratedSymbol,
+    bool IsRequired = false
 )
 {
-    public static ResolvedProperty FromRoslyn(IPropertySymbol property)
-        => new(property.Name, property.Type, property, null);
+    public static ResolvedProperty FromRoslyn(IPropertySymbol property, bool isRequired = false)
+        => new(property.Name, property.Type, property, null, isRequired);
 
     public static ResolvedProperty FromGenerated(QuickMarkupGeneratedPropertySymbol property, ITypeSymbol? type)
-        => new(property.Name, type, null, property);
+        => new(property.Name, type, null, property, property.IsRequired);
 }
 
 public readonly record struct QuickMarkupConstructorParameter(
@@ -83,7 +85,11 @@ public sealed class QuickMarkupGeneratedMemberTable
         for (var current = type; current is not null; current = current.BaseType)
         {
             if (CodeTypeResolver.FindRoslynPropertyOnTypeOnly(current, property) is { } roslynProperty)
-                return ResolvedProperty.FromRoslyn(roslynProperty);
+            {
+                var isRequired = roslynProperty.GetAttributes().Any(a =>
+                    a.AttributeClass?.Name is "QuickMarkupRequiredPropertyAttribute");
+                return ResolvedProperty.FromRoslyn(roslynProperty, isRequired);
+            }
 
             if (!TryGetTypeMembers(current, out var members, out var currentFullName))
             {

@@ -25,8 +25,12 @@ static class QuickMarkupGeneratedMemberTableBuilder
         var unknownTypes = typeSymbol.TypeParameters.Length > 0;
         var componentKind = resolver.GetComponentKind(typeSymbol, out var componentOutputType);
 
+        var hasRequired = false;
         foreach (var @ref in refs)
         {
+            var isRequired = @ref.IsRequired && !@ref.IsComputedDeclaration && !@ref.IsStatic;
+            if (isRequired) hasRequired = true;
+
             AddGeneratedProperty(
                 properties,
                 new QuickMarkupGeneratedPropertySymbol(
@@ -35,7 +39,8 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     @ref.IsPrivate,
                     @ref.IsComputedDeclaration
                         ? QuickMarkupGeneratedPropertyKind.ComputedValue
-                        : QuickMarkupGeneratedPropertyKind.RefValue));
+                        : QuickMarkupGeneratedPropertyKind.RefValue,
+                    isRequired));
 
             var backingName = @ref.IsComputedDeclaration
                 ? $"{@ref.Name}Comp"
@@ -73,9 +78,11 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     QuickMarkupGeneratedPropertyKind.ComponentOutput));
         }
 
-        var initMode = typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
-            ? QuickMarkupInitializationMode.BackwardCompatible
-            : QuickMarkupInitializationMode.DeferredInit;
+        var initMode = hasRequired
+            ? QuickMarkupInitializationMode.DeferredInit
+            : typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
+                ? QuickMarkupInitializationMode.BackwardCompatible
+                : QuickMarkupInitializationMode.DeferredInit;
 
         var constructorMethod = typeSymbol.GetMembers().OfType<IMethodSymbol>()
             .FirstOrDefault(m => m.GetAttributes().Any(a =>

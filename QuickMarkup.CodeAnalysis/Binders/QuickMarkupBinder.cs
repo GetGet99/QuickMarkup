@@ -77,6 +77,10 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         Bind(tag.InlineMembers, tagInfo, members);
 
         Bind(tag.Children, tagInfo, members);
+
+        if (rootType is null && type is not null)
+            ValidateRequiredProperties(type, members, tag.TagStart);
+
         return new(
             type,
             Bind((QuickMarkupConstructor)tag.TagStart, tagInfo),
@@ -735,6 +739,39 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             _ => "unknown"
         };
         Error(new QMBinderTypeMismatchError(value!, targetType.FullNameWithoutAnnotation(), valueTypeName));
+    }
+
+    static string? GetPropertyName(IQMMemberSymbol member)
+    {
+        return member switch
+        {
+            // Required properties can't have dotted names (they'd be attached properties or fragment).
+            // Only return simple (non-dotted) property references.
+            QMAddPropertyMember<ITypeSymbol?> p => p.PropertyName.Contains('.') ? null : p.PropertyName,
+            _ => null
+        };
+    }
+
+    void ValidateRequiredProperties(ITypeSymbol type, List<IQMMemberSymbol> members, ITagStart tagStart)
+    {
+        var requiredNames = resolver.GetRequiredPropertyNames(type);
+        if (requiredNames.Count == 0) return;
+
+        var providedNames = new HashSet<string>();
+        foreach (var member in members)
+        {
+            if (GetPropertyName(member) is { } name)
+                providedNames.Add(name);
+        }
+
+        foreach (var requiredName in requiredNames)
+        {
+            if (!providedNames.Contains(requiredName))
+            {
+                Error(new QMBinderRequiredPropertyMissingError(
+                    (AST.AST)tagStart, type.FullNameWithoutAnnotation(), requiredName));
+            }
+        }
     }
 
     void ErrorUnknownProperty(AST.AST node, QMBinderTagInfo tagInfo, string propertyName)

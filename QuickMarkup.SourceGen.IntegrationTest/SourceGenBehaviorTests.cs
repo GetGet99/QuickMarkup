@@ -777,6 +777,21 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void RequiredRefsTarget_ConstructorParameterPassesValue()
+    {
+        var comp = new RequiredRefsTarget("explicit value");
+        Assert.AreEqual("explicit value", comp.MarkupNode.Text);
+    }
+
+    [TestMethod]
+    public void RequiredRefsConsumer_SetsRequiredPropertyInMarkup()
+    {
+        var page = new RequiredRefsConsumerCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("required value", text.Text);
+    }
+
+    [TestMethod]
     public void DeferredPreInitConsumer_PropertiesSetBeforeInit()
     {
         var page = new DeferredPreInitConsumerCase();

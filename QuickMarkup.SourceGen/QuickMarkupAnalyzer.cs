@@ -28,7 +28,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorTypeUnknown,
         BindErrorTagMismatched,
         BindErrorTagUnexpected,
-        BindErrorTypeMismatch
+        BindErrorTypeMismatch,
+        BindErrorRequiredPropertyMissing
     );
     internal readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -116,6 +117,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "QM1011",
         "QuickMarkup type mismatch",
         "Cannot assign value of type '{0}' to property of type '{1}'",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
+    internal readonly static DiagnosticDescriptor BindErrorRequiredPropertyMissing = new(
+        "QM1012",
+        "QuickMarkup required property missing",
+        "Required property '{0}' is not set on '{1}'",
         "QuickMarkup",
         DiagnosticSeverity.Error,
         true

@@ -16,6 +16,7 @@ public static class QMDiagnosticHelper
         QMBinderTagMismatchedError => "QM1009",
         QMBinderTagUnexpectedError => "QM1010",
         QMBinderTypeMismatchError => "QM1011",
+        QMBinderRequiredPropertyMissingError => "QM1012",
         _ => "QM1003"
     };
 }

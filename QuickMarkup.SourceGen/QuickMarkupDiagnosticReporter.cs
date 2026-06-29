@@ -138,6 +138,15 @@ static class QuickMarkupDiagnosticReporter
                     tagUnexpected.TagName
                 ));
             }
+            else if (diagnostic is QMBinderRequiredPropertyMissingError requiredMissing)
+            {
+                report(Diagnostic.Create(
+                    QuickMarkupAnalyzer.BindErrorRequiredPropertyMissing,
+                    dLoc,
+                    requiredMissing.PropertyName,
+                    requiredMissing.TypeName
+                ));
+            }
             else if (diagnostic is QMBinderTypeMismatchError typeMismatch)
             {
                 report(Diagnostic.Create(

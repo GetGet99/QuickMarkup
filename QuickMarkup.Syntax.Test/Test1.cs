@@ -461,6 +461,40 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_Ref_RequiredKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                required int X = 0;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("X", r.Name.Name);
+            Assert.IsTrue(r.IsRequired);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsFalse(r.IsStatic);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
+        public void Parse_Ref_PublicRequiredKeyword()
+        {
+            var sfc = Parse("""
+                using System;
+
+                public required int Y = 1;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Y", r.Name.Name);
+            Assert.IsTrue(r.IsRequired);
+            Assert.IsFalse(r.IsPrivate);
+            Assert.IsFalse(r.IsStatic);
+            Assert.IsFalse(r.IsComputedDeclaration);
+        }
+
+        [TestMethod]
         public void Parse_EmptyContent_ReturnsNullTemplate()
         {
             var sfc = Parse("");

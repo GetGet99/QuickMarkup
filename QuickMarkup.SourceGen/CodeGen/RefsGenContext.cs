@@ -20,7 +20,7 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
     {
         // Phase 1: compile-time attributes on the bound symbol are intentionally not emitted here.
         var typeName = RefTypeDisplayName(bound.RefType, bound.Name);
-        var defaultValue = bound.DefaultValue is null
+        var defaultValue = bound.IsRequired || bound.DefaultValue is null
             ? "default"
             : ValueSymbolToInitExpression(bound.DefaultValue);
         var accessibility = bound.IsStatic
@@ -41,10 +41,15 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
         }
         else
         {
+            var attrSuffix = bound.IsRequired
+                ? $$"""
+                [global::QuickMarkup.SourceGen.QuickMarkupRequiredProperty]
+                """
+                : "";
             var refType = $"global::QuickMarkup.Infra.Reference<{typeName}>";
             membersBuilder.AppendLine($$"""
                 {{accessibility}} {{refType}} {{bound.Name}}Prop => field ??= new {{refType}}({{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
-                {{accessibility}} {{typeName}} {{bound.Name}} {
+                {{attrSuffix}}{{accessibility}} {{typeName}} {{bound.Name}} {
                     get {
                         return {{thisRef}}{{bound.Name}}Prop.Value;
                     }

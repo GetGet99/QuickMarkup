@@ -60,6 +60,9 @@ public record class QMBinderPropertyUnknownError(AST Node, string TypeName, stri
     public override string ToString() => base.ToString();
 }
 
+public record class QMBinderRequiredPropertyMissingError(AST Node, string TypeName, string PropertyName)
+    : QMBinderError(Node, $"Required property '{PropertyName}' is not set on '{TypeName}'.");
+
 public record class QMBinderTypeMismatchError(AST Node, string PropertyTypeName, string ValueTypeName)
     : QMBinderError(Node, BuildTypeMismatchMessage(PropertyTypeName, ValueTypeName))
 {

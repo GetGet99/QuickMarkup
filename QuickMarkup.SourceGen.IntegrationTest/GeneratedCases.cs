@@ -768,4 +768,19 @@ public partial class DeferredPreInitTarget : IQuickMarkupComponent<TestText>;
     """)]
 public partial class DeferredPreInitConsumerCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    required string RequiredText = "";
+    <TestText Text=`RequiredText` />
+    """)]
+public partial class RequiredRefsTarget : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <RequiredRefsTarget RequiredText="required value" />
+    </root>
+    """)]
+public partial class RequiredRefsConsumerCase : TestRoot;
+
 

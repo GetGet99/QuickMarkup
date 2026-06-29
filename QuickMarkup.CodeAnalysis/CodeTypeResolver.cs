@@ -300,6 +300,35 @@ class CodeTypeResolver(
         return names;
     }
 
+    public HashSet<string> GetRequiredPropertyNames(ITypeSymbol type)
+    {
+        var names = new HashSet<string>();
+        // Check generated member table
+        var foundMembers = generatedMembers.FindTypeMembers(type);
+        if (foundMembers.HasValue)
+        {
+            foreach (var kvp in foundMembers.Value.Properties)
+            {
+                if (kvp.Value is { Kind: QuickMarkupGeneratedPropertyKind.RefValue, IsRequired: true })
+                    names.Add(kvp.Key);
+            }
+        }
+        // Check Roslyn properties for the attribute (covers compiled libraries)
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers())
+            {
+                if (member is IPropertySymbol prop &&
+                    prop.GetAttributes().Any(a =>
+                        a.AttributeClass?.Name is "QuickMarkupRequiredPropertyAttribute"))
+                {
+                    names.Add(prop.Name);
+                }
+            }
+        }
+        return names;
+    }
+
     ITypeSymbol? ResolveGeneratedPropertyType(string typeName)
         => GetTypeSymbol(typeName);
 

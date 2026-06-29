@@ -16,3 +16,4 @@ QM1008 | QuickMarkup | Error | QuickMarkupAnalyzer
 QM1009 | QuickMarkup | Error | QuickMarkupAnalyzer
 QM1010 | QuickMarkup | Error | QuickMarkupAnalyzer
 QM1011 | QuickMarkup | Error | QuickMarkupAnalyzer
+QM1012 | QuickMarkup | Error | QuickMarkupAnalyzer

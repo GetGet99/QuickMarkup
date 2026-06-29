@@ -131,5 +131,6 @@ public record class QMRefDeclarationSymbol<T>(
     IQMValueSymbol? DefaultValue,
     bool IsPrivate,
     bool IsStatic,
+    bool IsRequired,
     bool IsComputedDeclaration,
     IReadOnlyList<QMCompileTimeAttributeSymbol> CompileTimeAttributes);
