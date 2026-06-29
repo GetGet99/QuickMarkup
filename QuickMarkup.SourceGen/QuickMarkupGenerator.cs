@@ -246,11 +246,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             var actionParamSig = string.IsNullOrEmpty(paramList)
                 ? $"(global::System.Action<{typeName}> quickMarkupInitializer)"
                 : $"({paramList}, global::System.Action<{typeName}> quickMarkupInitializer)";
-            var internalInitSig = string.IsNullOrEmpty(argList) ? "()" : $"({argList})";
+
+            var constructorCall = string.IsNullOrEmpty(argList)
+                ? $"{ctorMethodName}();"
+                : $"{ctorMethodName}({argList});";
 
             noParamCtor = $$"""
             [{{attrGlobalName}}]
             public {{typeName}}{{ctorParamSig}} {
+                {{constructorCall.IndentWOF()}}
                 InternalInit({{argList}});
             }
             """;
@@ -258,18 +262,14 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             actionCtor = $$"""
             [{{attrGlobalName}}]
             public {{typeName}}{{actionParamSig}} {
+                {{constructorCall.IndentWOF()}}
                 quickMarkupInitializer(this);
                 InternalInit({{argList}});
             }
             """;
 
-            var constructorCall = string.IsNullOrEmpty(argList)
-                ? $"{ctorMethodName}();"
-                : $"{ctorMethodName}({argList});";
-
             internalInit = $$"""
             private void InternalInit({{paramList}}) {
-                {{constructorCall.IndentWOF()}}
                 {{cleanupBlock.IndentWOF()}}
                 {{scriptBody.IndentWOF()}}
                 {{initBody.IndentWOF()}}
@@ -284,6 +284,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             noParamCtor = $$"""
             [{{attrGlobalName}}]
             public {{typeName}}() {
+                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
                 InternalInit();
             }
             """;
@@ -291,6 +292,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             actionCtor = $$"""
             [{{attrGlobalName}}]
             public {{typeName}}(global::System.Action<{{typeName}}> quickMarkupInitializer) {
+                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
                 quickMarkupInitializer(this);
                 InternalInit();
             }
@@ -298,7 +300,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
             internalInit = $$"""
             private void InternalInit() {
-                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
                 {{cleanupBlock.IndentWOF()}}
                 {{scriptBody.IndentWOF()}}
                 {{initBody.IndentWOF()}}

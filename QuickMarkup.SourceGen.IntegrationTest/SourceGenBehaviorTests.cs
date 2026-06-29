@@ -756,6 +756,27 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ConstructorRunsBeforeAction_SetupRunsAfterAction()
+    {
+        ConstructorCallOrderCase.SharedValue = "";
+        ConstructorCallOrderCase.ConstructorValue = "not set";
+        ConstructorCallOrderCase.SetupValue = "not set";
+
+        var comp = new ConstructorCallOrderCase(x =>
+        {
+            x.InstanceProp = "set by action";
+            ConstructorCallOrderCase.SharedValue = "set by action";
+        });
+
+        Assert.AreEqual("", ConstructorCallOrderCase.ConstructorValue,
+            "Constructor should run before action — SharedValue should still be empty");
+        Assert.AreEqual("set by action", ConstructorCallOrderCase.SetupValue,
+            "Setup should run after action — SharedValue should be set");
+        Assert.AreEqual("set by action", comp.InstanceProp,
+            "Action should have set InstanceProp");
+    }
+
+    [TestMethod]
     public void DeferredPreInitConsumer_PropertiesSetBeforeInit()
     {
         var page = new DeferredPreInitConsumerCase();

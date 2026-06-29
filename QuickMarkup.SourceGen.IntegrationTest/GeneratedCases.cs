@@ -732,6 +732,29 @@ public partial class ConstructorWithParamsCase : TestRoot
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    <setup>
+    ConstructorCallOrderCase.SetupValue = ConstructorCallOrderCase.SharedValue;
+    </setup>
+    <root>
+        <TestText Text="call order" />
+    </root>
+    """)]
+public partial class ConstructorCallOrderCase : TestRoot
+{
+    public static string SharedValue { get; set; } = "";
+    public static string ConstructorValue { get; set; } = "";
+    public static string SetupValue { get; set; } = "";
+    public string? InstanceProp { get; set; }
+
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        ConstructorValue = SharedValue;
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     string DeferredPreInitValue = "";
     <TestText Text=`DeferredPreInitValue` />
     """)]
