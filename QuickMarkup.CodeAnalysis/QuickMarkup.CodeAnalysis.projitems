@@ -14,7 +14,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Binders\QuickMarkupBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\Binder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\QuickMarkupBinder.Refs.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)binders\QuickMarkupBinderUtilities.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Binders\QuickMarkupBinderUtilities.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Binders\RefAttributeBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeTypeResolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FrameworkConfiguration.cs" />
@@ -37,11 +37,11 @@
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\MethodAndProperty.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Get.EasyCSharp.GeneratorTools\SyntaxCreator\Members\Types.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Dependencies\Polyfills\UnreachableException.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)helpers\QuickMarkupAttributeInString.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupAttributeInString.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.Shared.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.Analyzer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.SourceGen.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)helpers\QuickMarkupProviderExtension.Parsing.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupProviderExtension.Parsing.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupTargetContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\IFileProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\QuickMarkupCompilationEnricher.cs" />
