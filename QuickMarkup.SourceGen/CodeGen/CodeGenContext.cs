@@ -90,9 +90,22 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         // Separate init properties from post-init members
         var initMembers = new List<IQMMemberSymbol>();
         var postInitMembers = new List<IQMMemberSymbol>();
+        var outputPrefix = node.ComponentOutputPropertyName is not null
+            ? $"{node.ComponentOutputPropertyName}."
+            : null;
         foreach (var member in node.Members)
         {
-            if (member is QMAddPropertyMember<ITypeSymbol?>
+            bool isOutputMember = member switch
+            {
+                QMAddPropertyMember<ITypeSymbol?> p
+                    when outputPrefix is not null && p.PropertyName.StartsWith(outputPrefix, StringComparison.Ordinal)
+                    => true,
+                _ => false
+            };
+
+            if (isOutputMember)
+                postInitMembers.Add(member);
+            else if (member is QMAddPropertyMember<ITypeSymbol?>
                 or QMAttachedPropertyMember<ITypeSymbol?>
                 or QMCallbackMember<ITypeSymbol?>)
                 initMembers.Add(member);
