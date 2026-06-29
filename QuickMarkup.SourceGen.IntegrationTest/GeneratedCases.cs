@@ -663,4 +663,86 @@ public partial class UnicodeStringCase : TestRoot;
     """)]
 public partial class UnicodeCommentCase : TestRoot;
 
+// --- Deferred Init and Backward Compatibility tests ---
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText Text="backward compat" />
+    </root>
+    """)]
+public partial class BackwardCompatChildTest : TestRoot
+{
+    public BackwardCompatChildTest()
+    {
+        Init();
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string InjectedText = "";
+    <TestText Text=`InjectedText` />
+    """)]
+public partial class ActionConstructorTarget : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <ActionConstructorTarget InjectedText="from consumer" />
+    </root>
+    """)]
+public partial class ActionConstructorConsumerCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText Text="ctor called" />
+    </root>
+    """)]
+public partial class QuickMarkupConstructorNoParamCase : TestRoot
+{
+    public static bool ConstructorCalled { get; set; }
+
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        ConstructorCalled = true;
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestText Text="ctor with params" />
+    </root>
+    """)]
+public partial class ConstructorWithParamsCase : TestRoot
+{
+    public static int StoredValue { get; set; }
+    public static string StoredText { get; set; }
+
+    [QuickMarkupConstructor]
+    private void MyInit(int value, string text)
+    {
+        StoredValue = value;
+        StoredText = text;
+    }
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string DeferredPreInitValue = "";
+    <TestText Text=`DeferredPreInitValue` />
+    """)]
+public partial class DeferredPreInitTarget : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <DeferredPreInitTarget DeferredPreInitValue="set before init" />
+    </root>
+    """)]
+public partial class DeferredPreInitConsumerCase : TestRoot;
+
 

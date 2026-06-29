@@ -5,11 +5,13 @@ using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bool isConstuctorMode)
+class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, QuickMarkupInitializationMode initMode)
 {
     int counterRef = 0;
     readonly Stack<ForScope> forScopes = [];
     string disposableAddTarget = "QUICKMARKUP_DISPOSABLES";
+    // Named nodes need null-forgiving assignment when not in a real constructor
+    bool useNullForgivingFields => initMode is not QuickMarkupInitializationMode.BackwardCompatible;
 
     string NewVariable() => $"QUICKMARKUP_NODE_{counterRef++}";
 
@@ -20,6 +22,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     string CGen(QMNodeSymbol<ITypeSymbol?> node)
     {
+        if (node.InitMode == QuickMarkupInitializationMode.DeferredInit)
+            return CGenDeferredInit(node);
+
         var constructor = CGen(node.Constructor);
 
         string varName;
@@ -45,14 +50,81 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
         {
             varName = node.Name!;
             var type = node.Type?.FullName() ?? "QM_UnknownType";
-            if (isConstuctorMode)
-                membersBuilder.AppendLine($"private readonly {type} {varName};");
-            else
+            if (useNullForgivingFields)
                 membersBuilder.AppendLine($"private {type} {varName} = null!;");
+            else
+                membersBuilder.AppendLine($"private readonly {type} {varName};");
             codeBuilder.AppendLine($"{varName} = {constructor};");
         }
 
         CGenWrite(node, varName);
+        return varName;
+    }
+
+    string CGenDeferredInit(QMNodeSymbol<ITypeSymbol?> node)
+    {
+        var typeName = node.Type?.FullName() ?? "QM_UnknownType";
+        var constructorExpr = CGen(node.Constructor); // "new TypeName()"
+
+        string varName;
+        if (string.IsNullOrWhiteSpace(node.Name))
+        {
+            varName = NewVariable();
+            codeBuilder.AppendLine($"{typeName} {varName} = null!;");
+        }
+        else if (node.IsRef)
+        {
+            var name = node.Name!;
+            var nullableType = typeName + "?";
+            var fieldName = name + "Prop";
+            membersBuilder.AppendLine($"private readonly global::QuickMarkup.Infra.Reference<{nullableType}> {fieldName} = new(null);");
+            membersBuilder.AppendLine($"private {nullableType} {name} => {fieldName}.Value;");
+            varName = $"{fieldName}.Value!";
+        }
+        else
+        {
+            varName = node.Name!;
+            membersBuilder.AppendLine($"private {typeName} {varName} = null!;");
+        }
+
+        // Separate init properties from post-init members
+        var initMembers = new List<IQMMemberSymbol>();
+        var postInitMembers = new List<IQMMemberSymbol>();
+        foreach (var member in node.Members)
+        {
+            if (member is QMAddPropertyMember<ITypeSymbol?>
+                or QMAttachedPropertyMember<ITypeSymbol?>
+                or QMCallbackMember<ITypeSymbol?>)
+                initMembers.Add(member);
+            else
+                postInitMembers.Add(member);
+        }
+
+        if (initMembers.Count > 0)
+        {
+            // Build lambda body for property initializers
+            var lambdaBuilder = new StringBuilder();
+            var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible)
+            {
+                counterRef = counterRef,
+                disposableAddTarget = disposableAddTarget
+            };
+            lambdaCtx.CGenWrite(initMembers, "x");
+            counterRef = lambdaCtx.counterRef;
+
+            codeBuilder.AppendLine($"{varName} = new {typeName}(x => {{");
+            codeBuilder.Append(lambdaBuilder.ToString().IndentWOF(2));
+            codeBuilder.AppendLine("});");
+        }
+        else
+        {
+            codeBuilder.AppendLine($"{varName} = {constructorExpr};");
+        }
+
+        // Process post-init members (children, events, etc.)
+        if (postInitMembers.Count > 0)
+            CGenWrite(postInitMembers, varName);
+
         return varName;
     }
 
@@ -737,7 +809,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, bo
 
     CodeGenContext Clone(StringBuilder builder)
     {
-        var clone = new CodeGenContext(membersBuilder, builder, isConstuctorMode)
+        var clone = new CodeGenContext(membersBuilder, builder, initMode)
         {
             counterRef = counterRef,
             disposableAddTarget = disposableAddTarget

@@ -68,6 +68,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode, componentKind, componentOutputType);
 
 
+        var initMode = rootType is null
+            ? resolver.GeneratedMemberTable.FindTypeMembers(type)?.InitMode
+                ?? QuickMarkupInitializationMode.BackwardCompatible
+            : QuickMarkupInitializationMode.BackwardCompatible;
+
         var members = new List<IQMMemberSymbol>();
         Bind(tag.InlineMembers, tagInfo, members);
 
@@ -80,7 +85,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             componentKind,
             componentOutputType,
             CodeTypeResolver.ComponentOutputPropertyName,
-            tag.IsRef
+            tag.IsRef,
+            initMode
         );
     }
 
@@ -144,7 +150,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             componentKind,
             componentOutputType,
             CodeTypeResolver.ComponentOutputPropertyName,
-            tag.IsRef);
+            tag.IsRef,
+            QuickMarkupInitializationMode.BackwardCompatible);
     }
     QMConstructor Bind(QuickMarkupConstructor constructor, QMBinderTagInfo tagInfo)
     {

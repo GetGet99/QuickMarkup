@@ -1,5 +1,11 @@
 namespace QuickMarkup.Language.Symbols;
 
+public enum QuickMarkupInitializationMode
+{
+    BackwardCompatible,
+    DeferredInit
+}
+
 public interface IQMMemberSymbol;
 public interface IQMNodeChildSymbol;
 public interface IQMValueSymbol : IQMNodeChildSymbol;
@@ -52,7 +58,8 @@ public record class QMNodeSymbol<T>(
     QMComponentKind ComponentKind = QMComponentKind.None,
     T? ComponentOutputType = default,
     string ComponentOutputPropertyName = "MarkupNode",
-    bool IsRef = false
+    bool IsRef = false,
+    QuickMarkupInitializationMode InitMode = QuickMarkupInitializationMode.BackwardCompatible
 ) : IQMNodeChildSymbol, IQMValueSymbol;
 public record class QMForNodeSymbol<T>(
     QMForKind Kind,

@@ -1,5 +1,6 @@
 using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.CodeAnalysis;
 
@@ -33,9 +34,17 @@ public readonly record struct ResolvedProperty(
         => new(property.Name, type, null, property);
 }
 
+public readonly record struct QuickMarkupConstructorParameter(
+    string TypeName,
+    string Name
+);
+
 public readonly record struct QuickMarkupGeneratedTypeMembers(
     string FullTypeName,
-    IReadOnlyDictionary<string, QuickMarkupGeneratedPropertySymbol> Properties
+    IReadOnlyDictionary<string, QuickMarkupGeneratedPropertySymbol> Properties,
+    QuickMarkupInitializationMode InitMode,
+    string? QuickMarkupConstructorMethodName = null,
+    IReadOnlyList<QuickMarkupConstructorParameter>? ConstructorParameters = null
 );
 
 public sealed class QuickMarkupGeneratedMemberTable
@@ -106,6 +115,16 @@ public sealed class QuickMarkupGeneratedMemberTable
             return ResolvedProperty.FromGenerated(generatedProperty, generatedPropertyType);
         }
 
+        return null;
+    }
+
+    public QuickMarkupGeneratedTypeMembers? FindTypeMembers(ITypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (TryGetTypeMembers(current, out var members, out _))
+                return members;
+        }
         return null;
     }
 

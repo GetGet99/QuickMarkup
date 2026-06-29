@@ -693,4 +693,77 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual("Unicode in string: 文字列テスト", first.Text);
         Assert.AreEqual("Accented: résumé méil Çç ñ", second.Text);
     }
+
+    // --- Deferred Init and Backward Compatibility tests ---
+
+    [TestMethod]
+    public void BackwardCompatWithExplicitConstructor_CallsInitAndBuildsTree()
+    {
+        var page = new BackwardCompatChildTest();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("backward compat", text.Text);
+    }
+
+    [TestMethod]
+    public void ActionConstructor_SetsPropertiesBeforeInit()
+    {
+        var comp = new ActionConstructorTarget(x =>
+        {
+            x.InjectedText = "injected value";
+        });
+
+        // The Action lambda runs before InternalInit(), so InjectedText is available
+        // when the markup evaluates Text=`InjectedText`.
+        Assert.AreEqual("injected value", comp.MarkupNode.Text);
+    }
+
+    [TestMethod]
+    public void ActionConstructorConsumer_UsesActionPatternFromGeneratedCode()
+    {
+        var page = new ActionConstructorConsumerCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        // The consumer markup sets InjectedText on ActionConstructorTarget via the
+        // Action<T> constructor pattern (DeferredInit consumer codegen).
+        // The Text binding references InjectedText, which was set before InternalInit().
+        Assert.AreEqual("from consumer", text.Text);
+    }
+
+    [TestMethod]
+    public void QuickMarkupConstructorNoParam_CallsMethodDuringInit()
+    {
+        QuickMarkupConstructorNoParamCase.ConstructorCalled = false;
+        var page = new QuickMarkupConstructorNoParamCase();
+
+        Assert.IsTrue(QuickMarkupConstructorNoParamCase.ConstructorCalled);
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("ctor called", text.Text);
+    }
+
+    [TestMethod]
+    public void QuickMarkupConstructorWithParams_PassesArgumentsToMethod()
+    {
+        ConstructorWithParamsCase.StoredValue = 0;
+        ConstructorWithParamsCase.StoredText = "";
+
+        var page = new ConstructorWithParamsCase(42, "hello");
+
+        Assert.AreEqual(42, ConstructorWithParamsCase.StoredValue);
+        Assert.AreEqual("hello", ConstructorWithParamsCase.StoredText);
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("ctor with params", text.Text);
+    }
+
+    [TestMethod]
+    public void DeferredPreInitConsumer_PropertiesSetBeforeInit()
+    {
+        var page = new DeferredPreInitConsumerCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        // The consumer sets DeferredPreInitValue="set before init" via the Action<T>
+        // constructor. The component's own markup binds Text to DeferredPreInitValue,
+        // which was set before InternalInit() ran, so it should be visible.
+        Assert.AreEqual("set before init", text.Text);
+    }
 }

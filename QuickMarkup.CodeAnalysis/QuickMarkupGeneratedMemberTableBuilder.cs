@@ -73,7 +73,29 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     QuickMarkupGeneratedPropertyKind.ComponentOutput));
         }
 
-        return new QuickMarkupGeneratedTypeMembers(target.FullTypeName, properties);
+        var initMode = typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
+            ? QuickMarkupInitializationMode.BackwardCompatible
+            : QuickMarkupInitializationMode.DeferredInit;
+
+        var constructorMethod = typeSymbol.GetMembers().OfType<IMethodSymbol>()
+            .FirstOrDefault(m => m.GetAttributes().Any(a =>
+                a.AttributeClass?.Name is "QuickMarkupConstructorAttribute"));
+
+        List<QuickMarkupConstructorParameter>? ctorParams = null;
+        if (constructorMethod is { Parameters.Length: > 0 })
+        {
+            ctorParams = [];
+            foreach (var p in constructorMethod.Parameters)
+            {
+                ctorParams.Add(new QuickMarkupConstructorParameter(
+                    p.Type.FullName() ?? "object",
+                    p.Name));
+            }
+        }
+
+        return new QuickMarkupGeneratedTypeMembers(
+            target.FullTypeName, properties, initMode,
+            constructorMethod?.Name, ctorParams);
     }
 
     static void AddGeneratedProperty(

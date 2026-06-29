@@ -18,6 +18,7 @@ class CodeTypeResolver(
 {
     readonly FrameworkConfiguration frameworkConfig = frameworkConfiguration ?? FrameworkConfiguration.Default;
     readonly QuickMarkupGeneratedMemberTable generatedMembers = generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty;
+    public QuickMarkupGeneratedMemberTable GeneratedMemberTable => generatedMembers;
     public const string ComponentOutputPropertyName = "MarkupNode";
     ITypeSymbol? Type<T>() => compilation.GetTypeByMetadataName(typeof(T).FullName!);
     public ITypeSymbol? String => field ??= Type<string>();

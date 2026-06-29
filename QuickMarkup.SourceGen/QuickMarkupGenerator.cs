@@ -132,7 +132,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         StringBuilder generatedProperties = new();
         StringBuilder codeBuilder = new();
         generatedProperties.AppendLine("global::System.Collections.Generic.List<global::System.IDisposable> QUICKMARKUP_DISPOSABLES { get; } = [];");
-        var isConstructorMode = !typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
         var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
         var componentInfoResolver = new CodeTypeResolver(compilation, usings, target.Namespace, generatedMembers, target.FullTypeName, frameworkConfig);
         var componentKind = componentInfoResolver.GetComponentKind(typeSymbol, out var componentOutputType);
@@ -152,6 +151,12 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         }
         ct.ThrowIfCancellationRequested();
 
+        var typeMembers = generatedMembers?.FindTypeMembers(typeSymbol);
+        var initMode = typeMembers?.InitMode
+            ?? (typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
+                ? QuickMarkupInitializationMode.BackwardCompatible
+                : QuickMarkupInitializationMode.DeferredInit);
+
         try
         {
             if (template is not null)
@@ -162,7 +167,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 var cgen = new CodeGenContext(
                     generatedProperties,
                     codeBuilder,
-                    isConstructorMode
+                    initMode
                 );
                 cgen.CGenWrite(output, "this");
                 ct.ThrowIfCancellationRequested();
@@ -183,33 +188,131 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return (target, usings, "", error, componentKind is not QMComponentKind.None);
         }
 
-        string generatedMethod;
-        if (isConstructorMode)
-            generatedMethod = $$"""
-            public {{typeSymbol.Name}}() {
-                {{script ?? "// No raw scripts was provided"}}
-                {{codeBuilder.ToString().IndentWOF()}}
-            }
-            """;
-        else
-            generatedMethod = $$"""
-            private void Init() {
-                {
-                    // in case of re-initialize, cleanup all previous generated disposables
-                    foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
-                        QUICKMARKUP_DISPOSABLE.Dispose();
-                    }
-                    QUICKMARKUP_DISPOSABLES.Clear();
-                }
-                {{script ?? "// No raw scripts was provided"}}
-                {{codeBuilder.ToString().IndentWOF()}}
-            }
-            """;
-
+        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder);
         return (target, usings, $$"""
                     {{generatedProperties}}
                     {{generatedMethod}}
                     """, default(string), componentKind is not QMComponentKind.None);
+    }
+
+    static string GenerateInitMethod(
+        ITypeSymbol typeSymbol,
+        QuickMarkupInitializationMode initMode,
+        QuickMarkupGeneratedTypeMembers? typeMembers,
+        string? script,
+        StringBuilder codeBuilder)
+    {
+        var typeName = typeSymbol.Name;
+        var scriptBody = script ?? "// No raw scripts was provided";
+        var initBody = codeBuilder.ToString();
+        var cleanupBlock = $$"""
+            {
+                // in case of re-initialize, cleanup all previous generated disposables
+                foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
+                    QUICKMARKUP_DISPOSABLE.Dispose();
+                }
+                QUICKMARKUP_DISPOSABLES.Clear();
+            }
+            """;
+
+        if (initMode is QuickMarkupInitializationMode.BackwardCompatible)
+        {
+            return $$"""
+            private void Init() {
+                {{cleanupBlock.IndentWOF()}}
+                {{scriptBody.IndentWOF()}}
+                {{initBody.IndentWOF()}}
+            }
+            """;
+        }
+
+        // DeferredInit mode
+        var ctorMethodName = typeMembers?.QuickMarkupConstructorMethodName;
+        var ctorParams = typeMembers?.ConstructorParameters;
+        var paramList = ctorParams is { Count: > 0 }
+            ? string.Join(", ", ctorParams.Select(p => $"{p.TypeName} {p.Name}"))
+            : "";
+        var argList = ctorParams is { Count: > 0 }
+            ? string.Join(", ", ctorParams.Select(p => p.Name))
+            : "";
+
+        var attrGlobalName = "global::QuickMarkup.SourceGen.QuickMarkupGeneratedConstructor";
+        string noParamCtor, actionCtor, internalInit;
+
+        if (ctorParams is { Count: > 0 })
+        {
+            // User has [QuickMarkupConstructor] with parameters
+            var ctorParamSig = string.IsNullOrEmpty(paramList) ? "" : $"({paramList})";
+            var actionParamSig = string.IsNullOrEmpty(paramList)
+                ? $"(global::System.Action<{typeName}> quickMarkupInitializer)"
+                : $"({paramList}, global::System.Action<{typeName}> quickMarkupInitializer)";
+            var internalInitSig = string.IsNullOrEmpty(argList) ? "()" : $"({argList})";
+
+            noParamCtor = $$"""
+            [{{attrGlobalName}}]
+            public {{typeName}}{{ctorParamSig}} {
+                InternalInit({{argList}});
+            }
+            """;
+
+            actionCtor = $$"""
+            [{{attrGlobalName}}]
+            public {{typeName}}{{actionParamSig}} {
+                quickMarkupInitializer(this);
+                InternalInit({{argList}});
+            }
+            """;
+
+            var constructorCall = string.IsNullOrEmpty(argList)
+                ? $"{ctorMethodName}();"
+                : $"{ctorMethodName}({argList});";
+
+            internalInit = $$"""
+            private void InternalInit({{paramList}}) {
+                {{constructorCall.IndentWOF()}}
+                {{cleanupBlock.IndentWOF()}}
+                {{scriptBody.IndentWOF()}}
+                {{initBody.IndentWOF()}}
+            }
+            """;
+        }
+        else
+        {
+            // No user constructor or parameterless [QuickMarkupConstructor]
+            var hasCtorMethod = ctorMethodName is not null;
+
+            noParamCtor = $$"""
+            [{{attrGlobalName}}]
+            public {{typeName}}() {
+                InternalInit();
+            }
+            """;
+
+            actionCtor = $$"""
+            [{{attrGlobalName}}]
+            public {{typeName}}(global::System.Action<{{typeName}}> quickMarkupInitializer) {
+                quickMarkupInitializer(this);
+                InternalInit();
+            }
+            """;
+
+            internalInit = $$"""
+            private void InternalInit() {
+                {{(hasCtorMethod ? $"{ctorMethodName}();".IndentWOF() : "")}}
+                {{cleanupBlock.IndentWOF()}}
+                {{scriptBody.IndentWOF()}}
+                {{initBody.IndentWOF()}}
+            }
+            """;
+        }
+
+        return $$"""
+        {{noParamCtor}}
+
+        {{actionCtor}}
+
+        {{internalInit}}
+        """;
     }
 
     static (string Code, bool IsComponent) GenerateRefsSource(
