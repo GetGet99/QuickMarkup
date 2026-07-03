@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <!-- Automatically emit generated files for every project build -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    
+    <!-- Safely scope outputs inside each project's unique, git-ignored obj folder -->
+    <CompilerGeneratedFilesOutputPath>obj/GeneratedFiles</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>

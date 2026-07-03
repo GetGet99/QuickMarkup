@@ -4,6 +4,5 @@
 */obj
 Frameworks/*/bin
 Frameworks/*/obj
-*/Generated
 QuickMarkup.VSCode.Extension/server
 .weave
