@@ -37,11 +37,27 @@ public enum QMForKind
     ReactiveCollection
 }
 
+public enum ResolvedAccessibility
+{
+    Private,
+    Public,
+    Protected
+}
+
 public enum QMComponentKind
 {
     None,
     Single,
     Fragment
+}
+
+public enum RefDeclarationKind
+{
+    Ref,
+    Computed,
+    Provide,
+    Inject,
+    InjectOptional
 }
 
 public record class QMConstructor(
@@ -126,11 +142,11 @@ public record class QMCompileTimeAttributeSymbol(
 
 /// <summary>Bound ref/computed prop line, including compile-time attributes (phase 1: not emitted to C# refs). Use <see cref="RefType"/> nullable annotation when <c>T</c> is <c>ITypeSymbol</c>.</summary>
 public record class QMRefDeclarationSymbol<T>(
+    RefDeclarationKind Kind,
     T? RefType,
     string Name,
     IQMValueSymbol? DefaultValue,
-    bool IsPrivate,
+    ResolvedAccessibility Accessibility,
     bool IsStatic,
     bool IsRequired,
-    bool IsComputedDeclaration,
     IReadOnlyList<QMCompileTimeAttributeSymbol> CompileTimeAttributes);

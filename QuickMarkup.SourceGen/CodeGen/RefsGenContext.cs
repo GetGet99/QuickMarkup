@@ -1,5 +1,6 @@
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.CodeAnalysis;
 using QuickMarkup.Language.Symbols;
 using System.Text;
 
@@ -9,6 +10,8 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
 {
     public void CGenWrite(IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> refs, CancellationToken tok)
     {
+        // Emit the Context property from IQuickMarkupContextAware
+        membersBuilder.AppendLine("public global::QuickMarkup.Infra.QuickMarkupContext? Context { get; set; }");
         foreach (var @ref in refs)
         {
             CGenWrite(@ref);
@@ -19,57 +22,86 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
     public void CGenWrite(QMRefDeclarationSymbol<ITypeSymbol?> bound)
     {
         // Phase 1: compile-time attributes on the bound symbol are intentionally not emitted here.
-        var typeName = RefTypeDisplayName(bound.RefType, bound.Name);
-        var defaultValue = bound.IsRequired || bound.DefaultValue is null
+        var typeName = bound.TypeName;
+        var defaultValue = bound.DefaultValue is null
             ? "default"
             : ValueSymbolToInitExpression(bound.DefaultValue);
-        var accessibility = bound.IsStatic
-            ? (bound.IsPrivate ? "private static" : "public static")
-            : (bound.IsPrivate ? "private" : "public");
         var thisRef = bound.IsStatic ? "" : "this.";
-        if (bound.IsComputedDeclaration)
+
+        var accessibility = bound.Accessibility switch
         {
-            var computedType = $"global::QuickMarkup.Infra.Computed<{typeName}>";
-            membersBuilder.AppendLine($$"""
-                {{accessibility}} {{computedType}} {{bound.Name}}Comp => field ??= new {{computedType}}(() => {{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
-                {{accessibility}} {{typeName}} {{bound.Name}} {
-                    get {
-                        return {{thisRef}}{{bound.Name}}Comp.Value;
+            ResolvedAccessibility.Public => "public",
+            ResolvedAccessibility.Protected => "protected",
+            ResolvedAccessibility.Private => "private",
+            _ => throw new NotImplementedException()
+        };
+        if (bound.IsStatic)
+            accessibility += " static";
+
+        string backingType = bound.BackingTypeName;
+        string backingName = bound.BackingName;
+
+        string backingDefaultValue;
+        backingDefaultValue = bound.Kind switch
+            {
+                RefDeclarationKind.Ref or RefDeclarationKind.Provide => $"""
+                    => field ??= new {backingType}({defaultValue}, "{nameHint}.{bound.Name}")
+                    """,
+                RefDeclarationKind.Computed => $"""
+                    => field ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
+                    """,
+                RefDeclarationKind.Inject => "= null!",
+                RefDeclarationKind.InjectOptional => "= null",
+                _ => throw new NotImplementedException()
+            };
+
+        string backingDecl = $"{accessibility} {backingType} {backingName} {backingDefaultValue};";
+        membersBuilder.AppendLine(backingDecl);
+
+        string propertyHead = $"{accessibility} {typeName} {bound.Name}";
+        if (bound.IsRequired)
+            propertyHead = $"""
+                [global::QuickMarkup.SourceGen.QuickMarkupRequiredProperty]
+                {propertyHead}
+                """;
+
+        string backing = $"{thisRef}{bound.BackingName}";
+        string backingValue = $"{backing}.Value";
+
+        string getter;
+        if (bound.Kind is not RefDeclarationKind.InjectOptional)
+        {
+            getter = $"get => {backingValue};";
+        } else
+        {
+            getter = $"get => {backing} is not null ? {backingValue} : default({typeName});";
+        }
+
+        string setter;
+        if (bound.Kind is RefDeclarationKind.Computed)
+        {
+            setter = "// Computed variables do not emit setter";
+        } else if (bound.Kind is RefDeclarationKind.InjectOptional)
+        {
+            setter = $$"""
+                set {
+                    if ({{backing}} is not null) {
+                        {{backingValue}} = value;
                     }
                 }
-                """);
+                """;
         }
         else
         {
-            var attrSuffix = bound.IsRequired
-                ? $$"""
-                [global::QuickMarkup.SourceGen.QuickMarkupRequiredProperty]
-                """
-                : "";
-            var refType = $"global::QuickMarkup.Infra.Reference<{typeName}>";
-            membersBuilder.AppendLine($$"""
-                {{accessibility}} {{refType}} {{bound.Name}}Prop => field ??= new {{refType}}({{defaultValue}}, "{{nameHint}}.{{bound.Name}}");
-                {{attrSuffix}}{{accessibility}} {{typeName}} {{bound.Name}} {
-                    get {
-                        return {{thisRef}}{{bound.Name}}Prop.Value;
-                    }
-                    set {
-                        {{thisRef}}{{bound.Name}}Prop.Value = value;
-                    }
-                }
-                """);
+            setter = $"set => {backingValue} = value;";
         }
-    }
 
-    static string RefTypeDisplayName(ITypeSymbol? type, string fallbackName)
-    {
-        if (type is null)
-            return fallbackName;
-        var s = new FullType(type).TypeWithNamespace;
-        if (type is { IsValueType: true, NullableAnnotation: NullableAnnotation.Annotated }
-            && !s.EndsWith("?", StringComparison.Ordinal))
-            return s + "?";
-        return s;
+        membersBuilder.AppendLine($$"""
+            {{propertyHead}} {
+                {{getter}}
+                {{setter}}
+            }
+            """);
     }
 
     static string ValueSymbolToInitExpression(IQMValueSymbol sym) => sym switch

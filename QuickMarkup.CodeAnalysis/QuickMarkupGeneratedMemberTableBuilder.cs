@@ -28,36 +28,92 @@ static class QuickMarkupGeneratedMemberTableBuilder
         var hasRequired = false;
         foreach (var @ref in refs)
         {
-            var isRequired = @ref.IsRequired && !@ref.IsComputedDeclaration && !@ref.IsStatic;
+            // if (@ref.Kind is RefDeclarationKind.Provide)
+            // {
+            //     AddGeneratedProperty(
+            //         properties,
+            //         new QuickMarkupGeneratedPropertySymbol(
+            //             @ref.Name,
+            //             unknownTypes ? null : TypeName(@ref.RefType),
+            //             false,
+            //             QuickMarkupGeneratedPropertyKind.ProvideValue));
+
+            //     if (!unknownTypes && @ref.RefType is not null)
+            //     {
+            //         AddGeneratedProperty(
+            //             properties,
+            //             new QuickMarkupGeneratedPropertySymbol(
+            //                 $"{@ref.Name}Prop",
+            //                 $"global::QuickMarkup.Infra.Reference<{TypeName(@ref.RefType)}>",
+            //                 false,
+            //                 QuickMarkupGeneratedPropertyKind.RefBacking));
+            //     }
+
+            //     hasRequired = true;
+            //     continue;
+            // }
+
+            // if (@ref.Kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+            // {
+            //     AddGeneratedProperty(
+            //         properties,
+            //         new QuickMarkupGeneratedPropertySymbol(
+            //             @ref.Name,
+            //             unknownTypes ? null : TypeName(@ref.RefType),
+            //             false,
+            //             QuickMarkupGeneratedPropertyKind.InjectValue));
+
+            //     if (!unknownTypes && @ref.RefType is not null)
+            //     {
+            //         AddGeneratedProperty(
+            //             properties,
+            //             new QuickMarkupGeneratedPropertySymbol(
+            //                 $"{@ref.Name}Prop",
+            //                 $"global::QuickMarkup.Infra.Reference<{TypeName(@ref.RefType)}>{(
+            //                     @ref.Kind is RefDeclarationKind.InjectOptional ? "?" : ""
+            //                 )}",
+            //                 false,
+            //                 QuickMarkupGeneratedPropertyKind.RefBacking));
+            //     }
+
+            //     hasRequired = true;
+            //     continue;
+            // }
+
+            var isRequired = @ref.IsRequired;
             if (isRequired) hasRequired = true;
+
+            var memberTableKind = @ref.Kind is RefDeclarationKind.Computed
+                ? QuickMarkupGeneratedPropertyKind.ComputedValue
+                : QuickMarkupGeneratedPropertyKind.RefValue;
 
             AddGeneratedProperty(
                 properties,
                 new QuickMarkupGeneratedPropertySymbol(
                     @ref.Name,
-                    unknownTypes ? null : TypeName(@ref.RefType),
-                    @ref.IsPrivate,
-                    @ref.IsComputedDeclaration
-                        ? QuickMarkupGeneratedPropertyKind.ComputedValue
-                        : QuickMarkupGeneratedPropertyKind.RefValue,
+                    unknownTypes ? null : @ref.TypeName,
+                    @ref.Accessibility,
+                    @ref.Kind is RefDeclarationKind.Computed
+                    ? QuickMarkupGeneratedPropertyKind.ComputedValue
+                    : QuickMarkupGeneratedPropertyKind.RefValue,
                     isRequired));
 
-            var backingName = @ref.IsComputedDeclaration
-                ? $"{@ref.Name}Comp"
-                : $"{@ref.Name}Prop";
-            var backingType = unknownTypes
-                ? null
-                : ConstructBackingTypeName(@ref.RefType, @ref.IsComputedDeclaration);
-
+            var backingName = @ref.BackingName;
+            
             AddGeneratedProperty(
                 properties,
                 new QuickMarkupGeneratedPropertySymbol(
                     backingName,
-                    backingType,
-                    @ref.IsPrivate,
-                    @ref.IsComputedDeclaration
-                        ? QuickMarkupGeneratedPropertyKind.ComputedBacking
-                        : QuickMarkupGeneratedPropertyKind.RefBacking));
+                    unknownTypes ? null : @ref.BackingTypeName,
+                    @ref.Accessibility,
+                    @ref.Kind switch
+                    {
+                        RefDeclarationKind.Ref => QuickMarkupGeneratedPropertyKind.RefBacking,
+                        RefDeclarationKind.Computed => QuickMarkupGeneratedPropertyKind.ComputedBacking,
+                        RefDeclarationKind.Provide => QuickMarkupGeneratedPropertyKind.ProvideValue,
+                        RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional => QuickMarkupGeneratedPropertyKind.InjectValue,
+                        _ => throw new NotImplementedException()
+                    }));
 
             ct.ThrowIfCancellationRequested();
         }
@@ -67,14 +123,14 @@ static class QuickMarkupGeneratedMemberTableBuilder
             var outputTypeName = unknownTypes
                 ? null
                 : componentKind is QMComponentKind.Fragment
-                    ? $"global::QuickMarkup.Infra.FragmentBlock<{TypeName(componentOutputType) ?? "object"}>"
-                    : TypeName(componentOutputType);
+                    ? $"global::QuickMarkup.Infra.FragmentBlock<{ReferenceExtension.RefTypeDisplayName(componentOutputType, "object")}>"
+                    : ReferenceExtension.RefTypeDisplayName(componentOutputType, "object");
             AddGeneratedProperty(
                 properties,
                 new QuickMarkupGeneratedPropertySymbol(
                     CodeTypeResolver.ComponentOutputPropertyName,
                     outputTypeName,
-                    false,
+                    ResolvedAccessibility.Public,
                     QuickMarkupGeneratedPropertyKind.ComponentOutput));
         }
 
@@ -112,20 +168,6 @@ static class QuickMarkupGeneratedMemberTableBuilder
         if (!properties.ContainsKey(property.Name))
             properties.Add(property.Name, property);
     }
-
-    static string? ConstructBackingTypeName(ITypeSymbol? valueType, bool isComputed)
-    {
-        var valueTypeName = TypeName(valueType);
-        if (valueTypeName is null)
-            return null;
-
-        return isComputed
-            ? $"global::QuickMarkup.Infra.Computed<{valueTypeName}>"
-            : $"global::QuickMarkup.Infra.Reference<{valueTypeName}>";
-    }
-
-    static string? TypeName(ITypeSymbol? type)
-        => type?.FullName();
 
     public static bool HasComponentRootOutput(QuickMarkupParsedTag? template, QMComponentKind componentKind = QMComponentKind.None)
     {

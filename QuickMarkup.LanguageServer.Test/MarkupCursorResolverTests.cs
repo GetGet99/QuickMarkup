@@ -113,7 +113,7 @@ public sealed class MarkupCursorResolverTests
             GeneratedSymbol: new QuickMarkupGeneratedPropertySymbol(
                 Name: "Name",
                 TypeName: "string",
-                IsPrivate: false,
+                Accessibility: Language.Symbols.ResolvedAccessibility.Public,
                 Kind: QuickMarkupGeneratedPropertyKind.RefValue),
             DisplayString: "(reactive) string Name",
             Kind: PropertyResolutionKind.RefDeclaration);
@@ -144,7 +144,7 @@ public sealed class MarkupCursorResolverTests
             GeneratedSymbol: new QuickMarkupGeneratedPropertySymbol(
                 Name: "FullName",
                 TypeName: "string",
-                IsPrivate: false,
+                Accessibility: Language.Symbols.ResolvedAccessibility.Public,
                 Kind: QuickMarkupGeneratedPropertyKind.ComputedValue),
             DisplayString: "(computed) string FullName",
             Kind: PropertyResolutionKind.RefDeclaration);

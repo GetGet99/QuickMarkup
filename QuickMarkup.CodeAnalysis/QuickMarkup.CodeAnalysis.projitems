@@ -50,5 +50,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupFileAnalysis.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)QuickMarkupAnalyzer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)QMDiagnosticHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ReferenceExtension.cs" />
   </ItemGroup>
 </Project>

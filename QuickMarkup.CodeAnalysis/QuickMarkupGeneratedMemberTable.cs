@@ -10,13 +10,15 @@ public enum QuickMarkupGeneratedPropertyKind
     RefBacking,
     ComputedValue,
     ComputedBacking,
-    ComponentOutput
+    ComponentOutput,
+    ProvideValue,
+    InjectValue
 }
 
 public readonly record struct QuickMarkupGeneratedPropertySymbol(
     string Name,
     string? TypeName,
-    bool IsPrivate,
+    ResolvedAccessibility Accessibility,
     QuickMarkupGeneratedPropertyKind Kind,
     bool IsRequired = false
 );
@@ -112,7 +114,8 @@ public sealed class QuickMarkupGeneratedMemberTable
             if (!members.Properties.TryGetValue(property, out var generatedProperty))
                 continue;
 
-            if (generatedProperty.IsPrivate && currentFullName != currentTypeName)
+            // TODO: PROTECTED
+            if (generatedProperty.Accessibility is not ResolvedAccessibility.Public && currentFullName != currentTypeName)
                 continue;
 
             var generatedPropertyType = generatedProperty.TypeName is null

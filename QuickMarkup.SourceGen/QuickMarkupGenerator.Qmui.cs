@@ -57,7 +57,7 @@ partial class QuickMarkupGenerator
             var initSources = initData.Select(
                 (x, ct) =>
                 {
-                    var (_, usings, code, error, _) = GenerateInitSource(x.Target, x.Sfc.Usings, x.Markup, x.Sfc.Scirpt?.RawScript, x.Compilation, null, ct);
+                    var (_, usings, code, error, _) = GenerateInitSource(x.Target, x.Sfc.Usings, x.Markup, x.Sfc.Scirpt?.RawScript, x.Compilation, null, x.Sfc, ct);
                     return (Ctx: x.Target, Sfc: x.Sfc, usings, code, error);
                 }
             );

@@ -35,15 +35,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 (x, _) =>
                 {
                     var combined = CombineMarkupTags(x.AST.MarkupTags);
-                    return (x.Target, x.AST.Usings, x.AST.Scirpt?.RawScript, combined);
+                    return (x.Target, x.AST.Usings, x.AST.Scirpt?.RawScript, combined, x.AST);
                 }
             );
 
             var sources = sfcs.Combine(context.CompilationProvider).Combine(generatedMemberTable).Select(
                 (x, ct) =>
                 {
-                    var (((target, usings, script, template), compilation), generatedMembers) = x;
-                    return GenerateInitSource(target, usings, template, script, compilation, generatedMembers, ct);
+                    var (((target, usings, script, template, ast), compilation), generatedMembers) = x;
+                    return GenerateInitSource(target, usings, template, script, compilation, generatedMembers, ast, ct);
                 }
             );
 
@@ -116,6 +116,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             string? script,
             Compilation compilation,
             QuickMarkupGeneratedMemberTable? generatedMembers,
+            QuickMarkupSFC ast,
             CancellationToken ct)
     {
         if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
@@ -157,6 +158,47 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 ? QuickMarkupInitializationMode.BackwardCompatible
                 : QuickMarkupInitializationMode.DeferredInit);
 
+        // Check for [QuickMarkupNewLifecycle] assembly attribute
+        var newLifecycleAttr = compilation.Assembly.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "QuickMarkupNewLifecycleAttribute");
+        if (newLifecycleAttr is not null && initMode is QuickMarkupInitializationMode.BackwardCompatible)
+        {
+            var error = $"Type {target.FullTypeName} must use the new QuickMarkup lifecycle because the assembly has [QuickMarkupNewLifecycle]. Remove explicit constructors or add a [QuickMarkupConstructor] method.";
+            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+        }
+
+        // Check for provide/inject with backward compatible mode
+        var hasProvideOrInject = ast.Refs.Any(r => r.Kind is QuickMarkup.Language.Symbols.RefDeclarationKind.Provide or QuickMarkup.Language.Symbols.RefDeclarationKind.Inject);
+        if (hasProvideOrInject && initMode is QuickMarkupInitializationMode.BackwardCompatible)
+        {
+            var error = $"Type {target.FullTypeName} uses provide/inject but has BackwardCompatible init mode (has explicit constructors). Provide/Inject requires the new lifecycle. Remove explicit constructors or add a [QuickMarkupConstructor] method.";
+            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+        }
+
+        // Provide/inject init code builder
+        StringBuilder provideInjectInit = new();
+
+        // Bind all declarations and generate init code for provide/inject
+        var binder = new QuickMarkupBinder(componentInfoResolver, Binder.FailFast);
+        var boundRefs = binder.BindRefDeclarations(ast.Refs, typeSymbol);
+
+        foreach (var bound in boundRefs)
+        {
+            if (bound.Kind is QuickMarkup.Language.Symbols.RefDeclarationKind.Provide)
+            {
+                var typeName = TypeSymbolName(bound.RefType);
+                provideInjectInit.AppendLine($"Context.Provide<{typeName}>(\"{bound.Name}\", {bound.Name}Prop);");
+            }
+            else if (bound.Kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+            {
+                var typeName = TypeSymbolName(bound.RefType);
+                if (bound.Kind is RefDeclarationKind.Inject)
+                    provideInjectInit.AppendLine($"{bound.Name}Prop = Context.TryInject<{typeName}>(\"{bound.Name}\");");
+                else
+                    provideInjectInit.AppendLine($"{bound.Name}Prop = Context.Inject<{typeName}>(\"{bound.Name}\");");
+            }
+        }
+
         try
         {
             if (template is not null)
@@ -195,12 +237,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return (target, usings, "", error, componentKind is not QMComponentKind.None);
         }
 
-        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder, requiredRefs);
+        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder, requiredRefs, provideInjectInit.ToString());
         return (target, usings, $$"""
                     {{generatedProperties}}
                     {{generatedMethod}}
                     """, default(string), componentKind is not QMComponentKind.None);
     }
+
+    static string TypeSymbolName(ITypeSymbol? type)
+        => type?.FullName() ?? "object";
 
     static List<(string TypeName, string Name)> GetRequiredRefs(QuickMarkupGeneratedTypeMembers? typeMembers)
     {
@@ -223,11 +268,21 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         QuickMarkupGeneratedTypeMembers? typeMembers,
         string? script,
         StringBuilder codeBuilder,
-        List<(string TypeName, string Name)> requiredRefs)
+        List<(string TypeName, string Name)> requiredRefs,
+        string provideInjectInitCode)
     {
         var typeName = typeSymbol.Name;
         var scriptBody = script ?? "// No raw scripts was provided";
         var initBody = codeBuilder.ToString();
+
+        var hasProvideInject = !string.IsNullOrEmpty(provideInjectInitCode);
+
+        // Context init and provide/inject init block
+        var contextInitBlock = hasProvideInject ? $$"""
+            Context ??= new global::QuickMarkup.Infra.QuickMarkupContext();
+            {{provideInjectInitCode}}
+            """ : "";
+
         var cleanupBlock = $$"""
             {
                 // in case of re-initialize, cleanup all previous generated disposables
@@ -243,6 +298,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return $$"""
             private void Init() {
                 {{cleanupBlock.IndentWOF()}}
+                {{contextInitBlock.IndentWOF()}}
                 {{scriptBody.IndentWOF()}}
                 {{initBody.IndentWOF()}}
             }
@@ -341,7 +397,20 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         {GenerateCtor(attrGlobalName, typeName, actionParamSig, actionBody)}
 
-        {GenerateInternalInit(internalInitParams, cleanupBlock, scriptBody, initBody)}
+        {GenerateInternalInit(internalInitParams, cleanupBlock, contextInitBlock, scriptBody, initBody)}
+        """;
+    }
+
+    static string GenerateInternalInit(string? internalInitParams, string cleanupBlock, string contextInitBlock, string scriptBody, string initBody)
+    {
+        var paramStr = internalInitParams is not null ? $"({internalInitParams})" : "()";
+        return $$"""
+        private void InternalInit{{paramStr}} {
+            {{cleanupBlock.IndentWOF()}}
+            {{contextInitBlock.IndentWOF()}}
+            {{scriptBody.IndentWOF()}}
+            {{initBody.IndentWOF()}}
+        }
         """;
     }
 
@@ -351,18 +420,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         [{{attrGlobalName}}]
         public {{typeName}}({{paramSig}}) {
             {{body.IndentWOF()}}
-        }
-        """;
-    }
-
-    static string GenerateInternalInit(string? internalInitParams, string cleanupBlock, string scriptBody, string initBody)
-    {
-        var paramStr = internalInitParams is not null ? $"({internalInitParams})" : "()";
-        return $$"""
-        private void InternalInit{{paramStr}} {
-            {{cleanupBlock.IndentWOF()}}
-            {{scriptBody.IndentWOF()}}
-            {{initBody.IndentWOF()}}
         }
         """;
     }
@@ -385,6 +442,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         return (sb.ToString(), analysis.IsComponent);
     }
 
+    const string ContextAwareInterface = "global::QuickMarkup.Infra.IQuickMarkupContextAware";
+
     static void EmitInitSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string usings, string code, string? error, string typeModifiers, string? baseTypes = null)
     {
         if (error is not null)
@@ -396,12 +455,24 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             {{code}}
             """;
         }
-        spc.AddSource(ctx, "INIT", code, usings, typeModifiers, baseTypes);
+        // All generated components implement IQuickMarkupContextAware for context propagation
+        var combinedBaseTypes = CombineBaseTypes(baseTypes, ContextAwareInterface);
+        spc.AddSource(ctx, "INIT", code, usings, typeModifiers, combinedBaseTypes);
     }
 
     static void EmitRefsSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string usings, string refsCode, string typeModifiers, string? baseTypes = null)
     {
-        spc.AddSource(ctx, "REFS", refsCode, usings, typeModifiers, baseTypes);
+        var combinedBaseTypes = CombineBaseTypes(baseTypes, ContextAwareInterface);
+        spc.AddSource(ctx, "REFS", refsCode, usings, typeModifiers, combinedBaseTypes);
+    }
+
+    static string? CombineBaseTypes(string? existing, string additional)
+    {
+        if (string.IsNullOrEmpty(existing))
+            return additional;
+        if (existing!.Contains(additional))
+            return existing;
+        return $"{existing}, {additional}";
     }
 
     static void EmitErrorSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string hintNameSuffix, string error)

@@ -1,5 +1,6 @@
 using Get.Parser;
 using Get.PLShared;
+using QuickMarkup.Language.Symbols;
 
 namespace QuickMarkup.AST;
 
@@ -165,11 +166,12 @@ public record class RefDeclaration(
     TypeDeclaration Type,
     PositionedIdentifier Name,
     QuickMarkupValue? DefaultValue,
-    bool IsPrivate,
+    Accessibility Accessibility,
     bool IsStatic,
     bool IsRequired,
     bool IsComputedDeclaration,
-    ListAST<QMAttribute> Attributes);
+    ListAST<QMAttribute> Attributes,
+    RefDeclarationKind Kind = RefDeclarationKind.Ref) : AST;
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
 
@@ -178,6 +180,14 @@ public enum ClassKind
     Subclass,
     Component,
     FragmentComponent
+}
+
+public enum Accessibility
+{
+    Default,
+    Public,
+    Private,
+    Protected
 }
 
 public record ClassDeclaration(

@@ -51,7 +51,7 @@ class SnapshotBinder(CodeTypeResolver resolver, Action<QMBinderError> onError) :
                     }
                 }
             }
-            var isIncluded = shouldInclude ?? (configuration.SnapshotMode.HasFlag(SnapshotStateMode.IncludesPublic) && !declaration.IsPrivate);
+            var isIncluded = shouldInclude ?? (configuration.SnapshotMode.HasFlag(SnapshotStateMode.IncludesPublic) && declaration.Accessibility is ResolvedAccessibility.Public);
             if (isIncluded && declaration.IsComputedDeclaration)
             {
                 Error(declaration.Name, "Derived/computed value should not be saved.");

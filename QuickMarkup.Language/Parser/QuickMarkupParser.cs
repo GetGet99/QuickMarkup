@@ -1,6 +1,7 @@
 using Get.Parser;
 using Get.PLShared;
 using QuickMarkup.AST;
+using QuickMarkup.Language.Symbols;
 using System.Diagnostics;
 using static QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
 using NonTerminal = QuickMarkup.Parser.QuickMarkupParser.NonTerminal;
@@ -134,7 +135,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<RefDeclaration>]
         [Rule(
             RefAttributes, AS, nameof(RefDeclaration.Attributes),
-            RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
+            RefKind, AS, nameof(RefDeclaration.Kind),
+            RefAccessibility, AS, nameof(RefDeclaration.Accessibility),
             RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             RefRequiredVisibility, AS, nameof(RefDeclaration.IsRequired),
             TypeDecl, AS, nameof(RefDeclaration.Type),
@@ -146,7 +148,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         [Rule(
             RefAttributes, AS, nameof(RefDeclaration.Attributes),
-            RefPrivateVisibility, AS, nameof(RefDeclaration.IsPrivate),
+            RefKind, AS, nameof(RefDeclaration.Kind),
+            RefAccessibility, AS, nameof(RefDeclaration.Accessibility),
             RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             RefRequiredVisibility, AS, nameof(RefDeclaration.IsRequired),
             TypeDecl, AS, nameof(RefDeclaration.Type),
@@ -162,11 +165,11 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(Terminal.Equal, QMValue, AS, VALUE, IDENTITY)]
         [Rule(WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
         RefDeclInitialValue,
-        [Type<bool>]
-        [Rule(WITHPARAM, VALUE, false, IDENTITY)]
-        [Rule(Terminal.Private, WITHPARAM, VALUE, true, IDENTITY)]
-        [Rule(Terminal.Public, WITHPARAM, VALUE, false, IDENTITY)]
-        RefPrivateVisibility,
+        [Type<Accessibility>]
+        [Rule(WITHPARAM, VALUE, Accessibility.Default, IDENTITY)]
+        [Rule(Terminal.Private, WITHPARAM, VALUE, Accessibility.Private, IDENTITY)]
+        [Rule(Terminal.Public, WITHPARAM, VALUE, Accessibility.Public, IDENTITY)]
+        RefAccessibility,
         [Type<bool>]
         [Rule(WITHPARAM, VALUE, false, IDENTITY)]
         [Rule(Terminal.Static, WITHPARAM, VALUE, true, IDENTITY)]
@@ -175,6 +178,12 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(WITHPARAM, VALUE, false, IDENTITY)]
         [Rule(Terminal.Required, WITHPARAM, VALUE, true, IDENTITY)]
         RefRequiredVisibility,
+        [Type<RefDeclarationKind>]
+        [Rule(Terminal.Inject, WITHPARAM, VALUE, RefDeclarationKind.Inject, IDENTITY)]
+        [Rule(Terminal.Inject, Terminal.QuestionMark,WITHPARAM, VALUE, RefDeclarationKind.InjectOptional, IDENTITY)]
+        [Rule(Terminal.Provide, WITHPARAM, VALUE, RefDeclarationKind.Provide, IDENTITY)]
+        [Rule(WITHPARAM, VALUE, RefDeclarationKind.Ref, IDENTITY)]
+        RefKind,
         // TAGS
         [Type<QuickMarkupParsedTag>]
         [Rule(

@@ -126,6 +126,13 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             };
             // Assign outer variable before property initializers to match order-of-operations promise
             lambdaBuilder.AppendLine($"{varTarget} = {lambdaParam};");
+
+            // Propagate context to child components implementing IQuickMarkupContextAware
+            if (IsContextAwareComponent(node))
+            {
+                lambdaBuilder.AppendLine($"{lambdaParam}.Context = new global::QuickMarkup.Infra.QuickMarkupContext(Context);");
+            }
+
             lambdaCtx.CGenWrite(initMembers, lambdaParam);
             counterRef = lambdaCtx.counterRef;
 
@@ -927,4 +934,13 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
     }
 
     sealed record ForScope(string ItemName, string ItemRef, string? IndexName, string? IndexRef);
+
+    static bool IsContextAwareComponent(QMNodeSymbol<ITypeSymbol?> node)
+    {
+        if (node.Type is not INamedTypeSymbol namedType)
+            return false;
+        return namedType.AllInterfaces.Any(i =>
+            i.Name == "IQuickMarkupContextAware" &&
+            i.ContainingNamespace?.ToDisplayString() == "QuickMarkup.Infra");
+    }
 }

@@ -29,7 +29,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorTagMismatched,
         BindErrorTagUnexpected,
         BindErrorTypeMismatch,
-        BindErrorRequiredPropertyMissing
+        BindErrorRequiredPropertyMissing,
+        NewLifecycleRequired
     );
     internal readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
         "QM1001",
@@ -129,6 +130,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true
     );
+    internal readonly static DiagnosticDescriptor NewLifecycleRequired = new(
+        "QM1013",
+        "QuickMarkup component must use new lifecycle",
+        "'{0}' must use the new QuickMarkup lifecycle (remove explicit constructors or add a [QuickMarkupConstructor] method) because the assembly has [QuickMarkupNewLifecycle]",
+        "QuickMarkup",
+        DiagnosticSeverity.Error,
+        true
+    );
 
     public override void Initialize(AnalysisContext context)
     {
@@ -168,6 +177,22 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     $"Internal Error while trying to get type symbol: {failureReason.Message}"
                 ));
                 return;
+            }
+
+            // Check for [QuickMarkupNewLifecycle] assembly attribute
+            var newLifecycleAttr = compilation.Assembly.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "QuickMarkupNewLifecycleAttribute");
+            if (newLifecycleAttr is not null)
+            {
+                var hasExplicitConstructors = resolvedTypeSym.InstanceConstructors.Any(c => !c.IsImplicitlyDeclared);
+                if (hasExplicitConstructors)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        NewLifecycleRequired,
+                        syntaxNode.Identifier.GetLocation(),
+                        resolvedTypeSym.Name
+                    ));
+                }
             }
 
             QuickMarkupSFC qm;
