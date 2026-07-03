@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuickMarkup.Infra\QuickMarkup.Infra.csproj" />
+    <ProjectReference Include="..\QuickMarkup.SourceGen\QuickMarkup.SourceGen.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="**/*.qmui" />
+  </ItemGroup>
+
+</Project>
