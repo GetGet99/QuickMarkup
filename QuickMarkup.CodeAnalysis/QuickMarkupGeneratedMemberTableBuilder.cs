@@ -140,6 +140,11 @@ static class QuickMarkupGeneratedMemberTableBuilder
                 ? QuickMarkupInitializationMode.BackwardCompatible
                 : QuickMarkupInitializationMode.DeferredInit;
 
+        var supportsContext = initMode is QuickMarkupInitializationMode.DeferredInit
+            || typeSymbol.AllInterfaces.Any(i =>
+                i.Name == "IQuickMarkupContextAware" &&
+                i.ContainingNamespace?.ToDisplayString() == "QuickMarkup.Infra");
+
         var constructorMethod = typeSymbol.GetMembers().OfType<IMethodSymbol>()
             .FirstOrDefault(m => m.GetAttributes().Any(a =>
                 a.AttributeClass?.Name is "QuickMarkupConstructorAttribute"));
@@ -158,6 +163,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
 
         return new QuickMarkupGeneratedTypeMembers(
             target.FullTypeName, properties, initMode,
+            supportsContext,
             constructorMethod?.Name, ctorParams);
     }
 

@@ -47,6 +47,7 @@ public readonly record struct QuickMarkupGeneratedTypeMembers(
     string FullTypeName,
     IReadOnlyDictionary<string, QuickMarkupGeneratedPropertySymbol> Properties,
     QuickMarkupInitializationMode InitMode,
+    bool SupportsContext = false,
     string? QuickMarkupConstructorMethodName = null,
     IReadOnlyList<QuickMarkupConstructorParameter>? ConstructorParameters = null
 );

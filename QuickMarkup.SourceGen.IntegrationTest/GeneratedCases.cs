@@ -827,4 +827,37 @@ public partial class DeferredInitRefAssignmentCase : TestRoot
     public static bool RefResult { get; set; }
 }
 
+// --- Provide/Inject tests ---
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string Label;
+    <TestText Text=`Label` />
+    """)]
+public partial class ProvideInjectBasicTarget : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "hello";
+    <root>
+        <ProvideInjectBasicTarget />
+    </root>
+    """)]
+public partial class ProvideInjectBasicCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject? string Label;
+    <TestText Text=`Label` />
+    """)]
+public partial class ProvideInjectOptionalTarget : IQuickMarkupComponent<TestText>;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <ProvideInjectOptionalTarget />
+    </root>
+    """)]
+public partial class ProvideInjectOptionalMissingCase : TestRoot;
+
 

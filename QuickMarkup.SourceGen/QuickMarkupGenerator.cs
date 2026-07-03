@@ -153,9 +153,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         var typeMembers = generatedMembers?.FindTypeMembers(typeSymbol);
         var initMode = typeMembers?.InitMode
-            ?? (typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared && !x.GetAttributes().Any(a => a.AttributeClass?.Name == "QuickMarkupGeneratedConstructorAttribute"))
-                ? QuickMarkupInitializationMode.BackwardCompatible
-                : QuickMarkupInitializationMode.DeferredInit);
+            ?? QuickMarkupInitializationMode.DeferredInit;
 
         // Check for [QuickMarkupNewLifecycle] assembly attribute
         var newLifecycleAttr = compilation.Assembly.GetAttributes()
@@ -191,7 +189,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             else if (bound.Kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
             {
                 var typeName = TypeSymbolName(bound.RefType);
-                if (bound.Kind is RefDeclarationKind.Inject)
+                if (bound.Kind is RefDeclarationKind.InjectOptional)
                     provideInjectInit.AppendLine($"{bound.Name}Prop = Context.TryInject<{typeName}>(\"{bound.Name}\");");
                 else
                     provideInjectInit.AppendLine($"{bound.Name}Prop = Context.Inject<{typeName}>(\"{bound.Name}\");");

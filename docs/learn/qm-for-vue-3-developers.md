@@ -493,6 +493,50 @@ Additional properties placed on the component tag are forwarded to the component
 
 Conceptually similar to Vue's fallthrough attributes.
 
+## Component Context
+
+QuickMarkup supports component-scoped context using `provide` and `inject`, similar to Vue.
+
+```cs
+[QuickMarkup("""
+    provide string Theme = "Dark";
+
+    <root>
+        <SettingsPanel />
+    </root>
+    """)]
+public partial class MainPage : Page;
+
+[QuickMarkup("""
+    inject string Theme;
+
+    <root>
+        <TextBlock Text=`Theme` />
+    </root>
+    """)]
+public partial class SettingsPanel : StackPanel;
+```
+
+`provide` exposes a reactive value to descendant components. `inject` retrieves that same reactive value from the nearest ancestor that provides it.
+
+Unlike Vue, no runtime dependency injection container is involved. The lookup code is generated at compile time, while the runtime behavior remains the familiar parent-to-descendant context model.
+
+### Optional Injection
+
+Use `inject?` when a provider is optional.
+
+```cs
+inject? string Theme;
+```
+
+If no matching provider exists, the injected property is initialized to `default(T)` instead of throwing.
+
+### How It Works
+
+Each component owns a context containing its provided values. Child components inherit that context, and `inject` resolves values from the nearest matching provider.
+
+Provided and injected properties share the same reactive reference, so updates made from either component are immediately reflected everywhere the value is used.
+
 ## Mental model comparison
 
 | Concept                | Vue 3                       | QuickMarkup                          |

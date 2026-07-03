@@ -75,7 +75,8 @@ public record class QMNodeSymbol<T>(
     T? ComponentOutputType = default,
     string ComponentOutputPropertyName = "MarkupNode",
     bool IsRef = false,
-    QuickMarkupInitializationMode InitMode = QuickMarkupInitializationMode.BackwardCompatible
+    QuickMarkupInitializationMode InitMode = QuickMarkupInitializationMode.BackwardCompatible,
+    bool SupportsContext = false
 ) : IQMNodeChildSymbol, IQMValueSymbol;
 public record class QMForNodeSymbol<T>(
     QMForKind Kind,

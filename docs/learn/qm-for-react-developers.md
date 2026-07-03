@@ -450,6 +450,54 @@ The compiler generates native UI initialization code directly.
 
 ---
 
+# Sharing State Between Components
+
+React applications commonly share values using Context to avoid passing props through multiple levels of components.
+
+QuickMarkup provides `provide` and `inject` declarations for the same purpose.
+
+```cs
+[QuickMarkup("""
+    provide string Theme = "Dark";
+
+    <root>
+        <SettingsPanel />
+    </root>
+    """)]
+public partial class MainPage : Page;
+
+[QuickMarkup("""
+    inject string Theme;
+
+    <root>
+        <TextBlock Text=`Theme` />
+    </root>
+    """)]
+public partial class SettingsPanel : StackPanel;
+```
+
+`provide` exposes a reactive value to descendant components. `inject` binds to that same reactive reference, so both components observe and update the same value.
+
+If you're familiar with React Context, the programming model is similar. The main difference is that QuickMarkup generates the context plumbing automatically, so there is no separate context object, provider component, or `useContext` call.
+
+### Optional Injection
+
+Use `inject?` when a provider may not exist.
+
+```cs
+inject? string Theme;
+```
+
+If no matching provider exists, the injected property is initialized to `default(T)` instead of throwing.
+
+### How It Works
+
+Each component owns a context containing its provided values. Child components inherit that context, and `inject` looks up the requested value by type and name.
+
+Because injected properties reference the same reactive object as the provider, changes made from either component are immediately visible to the other.
+
+---
+
 # No hooks
 
 QuickMarkup intentionally does not have an equivalent to:

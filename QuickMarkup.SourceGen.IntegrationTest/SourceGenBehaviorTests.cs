@@ -845,4 +845,34 @@ public sealed class SourceGenBehaviorTests
         // For ref captures, btnProp.Value should be set before the callback.
         Assert.IsTrue(DeferredInitRefAssignmentCase.RefResult);
     }
+
+    [TestMethod]
+    public void ProvideInjectBasic_ParentProvidesChildInjects()
+    {
+        var page = new ProvideInjectBasicCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("hello", text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectOptional_NoProvider_ReturnsDefault()
+    {
+        var page = new ProvideInjectOptionalMissingCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.IsNull(text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectBasic_ProviderAndInjectorShareSameReference()
+    {
+        var page = new ProvideInjectBasicCase();
+
+        // The parent's LabelProp and the child's LabelProp should be the same Reference<string> object.
+        // Verify by changing the parent's value and checking the child sees it.
+        page.Label = "world";
+        ReactiveScheduler.Tick();
+
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("world", text.Text);
+    }
 }

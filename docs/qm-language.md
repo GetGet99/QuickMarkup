@@ -89,6 +89,104 @@ double Output => `FirstOperand + SecondOperand`;
 </root>
 ```
 
+## Provide/Inject (Experimental)
+
+Provide/Inject is a context-based dependency injection system for passing reactive references between parent and child components. A parent `provide`s a value, and child components `inject` it by name and type.
+
+### Syntax
+
+```cs
+// Parent component: provide a value to children
+provide string Theme = "dark";
+
+// Child component: required injection (throws at runtime if no provider found)
+inject string Theme;
+
+// Child component: optional injection (returns default if no provider found)
+inject? string Theme;
+```
+
+### How It Works
+
+1. The parent's `provide` stores its `Reference<T>` backing field in a `QuickMarkupContext`.
+2. When a child component is created in the parent's markup, it receives a **child context** (cloned from the parent's context).
+3. The child's `inject` retrieves the same `Reference<T>` object from the context, enabling **bidirectional reactivity** — changes to the provided value are reflected in the injector.
+
+```cs
+// Parent
+provide string Label = "hello";
+
+// Child (separate component)
+inject string Label;
+<TestText Text=`Label` />
+```
+
+When the parent sets `Label = "world"`, the child's `Label` property updates automatically because they share the same `Reference<string>` object.
+
+Default accessibility is `private` (unlike regular refs which default to `public`).
+
+### Constraints
+
+- `provide`/`inject` cannot be `static` or `required`.
+- `provide`/`inject` cannot use computed syntax (`=>`).
+- `inject` does not support default values.
+- Must enable new lifecycle for entire project `[assembly: QuickMarkupNewLifecycle]`
+
+### Generated Code
+
+A `provide string Label = "hello";` declaration generates:
+
+```cs
+// Backing field (same as regular ref)
+private Reference<string> LabelProp => field ??= new Reference<string>(value, "MyComponent.Label");
+
+// Property
+public string Label {
+    get => this.LabelProp.Value;
+    set => this.LabelProp.Value = value;
+}
+
+// In InternalInit():
+Context ??= new QuickMarkupContext();
+Context.Provide<string>("Label", LabelProp);
+```
+
+An `inject string Label;` declaration generates:
+
+```cs
+// Backing field initialized to null!
+private Reference<string> LabelProp = null!;
+
+// Property
+public string Label {
+    get => this.LabelProp.Value;
+    set => this.LabelProp.Value = value;
+}
+
+// In InternalInit():
+LabelProp = Context.Inject<string>("Label");
+```
+
+An `inject? string Label;` declaration generates:
+
+```cs
+// Backing field initialized to null (nullable)
+private Reference<string>? LabelProp = null;
+
+// Property (returns default if not injected)
+public string Label {
+    get => LabelProp is not null ? LabelProp.Value : default(string);
+    set { if (LabelProp is not null) LabelProp.Value = value; }
+}
+
+// In InternalInit():
+LabelProp = Context.TryInject<string>("Label");
+```
+
+### Context Hierarchy
+
+Contexts form a hierarchy: grandparent → parent → child. A child component can find providers from any ancestor. The `QuickMarkupContext` walks up the parent chain when resolving an injection.
+
 ## Setup
 
 Setup is a place to define C# code to be run before UI is generated. UI will have access to any variables declared in setup tag, but these variables will not be exported outside this scope.

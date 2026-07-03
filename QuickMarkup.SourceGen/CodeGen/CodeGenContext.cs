@@ -127,8 +127,8 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             // Assign outer variable before property initializers to match order-of-operations promise
             lambdaBuilder.AppendLine($"{varTarget} = {lambdaParam};");
 
-            // Propagate context to child components implementing IQuickMarkupContextAware
-            if (IsContextAwareComponent(node))
+            // Propagate context to child components supporting it
+            if (node.SupportsContext)
             {
                 lambdaBuilder.AppendLine($"{lambdaParam}.Context = new global::QuickMarkup.Infra.QuickMarkupContext(Context);");
             }
@@ -146,6 +146,14 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 codeBuilder.AppendLine($"{varTarget} = new {typeName}({lambdaParam} => {{");
             }
             codeBuilder.Append(lambdaBuilder.ToString().IndentWOF(2));
+            codeBuilder.AppendLine("});");
+        }
+        else if (node.SupportsContext)
+        {
+            // No properties to set, but still need to propagate context to child components
+            var lambdaParam = NewVariable();
+            codeBuilder.AppendLine($"{varTarget} = new {typeName}({lambdaParam} => {{");
+            codeBuilder.AppendLine($"    {lambdaParam}.Context = new global::QuickMarkup.Infra.QuickMarkupContext(Context);");
             codeBuilder.AppendLine("});");
         }
         else
@@ -934,13 +942,4 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
     }
 
     sealed record ForScope(string ItemName, string ItemRef, string? IndexName, string? IndexRef);
-
-    static bool IsContextAwareComponent(QMNodeSymbol<ITypeSymbol?> node)
-    {
-        if (node.Type is not INamedTypeSymbol namedType)
-            return false;
-        return namedType.AllInterfaces.Any(i =>
-            i.Name == "IQuickMarkupContextAware" &&
-            i.ContainingNamespace?.ToDisplayString() == "QuickMarkup.Infra");
-    }
 }

@@ -355,6 +355,56 @@ Component properties declared at the top automatically become reactive.
 
 ---
 
+# Sharing Values Across Components
+
+When building reusable XAML controls, it's common to have a value that several descendant components need, even though the intermediate controls don't use it.
+
+Without a shared context, this often means passing the value through each layer of the component hierarchy.
+
+QuickMarkup provides `provide` and `inject` declarations to share reactive values directly with descendant components.
+
+```cs
+[QuickMarkup("""
+    provide string Theme = "Dark";
+
+    <root>
+        <SettingsPanel />
+    </root>
+    """)]
+public partial class MainPage : Page;
+
+[QuickMarkup("""
+    inject string Theme;
+
+    <root>
+        <TextBlock Text=`Theme` />
+    </root>
+    """)]
+public partial class SettingsPanel : StackPanel;
+```
+
+`provide` exposes a reactive value to descendant components. `inject` retrieves the value from the nearest ancestor that provides it.
+
+This lets components depend only on the values they actually use, without requiring every intermediate component to declare and forward those properties.
+
+## Optional Injection
+
+Use `inject?` when a provider may not exist.
+
+```cs
+inject? string Theme;
+```
+
+If no matching provider exists, the injected property is initialized to `default(T)` instead of throwing.
+
+## How It Works
+
+Each component owns a context containing its provided values. Child components inherit that context, and `inject` resolves values from the nearest matching provider.
+
+Provided and injected properties share the same reactive reference, so changes made from either component are immediately reflected everywhere the value is used.
+
+---
+
 # Mental Model
 
 QuickMarkup is easiest to understand if you think of it as:
