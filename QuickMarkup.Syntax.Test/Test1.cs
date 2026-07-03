@@ -379,7 +379,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("X", r.Name.Name);
             Assert.IsTrue(r.IsStatic);
             Assert.AreEqual(Accessibility.Default, r.Accessibility);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -395,7 +396,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("Y", r.Name.Name);
             Assert.IsTrue(r.IsStatic);
             Assert.AreEqual(Accessibility.Private, r.Accessibility);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -410,7 +412,8 @@ namespace QuickMarkup.Syntax.Test
             var r = sfc.Refs[0];
             Assert.AreEqual("Z", r.Name.Name);
             Assert.IsTrue(r.IsStatic);
-            Assert.IsTrue(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Computed, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -426,7 +429,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("X", r.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsFalse(r.IsStatic);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -442,7 +446,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("Y", r.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsTrue(r.IsStatic);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -457,7 +462,8 @@ namespace QuickMarkup.Syntax.Test
             var r = sfc.Refs[0];
             Assert.AreEqual("Z", r.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
-            Assert.IsTrue(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Computed, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -474,7 +480,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.IsTrue(r.IsRequired);
             Assert.AreEqual(Accessibility.Default, r.Accessibility);
             Assert.IsFalse(r.IsStatic);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]
@@ -491,7 +498,8 @@ namespace QuickMarkup.Syntax.Test
             Assert.IsTrue(r.IsRequired);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsFalse(r.IsStatic);
-            Assert.IsFalse(r.IsComputedDeclaration);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
         }
 
         [TestMethod]

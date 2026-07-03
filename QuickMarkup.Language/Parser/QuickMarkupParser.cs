@@ -135,35 +135,31 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<RefDeclaration>]
         [Rule(
             RefAttributes, AS, nameof(RefDeclaration.Attributes),
-            RefKind, AS, nameof(RefDeclaration.Kind),
             RefAccessibility, AS, nameof(RefDeclaration.Accessibility),
+            RefKind, AS, nameof(RefDeclaration.Kind),
             RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             RefRequiredVisibility, AS, nameof(RefDeclaration.IsRequired),
             TypeDecl, AS, nameof(RefDeclaration.Type),
             QMPositionedIdentifier, AS, nameof(RefDeclaration.Name),
             RefDeclInitialValue, AS, nameof(RefDeclaration.DefaultValue),
             Terminal.Semicolon,
-            WITHPARAM, nameof(RefDeclaration.IsComputedDeclaration), false,
-            typeof(RefDeclaration)
-        )]
-        [Rule(
-            RefAttributes, AS, nameof(RefDeclaration.Attributes),
-            RefKind, AS, nameof(RefDeclaration.Kind),
-            RefAccessibility, AS, nameof(RefDeclaration.Accessibility),
-            RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
-            RefRequiredVisibility, AS, nameof(RefDeclaration.IsRequired),
-            TypeDecl, AS, nameof(RefDeclaration.Type),
-            QMPositionedIdentifier, AS, nameof(RefDeclaration.Name),
-            Terminal.EqualArrowRight,
-            QMValue, AS, nameof(RefDeclaration.DefaultValue),
-            Terminal.Semicolon,
-            WITHPARAM, nameof(RefDeclaration.IsComputedDeclaration), true,
             typeof(RefDeclaration)
         )]
         RefDecl,
-        [Type<QuickMarkupValue>]
-        [Rule(Terminal.Equal, QMValue, AS, VALUE, IDENTITY)]
-        [Rule(WITHPARAM, nameof(QuickMarkupDefault.IsExplicitlyNull), false, typeof(QuickMarkupDefault))]
+        [Type<RefDeclarationDefaultValue>]
+        [Rule(
+            Terminal.Equal,
+            QMValue, AS, nameof(RefDeclarationDefaultValue.Value),
+            WITHPARAM, nameof(RefDeclarationDefaultValue.Kind), DefaultValueKind.Assignment,
+            typeof(RefDeclarationDefaultValue)
+        )]
+        [Rule(
+            Terminal.EqualArrowRight,
+            QMValue, AS, nameof(RefDeclarationDefaultValue.Value),
+            WITHPARAM, nameof(RefDeclarationDefaultValue.Kind), DefaultValueKind.Computed,
+            typeof(RefDeclarationDefaultValue)
+        )]
+        [Rule(WITHPARAM, VALUE, null, IDENTITY)]
         RefDeclInitialValue,
         [Type<Accessibility>]
         [Rule(WITHPARAM, VALUE, Accessibility.Default, IDENTITY)]

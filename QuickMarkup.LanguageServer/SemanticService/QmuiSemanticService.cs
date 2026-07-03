@@ -239,7 +239,14 @@ public class QmuiSemanticService : IQmuiSemanticService
             {
                 var typeSymbol = ResolveRefTypeSymbol(typeStr, sfc, compilation);
 
-                var prefix = refDecl.IsComputedDeclaration ? "(computed)" : "(reactive)";
+                var prefix = refDecl.Kind switch
+                {
+                    RefDeclarationKind.Ref => refDecl.DefaultValue?.Kind is DefaultValueKind.Computed ? "(computed)" : "(reactive)",
+                    RefDeclarationKind.Computed => "(computed)",
+                    RefDeclarationKind.Provide => "(reactive) provide",
+                    RefDeclarationKind.Inject => "(reactive) inject",
+                    RefDeclarationKind.InjectOptional => "(reactive) inject?",
+                };
                 var typeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? typeStr;
                 var displayString = $"{prefix} {typeName} {refDecl.Name.Name}";
 

@@ -24,34 +24,38 @@ partial class QuickMarkupBinder
         if (r.Type.IsTypeNullable && typeSym is not null)
             typeSym = typeSym.WithNullableAnnotation(NullableAnnotation.Annotated);
 
-        IQMValueSymbol? defaultSym = null;
-        if (r.DefaultValue is { } dv)
-        {
-            defaultSym = Bind(dv, typeSym, null);
-        }
+        var defaultSym = Bind(r.DefaultValue?.Value ?? new QuickMarkupDefault(IsExplicitlyNull: false), typeSym, null);
 
         var attrs = new List<QMCompileTimeAttributeSymbol>(r.Attributes.Count);
+        var kind = r.Kind;
         foreach (var a in r.Attributes)
             attrs.Add(BindCompileTimeAttribute(a));
+            
+        if (r.DefaultValue?.Kind is DefaultValueKind.Computed)
+        {
+            if (kind is not RefDeclarationKind.Ref)
+                Error(r, "Unsupported: Provide/Inject cannot use computed syntax");
+            else
+                kind = RefDeclarationKind.Computed;
+        }
 
-        if (r.Kind is not RefDeclarationKind.Ref)
+        if (kind is not (RefDeclarationKind.Ref or RefDeclarationKind.Computed))
         {
             if (r.IsStatic)
                 Error(r, "Unsupported: Provide/Inject cannot be static");
             if (r.IsRequired)
                 Error(r, "Unsupported: required keyword is not supported on Provide/Inject");
-            if (r.IsComputedDeclaration)
-                Error(r, "Unsupported: Provide/Inject cannot use computed syntax");
+            if (r.DefaultValue is not null && kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+                Error(r, "Unsupported: Inject does not support default value yet");
             r = r with
             {
                 IsStatic = false,
-                IsRequired = false,
-                IsComputedDeclaration = false
+                IsRequired = false
             };
         }
 
         return new QMRefDeclarationSymbol<ITypeSymbol?>(
-            r.IsComputedDeclaration ? RefDeclarationKind.Computed : r.Kind,
+            kind,
             typeSym,
             r.Name.Name,
             defaultSym,
@@ -60,7 +64,7 @@ partial class QuickMarkupBinder
                 AST.Accessibility.Public => ResolvedAccessibility.Public,
                 AST.Accessibility.Private => ResolvedAccessibility.Private,
                 AST.Accessibility.Protected => ResolvedAccessibility.Protected,
-                AST.Accessibility.Default => r.Kind switch
+                AST.Accessibility.Default => kind switch
                 {
                     RefDeclarationKind.Ref or RefDeclarationKind.Computed => ResolvedAccessibility.Public,
                     RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional => ResolvedAccessibility.Private,

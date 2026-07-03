@@ -163,15 +163,26 @@ public record class QMAttribute(
         : this(null, AttributeName, Arguments) { }
 }
 public record class RefDeclaration(
-    TypeDeclaration Type,
-    PositionedIdentifier Name,
-    QuickMarkupValue? DefaultValue,
+    ListAST<QMAttribute> Attributes,
     Accessibility Accessibility,
+    RefDeclarationKind Kind,
     bool IsStatic,
     bool IsRequired,
-    bool IsComputedDeclaration,
-    ListAST<QMAttribute> Attributes,
-    RefDeclarationKind Kind = RefDeclarationKind.Ref) : AST;
+    TypeDeclaration Type,
+    PositionedIdentifier Name,
+    RefDeclarationDefaultValue? DefaultValue
+) : AST;
+
+public record class RefDeclarationDefaultValue(
+    QuickMarkupValue? Value,
+    DefaultValueKind Kind
+) : AST;
+
+public enum DefaultValueKind
+{
+    Assignment,
+    Computed
+}
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;
 
