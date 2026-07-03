@@ -49,7 +49,7 @@ public class Computed<T> : IReference<T>
     }
     ~Computed()
     {
-        effect.Dispose();
+        effect?.Dispose();
     }
     public void Watch(Action<T> action, bool immediete = false)
     {
