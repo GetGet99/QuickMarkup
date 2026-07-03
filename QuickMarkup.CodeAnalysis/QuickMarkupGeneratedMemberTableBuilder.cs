@@ -136,7 +136,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
 
         var initMode = hasRequired
             ? QuickMarkupInitializationMode.DeferredInit
-            : typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
+            : typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared && !x.GetAttributes().Any(a => a.AttributeClass?.Name == "QuickMarkupGeneratedConstructorAttribute"))
                 ? QuickMarkupInitializationMode.BackwardCompatible
                 : QuickMarkupInitializationMode.DeferredInit;
 

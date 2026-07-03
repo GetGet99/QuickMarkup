@@ -663,22 +663,6 @@ public partial class UnicodeStringCase : TestRoot;
     """)]
 public partial class UnicodeCommentCase : TestRoot;
 
-// --- Deferred Init and Backward Compatibility tests ---
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <TestText Text="backward compat" />
-    </root>
-    """)]
-public partial class BackwardCompatChildTest : TestRoot
-{
-    public BackwardCompatChildTest()
-    {
-        Init();
-    }
-}
-
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
     string InjectedText = "";

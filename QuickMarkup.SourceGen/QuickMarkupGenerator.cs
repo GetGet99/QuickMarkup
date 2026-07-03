@@ -153,7 +153,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         var typeMembers = generatedMembers?.FindTypeMembers(typeSymbol);
         var initMode = typeMembers?.InitMode
-            ?? (typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared)
+            ?? (typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared && !x.GetAttributes().Any(a => a.AttributeClass?.Name == "QuickMarkupGeneratedConstructorAttribute"))
                 ? QuickMarkupInitializationMode.BackwardCompatible
                 : QuickMarkupInitializationMode.DeferredInit);
 

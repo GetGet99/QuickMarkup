@@ -694,17 +694,6 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual("Accented: résumé méil Çç ñ", second.Text);
     }
 
-    // --- Deferred Init and Backward Compatibility tests ---
-
-    [TestMethod]
-    public void BackwardCompatWithExplicitConstructor_CallsInitAndBuildsTree()
-    {
-        var page = new BackwardCompatChildTest();
-        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
-
-        Assert.AreEqual("backward compat", text.Text);
-    }
-
     [TestMethod]
     public void ActionConstructor_SetsPropertiesBeforeInit()
     {

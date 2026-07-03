@@ -184,7 +184,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                 .FirstOrDefault(a => a.AttributeClass?.Name == "QuickMarkupNewLifecycleAttribute");
             if (newLifecycleAttr is not null)
             {
-                var hasExplicitConstructors = resolvedTypeSym.InstanceConstructors.Any(c => !c.IsImplicitlyDeclared);
+                var hasExplicitConstructors = resolvedTypeSym.InstanceConstructors.Any(c => !c.IsImplicitlyDeclared && !c.GetAttributes().Any(a => a.AttributeClass?.Name == "QuickMarkupGeneratedConstructorAttribute"));
                 if (hasExplicitConstructors)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
