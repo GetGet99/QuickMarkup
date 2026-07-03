@@ -181,11 +181,17 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Rule(WITHPARAM, VALUE, RefDeclarationKind.Ref, IDENTITY)]
         RefKind,
         // TAGS
+        [Type<QuickMarkupParsedTagHeader>]
+        [Rule(
+            ParsedTagStart, AS, nameof(QuickMarkupParsedTagHeader.TagStart),
+            InlineMembers, AS, nameof(QuickMarkupParsedTagHeader.InlineMembers),
+            typeof(QuickMarkupParsedTagHeader)
+        )]
+        ParsedTagHeader,
         [Type<QuickMarkupParsedTag>]
         [Rule(
             Terminal.QMOpenTagOpen,
-            ParsedTagStart, AS, nameof(QuickMarkupParsedTag.TagStart),
-            InlineMembers, AS, nameof(QuickMarkupParsedTag.InlineMembers),
+            ParsedTagHeader, AS, nameof(QuickMarkupParsedTag.Header),
             Terminal.QMOpenTagCloseAuto,
             WITHPARAM, nameof(QuickMarkupParsedTag.Children), null,
             WITHPARAM, nameof(QuickMarkupParsedTag.EndTagName), null,
@@ -194,8 +200,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         )]
         [Rule(
             Terminal.QMOpenTagOpen,
-            ParsedTagStart, AS, nameof(QuickMarkupParsedTag.TagStart),
-            InlineMembers, AS, nameof(QuickMarkupParsedTag.InlineMembers),
+            ParsedTagHeader, AS, nameof(QuickMarkupParsedTag.Header),
             Terminal.QMOpenTagClose,
             QMChildren, AS, nameof(QuickMarkupParsedTag.Children),
             Terminal.QMCloseTagOpen,
@@ -210,14 +215,14 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         ParsedTag,
         [Type<QuickMarkupParsedTag>]
         [Rule(
-            Terminal.Identifier, AS, "name",
+            QMPositionedIdentifier, AS, "name",
             Terminal.Equal,
             ParsedTag, AS, "tag",
             nameof(AttachName)
         )]
         [Rule(
             Terminal.Ref,
-            Terminal.Identifier, AS, "name",
+            QMPositionedIdentifier, AS, "name",
             Terminal.Equal,
             ParsedTag, AS, "tag",
             nameof(AttachRefName)
@@ -504,10 +509,17 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         QuickMarkupValue? Key);
     static QuickMarkupParsedForNode CreateForNode(ParsedForHeader header, IQMNodeChild body)
         => new(header.VarType, header.VarName, header.Iterable, body, header.IndexVarName, header.Key);
-    static QuickMarkupParsedTag AttachName(string name, QuickMarkupParsedTag tag)
-        => tag with { Name = name };
-    static QuickMarkupParsedTag AttachRefName(string name, QuickMarkupParsedTag tag)
-        => tag with { Name = name, IsRef = true };
+    static QuickMarkupParsedTag AttachName(PositionedIdentifier name, QuickMarkupParsedTag tag)
+    {
+        tag.Name = name;
+        return tag;
+    }
+    static QuickMarkupParsedTag AttachRefName(PositionedIdentifier name, QuickMarkupParsedTag tag)
+    {
+        tag.Name = name;
+        tag.IsRef = true;
+        return tag;
+    }
     static PositionedIdentifier AddDot(string name)
         => new($".{name}");
     static PositionedIdentifier AddDotted(string typeName, string tagName)

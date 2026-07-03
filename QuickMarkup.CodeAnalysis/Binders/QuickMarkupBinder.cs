@@ -31,15 +31,14 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             if (implicitComponentKind is not QMComponentKind.None)
             {
                 tag = new QuickMarkupParsedTag(
-                    new QuickMarkupConstructor(new PositionedIdentifier("root")),
-                    new ListAST<QuickMarkupInlineMember>(),
+                    new(new QuickMarkupConstructor(new("root")), []),
                     new ListAST<IQMNodeChild>([tag]),
-                    null, false, null, false
+                    new("root"), IsSelfClosing: false
                 );
             }
             else
             {
-                ErrorTagUnexpected(tag.TagStart, "root");
+                ErrorTagUnexpected(tag.Header.TagStart, "root");
             }
         }
         var type = rootType ?? resolver.GetTypeSymbol(tag.TagStart.TagName);
@@ -85,7 +84,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             type,
             Bind((QuickMarkupConstructor)tag.TagStart, tagInfo),
             members,
-            tag.Name,
+            tag.Name?.Name,
             componentKind,
             componentOutputType,
             CodeTypeResolver.ComponentOutputPropertyName,
@@ -150,7 +149,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             type,
             Bind((QuickMarkupConstructor)tag.TagStart, componentTagInfo),
             members,
-            tag.Name,
+            tag.Name?.Name,
             componentKind,
             componentOutputType,
             CodeTypeResolver.ComponentOutputPropertyName,

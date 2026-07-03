@@ -35,17 +35,23 @@ public record class QuickMarkupSFC(
     }
 }
 
-public record class QuickMarkupParsedTag(
+public record class QuickMarkupParsedTagHeader(
     ITagStart TagStart,
-    ListAST<QuickMarkupInlineMember> InlineMembers,
+    ListAST<QuickMarkupInlineMember> InlineMembers
+) : QuickMarkupValue, ISFCTag;
+
+public record class QuickMarkupParsedTag(
+    QuickMarkupParsedTagHeader Header,
     ListAST<IQMNodeChild>? Children,
     PositionedIdentifier? EndTagName,
-    bool IsSelfClosing,
-    string? Name = null,
-    bool IsRef = false
+    bool IsSelfClosing
 ) : QuickMarkupValue, ISFCTag
 {
-    public bool HasMismatchedEndTag => !(IsSelfClosing || (EndTagName is not null && TagStart.DoesMatch(EndTagName.Name)));
+    public PositionedIdentifier? Name { get; set; }
+    public bool IsRef { get; set; } = false;
+    public bool HasMismatchedEndTag => !(IsSelfClosing || (EndTagName is not null && Header.TagStart.DoesMatch(EndTagName.Name)));
+    public ITagStart TagStart => Header.TagStart;
+    public ListAST<QuickMarkupInlineMember> InlineMembers => Header.InlineMembers;
 }
 
 public record class PositionedIdentifier(string Name) : AST

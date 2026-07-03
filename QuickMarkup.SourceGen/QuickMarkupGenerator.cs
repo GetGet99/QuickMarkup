@@ -101,10 +101,9 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return tags[0];
         else
             return new QuickMarkupParsedTag(
-                new QuickMarkupConstructor(new PositionedIdentifier("root")),
-                new ListAST<QuickMarkupInlineMember>(),
-                new ListAST<IQMNodeChild>(tags.Select(static t => (IQMNodeChild)t).ToList()),
-                null, true, null, false
+                new(new QuickMarkupConstructor(new("root")), new()),
+                [.. tags.Select(static t => (IQMNodeChild)t)],
+                new("root"), IsSelfClosing: false
             );
     }
 
