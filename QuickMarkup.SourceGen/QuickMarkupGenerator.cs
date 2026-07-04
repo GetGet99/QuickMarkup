@@ -355,7 +355,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         var initMethod = $$"""
             private void {{initMethodName}}({{initParamSig}}) {
                 {{cleanupBlock.IndentWOF()}}
-                {{contextInitBlock.IndentWOF()}}
                 {{scriptBody.IndentWOF()}}
                 {{initBody.IndentWOF()}}
             }
@@ -368,11 +367,13 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         var primaryBody = $"""
             {reqAssignmentsBlock}
+            {contextInitBlock}
             {userCtorCall}
             """;
 
         var actionBody = $"""
             quickMarkupInitializer(this);
+            {contextInitBlock}
             {userCtorCall}
             """;
 
