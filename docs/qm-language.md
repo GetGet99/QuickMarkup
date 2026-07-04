@@ -146,7 +146,7 @@ public string Label {
     set => this.LabelProp.Value = value;
 }
 
-// In InternalInit():
+// In Init():
 Context ??= new QuickMarkupContext();
 Context.Provide<string>("Label", LabelProp);
 ```
@@ -163,7 +163,7 @@ public string Label {
     set => this.LabelProp.Value = value;
 }
 
-// In InternalInit():
+// In Init():
 LabelProp = Context.Inject<string>("Label");
 ```
 
@@ -179,7 +179,7 @@ public string Label {
     set { if (LabelProp is not null) LabelProp.Value = value; }
 }
 
-// In InternalInit():
+// In Init():
 LabelProp = Context.TryInject<string>("Label");
 ```
 

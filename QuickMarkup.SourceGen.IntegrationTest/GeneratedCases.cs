@@ -692,6 +692,7 @@ public partial class QuickMarkupConstructorNoParamCase : TestRoot
     private void MyInit()
     {
         ConstructorCalled = true;
+        Init();
     }
 }
 
@@ -711,6 +712,7 @@ public partial class ConstructorWithParamsCase : TestRoot
     {
         StoredValue = value;
         StoredText = text;
+        Init(value, text);
     }
 }
 
@@ -734,6 +736,7 @@ public partial class ConstructorCallOrderCase : TestRoot
     private void MyInit()
     {
         ConstructorValue = SharedValue;
+        Init();
     }
 }
 
@@ -776,9 +779,10 @@ public partial class RequiredRefsConsumerCase : TestRoot;
 public partial class CtorArgWithRefsTarget : IQuickMarkupComponent<TestText>
 {
     [QuickMarkupConstructor]
-    private void Init(string label)
+    private void MyInit(string label)
     {
         Label = label;
+        Init(label);
     }
 }
 
@@ -799,9 +803,10 @@ public partial class CtorArgWithRefsConsumerCase : TestRoot;
 public partial class CtorArgWithRequiredTarget : IQuickMarkupComponent<TestText>
 {
     [QuickMarkupConstructor]
-    private void Init(string label)
+    private void MyInit(string label)
     {
         Label = label;
+        Init(label);
     }
 }
 

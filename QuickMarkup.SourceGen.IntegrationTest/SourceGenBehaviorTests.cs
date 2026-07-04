@@ -702,7 +702,7 @@ public sealed class SourceGenBehaviorTests
             x.InjectedText = "injected value";
         });
 
-        // The Action lambda runs before InternalInit(), so InjectedText is available
+        // The Action lambda runs before Init(), so InjectedText is available
         // when the markup evaluates Text=`InjectedText`.
         Assert.AreEqual("injected value", comp.MarkupNode.Text);
     }
@@ -715,7 +715,7 @@ public sealed class SourceGenBehaviorTests
 
         // The consumer markup sets InjectedText on ActionConstructorTarget via the
         // Action<T> constructor pattern (DeferredInit consumer codegen).
-        // The Text binding references InjectedText, which was set before InternalInit().
+        // The Text binding references InjectedText, which was set before Init().
         Assert.AreEqual("from consumer", text.Text);
     }
 
@@ -757,8 +757,8 @@ public sealed class SourceGenBehaviorTests
             ConstructorCallOrderCase.SharedValue = "set by action";
         });
 
-        Assert.AreEqual("", ConstructorCallOrderCase.ConstructorValue,
-            "Constructor should run before action — SharedValue should still be empty");
+        Assert.AreEqual("set by action", ConstructorCallOrderCase.ConstructorValue,
+            "Constructor should run after action — SharedValue should be set");
         Assert.AreEqual("set by action", ConstructorCallOrderCase.SetupValue,
             "Setup should run after action — SharedValue should be set");
         Assert.AreEqual("set by action", comp.InstanceProp,
@@ -788,7 +788,7 @@ public sealed class SourceGenBehaviorTests
 
         // The consumer sets DeferredPreInitValue="set before init" via the Action<T>
         // constructor. The component's own markup binds Text to DeferredPreInitValue,
-        // which was set before InternalInit() ran, so it should be visible.
+        // which was set before Init() ran, so it should be visible.
         Assert.AreEqual("set before init", text.Text);
     }
 
@@ -821,7 +821,7 @@ public sealed class SourceGenBehaviorTests
             x.RequiredCount = 42;
         });
 
-        // Action constructor: Init("hello") sets Label, action sets RequiredCount, then InternalInit evaluates template
+        // Action constructor: Init("hello") sets Label, action sets RequiredCount, then Init evaluates template
         Assert.AreEqual("hello: 42", comp.MarkupNode.Text);
     }
 
