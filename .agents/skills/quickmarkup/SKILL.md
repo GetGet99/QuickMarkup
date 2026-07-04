@@ -36,18 +36,19 @@ partial class MyPage : Page
     [QuickMarkupConstructor]
     private void MyInit()
     {
-        // Runs at the start of the generated constructor, before markup setup
+        // Custom setup before UI tree is built
         LoadSettings();
+        Init(); // Must call Init() to build the UI tree
     }
 }
 ```
 
 The generated constructor:
-- Runs the `[QuickMarkupConstructor]` method (if present).
-- Evaluates properties from upstream QuickMarkup markup (if called with the `Action<T>` overload).
-- Runs `<setup>` and builds the UI tree.
+- Without `[QuickMarkupConstructor]`: calls `Init()` automatically — no user code needed.
+- With `[QuickMarkupConstructor]`: calls the user's method. The user **must call `Init()` explicitly** from their method to build the UI tree.
+- The `Action<T>` callback (if used) runs **before** the `[QuickMarkupConstructor]` method, so upstream properties are already set when the user's method runs.
 
-**Fallback (backward-compatible) mode:** If you declare an explicit C# constructor without `[QuickMarkupConstructor]`, the generator emits a `private void Init()` method that you must call manually from your constructor (typically at the end). This is supported for legacy code but not recommended for new code.
+**Fallback (backward-compatible) mode:** If you declare an explicit C# constructor without `[QuickMarkupConstructor]`, the generator emits a `private void Init()` method that you must call manually from your constructor. This is supported for legacy code but not recommended for new code.
 
 ## Sections (in order)
 
@@ -318,9 +319,10 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 When using `[QuickMarkupConstructor]` or no explicit constructor:
 
 1. Component is initialized.
-2. If a `[QuickMarkupConstructor]` method exists, it runs. (upstream properties are not yet assigned)
-3. If the component was created with QuickMarkup, parent consumers will set properties at this time (details on no. 6).
-4. `<setup>` tag is run.
+2. If the component was created with QuickMarkup, parent consumers set properties via the `Action<T>` callback at this time.
+3. If a `[QuickMarkupConstructor]` method exists, it runs. (upstream properties are already assigned from step 2)
+4. The user's method must call `Init()` to run `<setup>` and build the UI tree.
+Inside `Init()` call,
 5. QuickMarkup goes through each element, one by one, running in order.
    - Properties are evaluated in order of declaration (left to right)
    - Children are evaluated in order of declaration (top to bottom)
@@ -429,7 +431,7 @@ In new code (not backward compatible mode). The source generator emits two const
 public Component(int id, string Title) { ... }
 ```
 
-**Action constructor** — accepts any `[QuickMarkupConstructor]` parameters followed by an `Action<T>` to let consumers set properties before `<setup>` runs:
+**Action constructor** — accepts any `[QuickMarkupConstructor]` parameters followed by an `Action<T>` to let consumers set properties. The action runs **before** the `[QuickMarkupConstructor]` method, so upstream properties are already set when the user's method runs:
 
 ```csharp
 // Example: with [QuickMarkupConstructor(int id)] parameters
@@ -454,6 +456,7 @@ partial class LabeledItem : IQuickMarkupComponent<TextBlock>
     private void Init(string label)
     {
         Label = label;
+        Init(); // Must call Init() to build the UI tree
     }
 }
 
@@ -590,7 +593,7 @@ partial class MyPage : Page;
 
 ## Best Practices
 
-- **Prefer the recommended pattern** — omit explicit constructors or use `[QuickMarkupConstructor]` instead of manually calling `Init()`.
+- **Prefer the recommended pattern** — omit explicit constructors or use `[QuickMarkupConstructor]` (with an `Init()` call at the end) instead of manually writing a C# constructor.
 - Use `required` on reference declarations that the consumer must provide, to get compile-time safety and cleaner constructor APIs.
 - Define **global usings** for common namespaces (`QuickMarkup.Infra`, `static QuickMarkup.Infra.QuickRefs`, etc.) so markup stays clean.
 - Define **C# extension methods** like (`CenterH`, `CenterV`, `Center`, `Right`, `Bottom`, `StretchH`, `StretchV`) for layout shortcuts.

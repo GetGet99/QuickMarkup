@@ -57,13 +57,7 @@ A minimal QuickMarkup page looks like this:
 
     </StackPanel>
     """)]
-public partial class CounterPage : Page
-{
-    public CounterPage()
-    {
-        Init();
-    }
-}
+public partial class CounterPage : Page;
 ```
 
 When `Count` changes, the `TextBlock` automatically updates.

@@ -755,7 +755,6 @@ public MainWindow()
 {
     this.InitializeComponent();
     QuickMarkup.WinUI.ReactiveInitializer.InitReactiveScheduler();
-    Init();
 }
 ```
 
@@ -802,7 +801,7 @@ Usage in markup:
         <TextBlock Foreground=`theme.PrimaryText` Text="Hello" />
     </root>
     """)]
-partial class MyPage : Page { public MyPage() { Init(); } }
+partial class MyPage : Page;
 ```
 
 ## Best Practices

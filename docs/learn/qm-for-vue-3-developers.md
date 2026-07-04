@@ -44,13 +44,7 @@ A QuickMarkup component usually looks like this:
         />
     </StackPanel>
     """)]
-public partial class CounterPage : Page
-{
-    public CounterPage()
-    {
-        Init();
-    }
-}
+public partial class CounterPage : Page;
 ```
 
 Things to notice immediately:

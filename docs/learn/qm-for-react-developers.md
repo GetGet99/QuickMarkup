@@ -48,13 +48,7 @@ If you think of it as:
 
     </StackPanel>
     """)]
-public partial class CounterPage : Page
-{
-    public CounterPage()
-    {
-        Init();
-    }
-}
+public partial class CounterPage : Page;
 ```
 
 A few things stand out immediately:
