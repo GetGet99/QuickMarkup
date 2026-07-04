@@ -274,14 +274,6 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         var scriptBody = script ?? "// No raw scripts was provided";
         var initBody = codeBuilder.ToString();
 
-        var hasProvideInject = !string.IsNullOrEmpty(provideInjectInitCode);
-
-        // Context init and provide/inject init block
-        var contextInitBlock = hasProvideInject ? $$"""
-            Context ??= new global::QuickMarkup.Infra.QuickMarkupContext();
-            {{provideInjectInitCode}}
-            """ : "";
-
         var cleanupBlock = $$"""
             {
                 // in case of re-initialize, cleanup all previous generated disposables
@@ -352,6 +344,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             actionParamSig.Append(", ");
         actionParamSig.Append($"global::System.Action<{typeName}> quickMarkupInitializer");
 
+        if (primaryParamSig.Length > 0)
+            primaryParamSig.Append(", ");
+        primaryParamSig.Append($"global::QuickMarkup.Infra.QuickMarkupContext? QUICKMARKUP_CONTEXT = null");
+
         var initMethod = $$"""
             private void {{initMethodName}}({{initParamSig}}) {
                 {{cleanupBlock.IndentWOF()}}
@@ -365,15 +361,17 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return initMethod;
         }
 
-        var primaryBody = $"""
-            {reqAssignmentsBlock}
-            {contextInitBlock}
+        var actionBody = $"""
+            quickMarkupInitializer(this);
+            Context ??= new global::QuickMarkup.Infra.QuickMarkupContext();
+            {provideInjectInitCode}
             {userCtorCall}
             """;
 
-        var actionBody = $"""
-            quickMarkupInitializer(this);
-            {contextInitBlock}
+        var primaryBody = $"""
+            {reqAssignmentsBlock}
+            Context = QUICKMARKUP_CONTEXT ?? new global::QuickMarkup.Infra.QuickMarkupContext();
+            {provideInjectInitCode}
             {userCtorCall}
             """;
 
