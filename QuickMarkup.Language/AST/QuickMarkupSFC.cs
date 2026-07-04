@@ -168,6 +168,10 @@ public record class QMAttribute(
     public QMAttribute(PositionedIdentifier AttributeName, QMCompileTimeAttributeArguments Arguments)
         : this(null, AttributeName, Arguments) { }
 }
+public record class RefDeclarationName(
+    PositionedIdentifier Name,
+    PositionedIdentifier? AsAllias = null
+);
 public record class RefDeclaration(
     ListAST<QMAttribute> Attributes,
     Accessibility Accessibility,
@@ -175,7 +179,7 @@ public record class RefDeclaration(
     bool IsStatic,
     bool IsRequired,
     TypeDeclaration Type,
-    PositionedIdentifier Name,
+    RefDeclarationName Name,
     RefDeclarationDefaultValue? DefaultValue
 ) : AST;
 

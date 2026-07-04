@@ -97,7 +97,7 @@ public sealed class QuickMarkupFileParserTests
 
         Assert.AreEqual("CounterPage", result.ClassDeclaration?.Name);
         Assert.AreEqual(1, result.Refs.Count);
-        Assert.AreEqual("Counter", result.Refs[0].Name.Name);
+        Assert.AreEqual("Counter", result.Refs[0].Name.Name.Name);
     }
 
     [TestMethod]

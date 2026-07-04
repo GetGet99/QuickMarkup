@@ -213,7 +213,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Foo", r.Name.Name);
+            Assert.AreEqual("Foo", r.Name.Name.Name);
             Assert.HasCount(3, r.Attributes);
             Assert.AreEqual("A", r.Attributes[0].AttributeName.Name);
             Assert.IsNull(r.Attributes[0].TargetSpecifier?.Name);
@@ -376,7 +376,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("X", r.Name.Name);
+            Assert.AreEqual("X", r.Name.Name.Name);
             Assert.IsTrue(r.IsStatic);
             Assert.AreEqual(Accessibility.Default, r.Accessibility);
             Assert.IsNotNull(r.DefaultValue);
@@ -393,7 +393,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Y", r.Name.Name);
+            Assert.AreEqual("Y", r.Name.Name.Name);
             Assert.IsTrue(r.IsStatic);
             Assert.AreEqual(Accessibility.Private, r.Accessibility);
             Assert.IsNotNull(r.DefaultValue);
@@ -410,7 +410,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Z", r.Name.Name);
+            Assert.AreEqual("Z", r.Name.Name.Name);
             Assert.IsTrue(r.IsStatic);
             Assert.IsNotNull(r.DefaultValue);
             Assert.AreEqual(DefaultValueKind.Computed, r.DefaultValue.Kind);
@@ -426,7 +426,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("X", r.Name.Name);
+            Assert.AreEqual("X", r.Name.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsFalse(r.IsStatic);
             Assert.IsNotNull(r.DefaultValue);
@@ -443,7 +443,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Y", r.Name.Name);
+            Assert.AreEqual("Y", r.Name.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsTrue(r.IsStatic);
             Assert.IsNotNull(r.DefaultValue);
@@ -460,7 +460,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Z", r.Name.Name);
+            Assert.AreEqual("Z", r.Name.Name.Name);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsNotNull(r.DefaultValue);
             Assert.AreEqual(DefaultValueKind.Computed, r.DefaultValue.Kind);
@@ -476,7 +476,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("X", r.Name.Name);
+            Assert.AreEqual("X", r.Name.Name.Name);
             Assert.IsTrue(r.IsRequired);
             Assert.AreEqual(Accessibility.Default, r.Accessibility);
             Assert.IsFalse(r.IsStatic);
@@ -494,7 +494,7 @@ namespace QuickMarkup.Syntax.Test
                 """);
             Assert.HasCount(1, sfc.Refs);
             var r = sfc.Refs[0];
-            Assert.AreEqual("Y", r.Name.Name);
+            Assert.AreEqual("Y", r.Name.Name.Name);
             Assert.IsTrue(r.IsRequired);
             Assert.AreEqual(Accessibility.Public, r.Accessibility);
             Assert.IsFalse(r.IsStatic);

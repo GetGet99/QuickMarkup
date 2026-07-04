@@ -215,10 +215,10 @@ public class QmuiSemanticService : IQmuiSemanticService
         {
             // Check if cursor is on the type reference (before the name on the same line)
             var typeStr = refDecl.Type.Type;
-            var typeStartChar = refDecl.Name.Start.Char - typeStr.Length - 1;
-            if (refDecl.Name.Start.Line == line &&
+            var typeStartChar = refDecl.Name.Name.Start.Char - typeStr.Length - 1;
+            if (refDecl.Name.Name.Start.Line == line &&
                 typeStartChar >= 0 &&
-                character >= typeStartChar && character < refDecl.Name.Start.Char)
+                character >= typeStartChar && character < refDecl.Name.Name.Start.Char)
             {
                 var typeSymbol = ResolveRefTypeSymbol(typeStr, sfc, compilation);
                 var typeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? typeStr;
@@ -234,8 +234,8 @@ public class QmuiSemanticService : IQmuiSemanticService
             }
 
             // Check if cursor is on the ref name
-            if (refDecl.Name.Start.Line <= line && refDecl.Name.End.Line >= line &&
-                refDecl.Name.Start.Char <= character && refDecl.Name.End.Char >= character)
+            if (refDecl.Name.Name.Start.Line <= line && refDecl.Name.Name.End.Line >= line &&
+                refDecl.Name.Name.Start.Char <= character && refDecl.Name.Name.End.Char >= character)
             {
                 var typeSymbol = ResolveRefTypeSymbol(typeStr, sfc, compilation);
 
@@ -248,11 +248,11 @@ public class QmuiSemanticService : IQmuiSemanticService
                     RefDeclarationKind.InjectOptional => "(reactive) inject?",
                 };
                 var typeName = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? typeStr;
-                var displayString = $"{prefix} {typeName} {refDecl.Name.Name}";
+                var displayString = $"{prefix} {typeName} {refDecl.Name.Name.Name}";
 
                 return new PropertyResolutionResult(
-                    PropertyAST: refDecl.Name,
-                    RawPropertyName: refDecl.Name.Name,
+                    PropertyAST: refDecl.Name.Name,
+                    RawPropertyName: refDecl.Name.Name.Name,
                     RoslynSymbol: null,
                     GeneratedSymbol: null,
                     DisplayString: displayString,

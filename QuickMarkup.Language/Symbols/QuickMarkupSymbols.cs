@@ -146,6 +146,7 @@ public record class QMRefDeclarationSymbol<T>(
     RefDeclarationKind Kind,
     T? RefType,
     string Name,
+    string? ContextName,
     IQMValueSymbol? DefaultValue,
     ResolvedAccessibility Accessibility,
     bool IsStatic,

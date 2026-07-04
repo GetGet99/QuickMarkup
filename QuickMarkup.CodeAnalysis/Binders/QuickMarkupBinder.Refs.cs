@@ -39,6 +39,33 @@ partial class QuickMarkupBinder
                 kind = RefDeclarationKind.Computed;
         }
 
+        string name = r.Name.Name.Name;
+        string? contextName = null;
+
+        
+        if (r.Name.AsAllias is not null)
+        {
+            if (kind is RefDeclarationKind.Provide)
+            {
+                contextName = r.Name.AsAllias.Name;
+            }
+            else if (kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+            {
+                contextName = r.Name.Name.Name;
+                name = r.Name.AsAllias.Name;
+            }
+            else
+            {
+                Error(r.Name.AsAllias, "`as` keyword can only be used with provide or inject");
+            }
+        } else
+        {
+            if (kind is RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+            {
+                contextName = name;
+            }
+        }
+
         if (kind is not (RefDeclarationKind.Ref or RefDeclarationKind.Computed))
         {
             if (r.IsStatic)
@@ -57,7 +84,8 @@ partial class QuickMarkupBinder
         return new QMRefDeclarationSymbol<ITypeSymbol?>(
             kind,
             typeSym,
-            r.Name.Name,
+            name,
+            contextName,
             defaultSym,
             r.Accessibility switch
             {

@@ -140,12 +140,21 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             RefStaticVisibility, AS, nameof(RefDeclaration.IsStatic),
             RefRequiredVisibility, AS, nameof(RefDeclaration.IsRequired),
             TypeDecl, AS, nameof(RefDeclaration.Type),
-            QMPositionedIdentifier, AS, nameof(RefDeclaration.Name),
+            RefDeclName, AS, nameof(RefDeclaration.Name),
             RefDeclInitialValue, AS, nameof(RefDeclaration.DefaultValue),
             Terminal.Semicolon,
             typeof(RefDeclaration)
         )]
         RefDecl,
+        [Type<RefDeclarationName>]
+        [Rule(QMPositionedIdentifier, AS, nameof(RefDeclarationName.Name), typeof(RefDeclarationName))]
+        [Rule(
+            QMPositionedIdentifier, AS, nameof(RefDeclarationName.Name),
+            Terminal.As,
+            QMPositionedIdentifier, AS, nameof(RefDeclarationName.AsAllias),
+            typeof(RefDeclarationName)
+        )]
+        RefDeclName,
         [Type<RefDeclarationDefaultValue>]
         [Rule(
             Terminal.Equal,

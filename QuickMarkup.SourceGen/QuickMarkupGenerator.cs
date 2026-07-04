@@ -7,6 +7,7 @@ using QuickMarkup.CodeAnalysis.Binders;
 using QuickMarkup.CodeAnalysis.Helpers;
 using QuickMarkup.Language.Symbols;
 using QuickMarkup.AST;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace QuickMarkup.SourceGen;
 
@@ -181,18 +182,19 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         foreach (var bound in boundRefs)
         {
-            if (bound.Kind is QuickMarkup.Language.Symbols.RefDeclarationKind.Provide)
+            var ctxName = bound.ContextName is null ? null : SymbolDisplay.FormatLiteral(bound.ContextName, false); 
+            if (bound.Kind is RefDeclarationKind.Provide)
             {
                 var typeName = TypeSymbolName(bound.RefType);
-                provideInjectInit.AppendLine($"Context.Provide<{typeName}>(\"{bound.Name}\", {bound.Name}Prop);");
+                provideInjectInit.AppendLine($"Context.Provide<{typeName}>(\"{ctxName}\", {bound.BackingName});");
             }
             else if (bound.Kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
             {
                 var typeName = TypeSymbolName(bound.RefType);
                 if (bound.Kind is RefDeclarationKind.InjectOptional)
-                    provideInjectInit.AppendLine($"{bound.Name}Prop = Context.TryInject<{typeName}>(\"{bound.Name}\");");
+                    provideInjectInit.AppendLine($"{bound.BackingName} = Context.TryInject<{typeName}>(\"{ctxName}\");");
                 else
-                    provideInjectInit.AppendLine($"{bound.Name}Prop = Context.Inject<{typeName}>(\"{bound.Name}\");");
+                    provideInjectInit.AppendLine($"{bound.BackingName} = Context.Inject<{typeName}>(\"{ctxName}\");");
             }
         }
 

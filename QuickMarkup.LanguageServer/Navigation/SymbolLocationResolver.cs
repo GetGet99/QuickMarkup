@@ -163,14 +163,14 @@ public class SymbolLocationResolver : ISymbolLocationResolver
         {
             foreach (var refDecl in sfc.Refs)
             {
-                if (refDecl.Name.Name == propertyName)
+                if (refDecl.Name.Name.Name == propertyName)
                 {
                     return new LspLocation
                     {
                         Uri = UriHelper.FromFilePath(entry.FilePath),
                         Range = new LspRange(
-                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                            new LspPosition(refDecl.Name.Name.Start.Line, refDecl.Name.Name.Start.Char),
+                            new LspPosition(refDecl.Name.Name.End.Line, refDecl.Name.Name.End.Char))
                     };
                 }
             }
@@ -212,10 +212,10 @@ public class SymbolLocationResolver : ISymbolLocationResolver
 
             foreach (var refDecl in sfc.Refs)
             {
-                if (refDecl.Name.Name != propertyName)
+                if (refDecl.Name.Name.Name != propertyName)
                     continue;
 
-                var location = mapper.GetLocation(refDecl.Name);
+                var location = mapper.GetLocation(refDecl.Name.Name);
                 var syntaxTree = location.SourceTree;
                 if (syntaxTree is null)
                     return null;
@@ -242,14 +242,14 @@ public class SymbolLocationResolver : ISymbolLocationResolver
         {
             foreach (var refDecl in currentSfc.Refs)
             {
-                if (refDecl.Name.Name == propertyName)
+                if (refDecl.Name.Name.Name == propertyName)
                 {
                     return new LspLocation
                     {
                         Uri = UriHelper.FromFilePath(currentFilePath),
                         Range = new LspRange(
-                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                            new LspPosition(refDecl.Name.Name.Start.Line, refDecl.Name.Name.Start.Char),
+                            new LspPosition(refDecl.Name.Name.End.Line, refDecl.Name.Name.End.Char))
                     };
                 }
             }
@@ -263,14 +263,14 @@ public class SymbolLocationResolver : ISymbolLocationResolver
 
             foreach (var refDecl in sfc.Refs)
             {
-                if (refDecl.Name.Name == propertyName)
+                if (refDecl.Name.Name.Name == propertyName)
                 {
                     return new LspLocation
                     {
                         Uri = UriHelper.FromFilePath(filePath),
                         Range = new LspRange(
-                            new LspPosition(refDecl.Name.Start.Line, refDecl.Name.Start.Char),
-                            new LspPosition(refDecl.Name.End.Line, refDecl.Name.End.Char))
+                            new LspPosition(refDecl.Name.Name.Start.Line, refDecl.Name.Name.Start.Char),
+                            new LspPosition(refDecl.Name.Name.End.Line, refDecl.Name.Name.End.Char))
                     };
                 }
             }
