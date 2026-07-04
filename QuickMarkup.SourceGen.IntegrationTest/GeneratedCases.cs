@@ -865,4 +865,51 @@ public partial class ProvideInjectOptionalTarget : IQuickMarkupComponent<TestTex
     """)]
 public partial class ProvideInjectOptionalMissingCase : TestRoot;
 
+// --- Provide/Inject with 'as' keyword tests ---
+
+// Provider: backing ref is MyRefProp, but exposed to context as MyCtx
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string MyRef as MyCtx = "from-provider";
+    <root>
+        <ProvideInjectAsTarget />
+    </root>
+    """)]
+public partial class ProvideInjectAsProviderCase : TestRoot;
+
+// Consumer: inject from context key MyCtx into local backing ref MyRefProp
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string MyCtx as MyRef;
+    <TestText Text=`MyRef` />
+    """)]
+public partial class ProvideInjectAsTarget : IQuickMarkupComponent<TestText>;
+
+// Provider without 'as' to verify basic provide/inject still works
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "basic-hello";
+    <root>
+        <ProvideInjectBasicTarget />
+    </root>
+    """)]
+public partial class ProvideInjectBasicNoAsCase : TestRoot;
+
+// Optional inject with 'as' keyword
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject? string MyCtx as MyRef;
+    <TestText Text=`MyRef` />
+    """)]
+public partial class ProvideInjectOptionalAsTarget : IQuickMarkupComponent<TestText>;
+
+// No provider for optional as target - should return default
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    <root>
+        <ProvideInjectOptionalAsTarget />
+    </root>
+    """)]
+public partial class ProvideInjectOptionalAsMissingCase : TestRoot;
+
 

@@ -4,6 +4,7 @@ using Get.PLShared;
 using Get.RegexMachine;
 using Mono.Cecil.Cil;
 using QuickMarkup.AST;
+using QuickMarkup.Language.Symbols;
 using QuickMarkup.Parser;
 using System.Text;
 
@@ -670,6 +671,149 @@ namespace QuickMarkup.Syntax.Test
             Assert.AreEqual("using CommunityToolkit.WinUI.Controls;", ((IToken<QuickMarkupLexer.Tokens, string>)output[0]).Data);
             Assert.AreEqual(QuickMarkupLexer.Tokens.UsingStatement, output[1].TokenType);
             Assert.AreEqual("using SymbolExIcon = Get.Symbols.SymbolExIcon;", ((IToken<QuickMarkupLexer.Tokens, string>)output[1]).Data);
+        }
+
+        [TestMethod]
+        public void Parse_Provide_Basic()
+        {
+            var sfc = Parse("""
+                provide string Label = "hello";
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Label", r.Name.Name.Name);
+            Assert.IsNull(r.Name.AsAllias);
+            Assert.AreEqual(RefDeclarationKind.Provide, r.Kind);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_Provide_PublicStatic()
+        {
+            var sfc = Parse("""
+                public provide string Label = "hello";
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Label", r.Name.Name.Name);
+            Assert.IsNull(r.Name.AsAllias);
+            Assert.AreEqual(RefDeclarationKind.Provide, r.Kind);
+            Assert.AreEqual(Accessibility.Public, r.Accessibility);
+        }
+
+        [TestMethod]
+        public void Parse_Provide_As()
+        {
+            var sfc = Parse("""
+                provide string MyRef as MyCtx;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyRef", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyCtx", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.Provide, r.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_Provide_As_WithDefault()
+        {
+            var sfc = Parse("""
+                provide string MyRef as MyCtx = "default";
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyRef", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyCtx", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.Provide, r.Kind);
+            Assert.IsNotNull(r.DefaultValue);
+            Assert.AreEqual(DefaultValueKind.Assignment, r.DefaultValue.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_Inject_Basic()
+        {
+            var sfc = Parse("""
+                inject string Label;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Label", r.Name.Name.Name);
+            Assert.IsNull(r.Name.AsAllias);
+            Assert.AreEqual(RefDeclarationKind.Inject, r.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_InjectOptional_Basic()
+        {
+            var sfc = Parse("""
+                inject? string Label;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("Label", r.Name.Name.Name);
+            Assert.IsNull(r.Name.AsAllias);
+            Assert.AreEqual(RefDeclarationKind.InjectOptional, r.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_Inject_As()
+        {
+            var sfc = Parse("""
+                inject string MyCtx as MyRef;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyCtx", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyRef", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.Inject, r.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_InjectOptional_As()
+        {
+            var sfc = Parse("""
+                inject? string MyCtx as MyRef;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyCtx", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyRef", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.InjectOptional, r.Kind);
+        }
+
+        [TestMethod]
+        public void Parse_Provide_As_Public()
+        {
+            var sfc = Parse("""
+                public provide string MyRef as MyCtx;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyRef", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyCtx", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.Provide, r.Kind);
+            Assert.AreEqual(Accessibility.Public, r.Accessibility);
+        }
+
+        [TestMethod]
+        public void Parse_Inject_As_Private()
+        {
+            var sfc = Parse("""
+                private inject string MyCtx as MyRef;
+                """);
+            Assert.HasCount(1, sfc.Refs);
+            var r = sfc.Refs[0];
+            Assert.AreEqual("MyCtx", r.Name.Name.Name);
+            Assert.IsNotNull(r.Name.AsAllias);
+            Assert.AreEqual("MyRef", r.Name.AsAllias.Name);
+            Assert.AreEqual(RefDeclarationKind.Inject, r.Kind);
+            Assert.AreEqual(Accessibility.Private, r.Accessibility);
         }
 
         IEnumerable<IToken<QuickMarkupLexer.Tokens>> Lex(string code, QuickMarkupLexer.LexerStates initState = QuickMarkupLexer.LexerStates.Usings)

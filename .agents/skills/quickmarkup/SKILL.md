@@ -126,6 +126,64 @@ partial class MyLabel : IQuickMarkupComponent<TextBlock>
 var label = new MyLabel(14, "Welcome");
 ```
 
+## Provide/Inject
+
+Context-based dependency injection for passing reactive references between parent and child components. A parent `provide`s a value, child components `inject` it by name and type. Changes propagate reactively.
+
+### Syntax
+
+```quickmarkup
+provide string Theme = "dark";    // parent: provide
+inject string Theme;              // child: required inject (throws if missing)
+inject? string Theme;             // child: optional inject (returns default)
+```
+
+Default accessibility is `private`. Cannot be `static`, `required`, or use computed syntax (`=>`). Inject does not support default values. Requires `[assembly: QuickMarkupNewLifecycle]`.
+
+### Renaming with `as`
+
+Use `as` to decouple the local name from the context key:
+
+```quickmarkup
+provide string MyRef as MyCtx = "dark";   // local: MyRef, context key: MyCtx
+inject string MyCtx as MyRef;             // context key: MyCtx, local: MyRef
+inject? string MyCtx as MyRef;            // optional variant
+```
+
+Ordering differs: **`provide ref as ctx`**, **`inject ctx as ref`**.
+
+### How It Works
+
+1. Parent's `provide` stores its `Reference<T>` in a `QuickMarkupContext`.
+2. Child components receive a cloned context.
+3. Child's `inject` retrieves the same `Reference<T>` — bidirectional reactivity.
+
+```quickmarkup
+// Parent
+provide string Label = "hello";
+// Child (separate component)
+inject string Label;
+<TestText Text=`Label` />
+```
+
+### Constraints
+
+- `provide`/`inject` cannot be `static` or `required`.
+- `provide`/`inject` cannot use computed syntax (`=>`).
+- `inject` does not support default values.
+
+### Generated Code
+
+`provide string Label = "hello"` generates `Context.Provide<string>("Label", LabelProp)`. With `as`: `provide string MyRef as MyCtx` generates `Context.Provide<string>("MyCtx", MyRefProp)` — the context key uses the alias, the backing field uses the local name.
+
+`inject string Label` generates `LabelProp = Context.Inject<string>("Label")`. With `as`: `inject string MyCtx as MyRef` generates `MyRefProp = Context.Inject<string>("MyCtx")`.
+
+`inject? string Label` generates `LabelProp = Context.TryInject<string>("Label")` (nullable backing field, returns default when missing).
+
+### Context Hierarchy
+
+Contexts form a hierarchy: grandparent → parent → child. A child can find providers from any ancestor via parent chain resolution.
+
 ## Markup Syntax
 
 ### Tags

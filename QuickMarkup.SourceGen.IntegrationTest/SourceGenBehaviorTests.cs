@@ -875,4 +875,41 @@ public sealed class SourceGenBehaviorTests
         var text = TestTreeAssert.Child<TestText>(page.Children, 0);
         Assert.AreEqual("world", text.Text);
     }
+
+    [TestMethod]
+    public void ProvideInjectAs_ProviderProvidesChildInjectsWithDifferentNames()
+    {
+        var page = new ProvideInjectAsProviderCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("from-provider", text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectAs_ProviderAndInjectorShareSameReference()
+    {
+        var page = new ProvideInjectAsProviderCase();
+
+        // Changing provider's MyRef should propagate to child's MyRef
+        page.MyRef = "updated";
+        ReactiveScheduler.Tick();
+
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("updated", text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectBasicNoAs_WorksCorrectly()
+    {
+        var page = new ProvideInjectBasicNoAsCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("basic-hello", text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectOptionalAs_NoProvider_ReturnsDefault()
+    {
+        var page = new ProvideInjectOptionalAsMissingCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.IsNull(text.Text);
+    }
 }

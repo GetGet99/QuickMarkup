@@ -12,3 +12,27 @@ Ask yourself:
 - Software engineering work does not really end with "this feature is completed and there is nothing else." In the future, more features will be added. Can you help make that process in the future easier?
 
 If you are in plan mode, you can think of ahove questions before execution. Would you rather add more abstractions? Or if currently things are fine.
+
+## Contribution to the skills and documentation
+
+In the agent skills (SKILL.md), use code block with `quickmarkup` for QuickMarkup snippet and `csharp` for C# snippet.
+
+```quickmarkup
+<TextBlock Text="My textblock" />
+```
+```csharp
+Console.WriteLine("My C# code");
+```
+
+In oter documentation, use `csharp` with the `//` comment to denote whether it is QuickMarkup or C# code.
+
+```csharp
+// QuickMarkup
+<TextBlock Text="My textblock" />
+```
+```csharp
+// C#
+Console.WriteLine("My C# code");
+```
+
+Reason: In other user facing documentation, `csharp` provides a better syntax highlgihting and the language name is not usually shown directly to the user. However, syntax highlighting information is not given to the agent, so using `quickmarkup` and `csharp` directly will help the agent understand better.

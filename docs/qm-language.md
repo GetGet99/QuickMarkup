@@ -106,6 +106,29 @@ inject string Theme;
 inject? string Theme;
 ```
 
+### Renaming with `as`
+
+Use `as` to decouple the local reference name from the context key. This is useful when the provider and consumer want different names for the same shared reference.
+
+```cs
+// Parent: backing ref is MyRefProp, but exposed to context as MyCtx
+provide string MyRef as MyCtx = "dark";
+
+// Child: inject from context key MyCtx into local backing ref MyRefProp
+inject string MyCtx as MyRef;
+```
+
+Note the **ordering difference**: `provide ref as contextName`, `inject contextName as ref`.
+
+- `provide string MyRef as MyCtx` — the local name is `MyRef` (generates `MyRefProp`), the context key is `MyCtx`.
+- `inject string MyCtx as MyRef` — the context key is `MyCtx`, the local name is `MyRef` (generates `MyRefProp`).
+
+Optional injection also supports `as`:
+
+```cs
+inject? string MyCtx as MyRef;
+```
+
 ### How It Works
 
 1. The parent's `provide` stores its `Reference<T>` backing field in a `QuickMarkupContext`.
@@ -151,6 +174,23 @@ Context ??= new QuickMarkupContext();
 Context.Provide<string>("Label", LabelProp);
 ```
 
+A `provide string MyRef as MyCtx = "hello";` declaration generates:
+
+```cs
+// Backing field uses local name (MyRef)
+private Reference<string> MyRefProp => field ??= new Reference<string>(value, "MyComponent.MyRef");
+
+// Property uses local name
+public string MyRef {
+    get => this.MyRefProp.Value;
+    set => this.MyRefProp.Value = value;
+}
+
+// In Init(): context key uses the alias (MyCtx)
+Context ??= new QuickMarkupContext();
+Context.Provide<string>("MyCtx", MyRefProp);
+```
+
 An `inject string Label;` declaration generates:
 
 ```cs
@@ -181,6 +221,22 @@ public string Label {
 
 // In Init():
 LabelProp = Context.TryInject<string>("Label");
+```
+
+An `inject string MyCtx as MyRef;` declaration generates:
+
+```cs
+// Backing field uses local name (MyRef)
+private Reference<string> MyRefProp = null!;
+
+// Property uses local name
+public string MyRef {
+    get => this.MyRefProp.Value;
+    set => this.MyRefProp.Value = value;
+}
+
+// In Init(): context key uses the original name before `as` (MyCtx)
+MyRefProp = Context.Inject<string>("MyCtx");
 ```
 
 ### Context Hierarchy
