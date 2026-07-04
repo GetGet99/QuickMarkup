@@ -943,6 +943,35 @@ public partial class ProvideInjectTimingTarget : IQuickMarkupComponent<TestText>
     """)]
 public partial class ProvideInjectTimingCase : TestRoot;
 
+// --- Provide/Inject with ctor args tests ---
+
+// Child with inject + ctor param
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string Label;
+    string Extra = "";
+    <TestText Text=`$"{Label}-{Extra}"` />
+    """)]
+public partial class ProvideInjectCtorArgsTarget : IQuickMarkupComponent<TestText>
+{
+    [QuickMarkupConstructor]
+    private void MyInit(string extra)
+    {
+        Extra = extra;
+        Init(extra);
+    }
+}
+
+// Parent with provide + ctor arg syntax
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "hello";
+    <root>
+        <ProvideInjectCtorArgsTarget("world") />
+    </root>
+    """)]
+public partial class ProvideInjectCtorArgsCase : TestRoot;
+
 // --- Primary constructor context propagation tests ---
 
 // Component that exposes its context for testing

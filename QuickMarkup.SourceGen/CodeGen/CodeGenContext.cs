@@ -152,7 +152,15 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         {
             // No properties to set, but still need to propagate context to child components
             var lambdaParam = NewVariable();
-            codeBuilder.AppendLine($"{varTarget} = new {typeName}({lambdaParam} => {{");
+            if (node.Constructor.Parameters.Count > 0)
+            {
+                var ctorArgs = string.Join(", ", node.Constructor.Parameters.Select(p => CGen(p)));
+                codeBuilder.AppendLine($"{varTarget} = new {typeName}({ctorArgs}, {lambdaParam} => {{");
+            }
+            else
+            {
+                codeBuilder.AppendLine($"{varTarget} = new {typeName}({lambdaParam} => {{");
+            }
             codeBuilder.AppendLine($"    {lambdaParam}.Context = new global::QuickMarkup.Infra.QuickMarkupContext(Context);");
             codeBuilder.AppendLine("});");
         }
