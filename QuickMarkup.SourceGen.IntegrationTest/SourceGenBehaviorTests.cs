@@ -912,4 +912,100 @@ public sealed class SourceGenBehaviorTests
         var text = TestTreeAssert.Child<TestText>(page.Children, 0);
         Assert.IsNull(text.Text);
     }
+
+    // --- Provide/Inject timing tests (runs before QuickMarkupConstructor) ---
+
+    [TestMethod]
+    public void ProvideInjectTiming_InjectedValueAvailableInCtor()
+    {
+        ProvideInjectTimingTarget.CapturedLabelInCtor = null;
+        var page = new ProvideInjectTimingCase();
+
+        // Provide/inject runs before QuickMarkupConstructor, so Label should be available
+        Assert.AreEqual("injected-before-ctor", ProvideInjectTimingTarget.CapturedLabelInCtor,
+            "Injected value should be available inside QuickMarkupConstructor");
+    }
+
+    [TestMethod]
+    public void ProvideInjectTiming_ChildRendersCorrectly()
+    {
+        var page = new ProvideInjectTimingCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("injected-before-ctor", text.Text);
+    }
+
+    // --- Context propagation tests ---
+
+    [TestMethod]
+    public void PrimaryConstructor_CreatesContextWhenNull()
+    {
+        var comp = new ContextExposingTarget();
+        Assert.IsNotNull(comp.Context, "Primary constructor should create a context");
+    }
+
+    [TestMethod]
+    public void ActionConstructor_CreatesContextWhenNotSet()
+    {
+        ContextCaptureTarget.CapturedContext = null;
+        var comp = new ContextCaptureTarget(x => { });
+        Assert.IsNotNull(ContextCaptureTarget.CapturedContext,
+            "Action constructor should create a context when not set by initializer");
+    }
+
+    [TestMethod]
+    public void ActionConstructor_UsesContextFromInitializer()
+    {
+        ContextCaptureTarget.CapturedContext = null;
+        var sharedContext = new QuickMarkupContext();
+        var comp = new ContextCaptureTarget(x =>
+        {
+            x.Context = sharedContext;
+        });
+
+        Assert.AreSame(sharedContext, ContextCaptureTarget.CapturedContext,
+            "Action constructor should use context set by initializer (??= semantics)");
+    }
+
+    [TestMethod]
+    public void PrimaryConstructor_UsesPassedContext()
+    {
+        var sharedContext = new QuickMarkupContext();
+        var comp = new ContextExposingTarget(QUICKMARKUP_CONTEXT: sharedContext);
+        Assert.AreSame(sharedContext, comp.Context,
+            "Primary constructor should use the passed QUICKMARKUP_CONTEXT");
+    }
+
+    // --- Context hierarchy tests ---
+
+    [TestMethod]
+    public void ProvideInjectHierarchy_ParentValueReachesChild()
+    {
+        var page = new ProvideInjectHierarchyCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("from-parent", text.Text);
+    }
+
+    [TestMethod]
+    public void ProvideInjectHierarchy_ReactiveChangePropagates()
+    {
+        var page = new ProvideInjectHierarchyCase();
+        page.DeepValue = "updated";
+        ReactiveScheduler.Tick();
+
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("updated", text.Text);
+    }
+
+    // --- Provide in QuickMarkupConstructor ---
+
+    [TestMethod]
+    public void ProvideInCtor_ChangeAfterProvideStillWorks()
+    {
+        var page = new ProvideInCtorCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        // The ctor changes Label after provide runs, but since they share the same Reference,
+        // the child should see the updated value
+        Assert.AreEqual("changed-in-ctor", text.Text);
+    }
 }

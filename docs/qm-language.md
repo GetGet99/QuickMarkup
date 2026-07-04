@@ -169,8 +169,7 @@ public string Label {
     set => this.LabelProp.Value = value;
 }
 
-// In Init():
-Context ??= new QuickMarkupContext();
+// In generated constructor (runs before user's [QuickMarkupConstructor] method):
 Context.Provide<string>("Label", LabelProp);
 ```
 
@@ -186,8 +185,7 @@ public string MyRef {
     set => this.MyRefProp.Value = value;
 }
 
-// In Init(): context key uses the alias (MyCtx)
-Context ??= new QuickMarkupContext();
+// In generated constructor: context key uses the alias (MyCtx)
 Context.Provide<string>("MyCtx", MyRefProp);
 ```
 
@@ -203,7 +201,7 @@ public string Label {
     set => this.LabelProp.Value = value;
 }
 
-// In Init():
+// In generated constructor (runs before user's [QuickMarkupConstructor] method):
 LabelProp = Context.Inject<string>("Label");
 ```
 
@@ -219,7 +217,7 @@ public string Label {
     set { if (LabelProp is not null) LabelProp.Value = value; }
 }
 
-// In Init():
+// In generated constructor:
 LabelProp = Context.TryInject<string>("Label");
 ```
 
@@ -235,7 +233,7 @@ public string MyRef {
     set => this.MyRefProp.Value = value;
 }
 
-// In Init(): context key uses the original name before `as` (MyCtx)
+// In generated constructor: context key uses the original name before `as` (MyCtx)
 MyRefProp = Context.Inject<string>("MyCtx");
 ```
 

@@ -174,11 +174,15 @@ inject string Label;
 
 ### Generated Code
 
-`provide string Label = "hello"` generates `Context.Provide<string>("Label", LabelProp)`. With `as`: `provide string MyRef as MyCtx` generates `Context.Provide<string>("MyCtx", MyRefProp)` — the context key uses the alias, the backing field uses the local name.
+Provide/inject initialization runs in the generated constructors, **before** the user's `[QuickMarkupConstructor]` method. This ensures injected values are available inside the constructor method.
 
-`inject string Label` generates `LabelProp = Context.Inject<string>("Label")`. With `as`: `inject string MyCtx as MyRef` generates `MyRefProp = Context.Inject<string>("MyCtx")`.
+`provide string Label = "hello"` generates `Context.Provide<string>("Label", LabelProp)` in the constructor. With `as`: `provide string MyRef as MyCtx` generates `Context.Provide<string>("MyCtx", MyRefProp)` — the context key uses the alias, the backing field uses the local name.
 
-`inject? string Label` generates `LabelProp = Context.TryInject<string>("Label")` (nullable backing field, returns default when missing).
+`inject string Label` generates `LabelProp = Context.Inject<string>("Label")` in the constructor. With `as`: `inject string MyCtx as MyRef` generates `MyRefProp = Context.Inject<string>("MyCtx")`.
+
+`inject? string Label` generates `LabelProp = Context.TryInject<string>("Label")` in the constructor (nullable backing field, returns default when missing).
+
+The primary constructor also accepts an optional `QuickMarkupContext?` parameter for context propagation from parent components.
 
 ### Context Hierarchy
 
@@ -378,10 +382,12 @@ When using `[QuickMarkupConstructor]` or no explicit constructor:
 
 1. Component is initialized.
 2. If the component was created with QuickMarkup, parent consumers set properties via the `Action<T>` callback at this time.
-3. If a `[QuickMarkupConstructor]` method exists, it runs. (upstream properties are already assigned from step 2)
-4. The user's method must call `Init()` to run `<setup>` and build the UI tree.
+3. Context is created or received from parent.
+4. Provide/inject initialization runs (if the component has `provide`/`inject` declarations).
+5. If a `[QuickMarkupConstructor]` method exists, it runs. (injected values are available from step 4)
+6. The user's method must call `Init()` to run `<setup>` and build the UI tree.
 Inside `Init()` call,
-5. QuickMarkup goes through each element, one by one, running in order.
+7. QuickMarkup goes through each element, one by one, running in order.
    - Properties are evaluated in order of declaration (left to right)
    - Children are evaluated in order of declaration (top to bottom)
 
@@ -401,7 +407,7 @@ Example:
 
 `stack` variable is assigned and is not null from point `5.` onwards only.
 
-6. For each element, properties and extension methods are evaluated from left to right.
+8. For each element, properties and extension methods are evaluated from left to right.
 
 ```
 // 0. StackPanel is initialized, and `sp` is set to a new stack panel
@@ -412,7 +418,7 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 />
 ```
 
-7. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
+9. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
 
 *This behavior is only guaranteed from generated code. If user calls generated constructor themselves, just note that the evaluation step depends on user code.
 

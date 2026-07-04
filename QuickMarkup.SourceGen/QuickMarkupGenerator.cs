@@ -166,7 +166,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         }
 
         // Check for provide/inject with backward compatible mode
-        var hasProvideOrInject = ast.Refs.Any(r => r.Kind is QuickMarkup.Language.Symbols.RefDeclarationKind.Provide or QuickMarkup.Language.Symbols.RefDeclarationKind.Inject);
+        var hasProvideOrInject = ast.Refs.Any(r => r.Kind is RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional);
         if (hasProvideOrInject && initMode is QuickMarkupInitializationMode.BackwardCompatible)
         {
             var error = $"Type {target.FullTypeName} uses provide/inject but has BackwardCompatible init mode (has explicit constructors). Provide/Inject requires the new lifecycle. Remove explicit constructors or add a [QuickMarkupConstructor] method.";

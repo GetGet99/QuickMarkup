@@ -912,4 +912,102 @@ public partial class ProvideInjectOptionalAsTarget : IQuickMarkupComponent<TestT
     """)]
 public partial class ProvideInjectOptionalAsMissingCase : TestRoot;
 
+// --- Provide/Inject timing tests (runs before QuickMarkupConstructor) ---
 
+// Target: inject is available inside QuickMarkupConstructor
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string Label;
+    <TestText Text=`Label` />
+    """)]
+public partial class ProvideInjectTimingTarget : IQuickMarkupComponent<TestText>
+{
+    public static string? CapturedLabelInCtor { get; set; }
+
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        // Label (injected) should be available here because provide/inject runs before ctor
+        CapturedLabelInCtor = Label;
+        Init();
+    }
+}
+
+// Parent that provides and uses the timing target
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "injected-before-ctor";
+    <root>
+        <ProvideInjectTimingTarget />
+    </root>
+    """)]
+public partial class ProvideInjectTimingCase : TestRoot;
+
+// --- Primary constructor context propagation tests ---
+
+// Component that exposes its context for testing
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Value = "";
+    <TestText Text=`Value` />
+    """)]
+public partial class ContextExposingTarget : IQuickMarkupComponent<TestText>;
+
+// --- Action constructor context behavior tests ---
+
+// Target that captures context in QuickMarkupConstructor
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string Value = "";
+    <TestText Text=`Value` />
+    """)]
+public partial class ContextCaptureTarget : IQuickMarkupComponent<TestText>
+{
+    public static QuickMarkupContext? CapturedContext { get; set; }
+
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        CapturedContext = Context;
+        Init();
+    }
+}
+
+// --- Context hierarchy tests (parent -> child with provide/inject) ---
+
+// Child that injects
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string DeepValue;
+    <TestText Text=`DeepValue` />
+    """)]
+public partial class ProvideInjectHierarchyChildTarget : IQuickMarkupComponent<TestText>;
+
+// Parent that provides and creates child
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string DeepValue = "from-parent";
+    <root>
+        <ProvideInjectHierarchyChildTarget />
+    </root>
+    """)]
+public partial class ProvideInjectHierarchyCase : TestRoot;
+
+// --- Provide in QuickMarkupConstructor (provide runs before ctor method) ---
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "default";
+    <root>
+        <ProvideInjectBasicTarget />
+    </root>
+    """)]
+public partial class ProvideInCtorCase : TestRoot
+{
+    [QuickMarkupConstructor]
+    private void MyInit()
+    {
+        // Change the provided value after provide has run
+        Label = "changed-in-ctor";
+        Init();
+    }
+}
