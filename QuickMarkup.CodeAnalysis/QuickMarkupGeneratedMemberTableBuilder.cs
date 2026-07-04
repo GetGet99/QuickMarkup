@@ -28,58 +28,6 @@ static class QuickMarkupGeneratedMemberTableBuilder
         var hasRequired = false;
         foreach (var @ref in refs)
         {
-            // if (@ref.Kind is RefDeclarationKind.Provide)
-            // {
-            //     AddGeneratedProperty(
-            //         properties,
-            //         new QuickMarkupGeneratedPropertySymbol(
-            //             @ref.Name,
-            //             unknownTypes ? null : TypeName(@ref.RefType),
-            //             false,
-            //             QuickMarkupGeneratedPropertyKind.ProvideValue));
-
-            //     if (!unknownTypes && @ref.RefType is not null)
-            //     {
-            //         AddGeneratedProperty(
-            //             properties,
-            //             new QuickMarkupGeneratedPropertySymbol(
-            //                 $"{@ref.Name}Prop",
-            //                 $"global::QuickMarkup.Infra.Reference<{TypeName(@ref.RefType)}>",
-            //                 false,
-            //                 QuickMarkupGeneratedPropertyKind.RefBacking));
-            //     }
-
-            //     hasRequired = true;
-            //     continue;
-            // }
-
-            // if (@ref.Kind is RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
-            // {
-            //     AddGeneratedProperty(
-            //         properties,
-            //         new QuickMarkupGeneratedPropertySymbol(
-            //             @ref.Name,
-            //             unknownTypes ? null : TypeName(@ref.RefType),
-            //             false,
-            //             QuickMarkupGeneratedPropertyKind.InjectValue));
-
-            //     if (!unknownTypes && @ref.RefType is not null)
-            //     {
-            //         AddGeneratedProperty(
-            //             properties,
-            //             new QuickMarkupGeneratedPropertySymbol(
-            //                 $"{@ref.Name}Prop",
-            //                 $"global::QuickMarkup.Infra.Reference<{TypeName(@ref.RefType)}>{(
-            //                     @ref.Kind is RefDeclarationKind.InjectOptional ? "?" : ""
-            //                 )}",
-            //                 false,
-            //                 QuickMarkupGeneratedPropertyKind.RefBacking));
-            //     }
-
-            //     hasRequired = true;
-            //     continue;
-            // }
-
             var isRequired = @ref.IsRequired;
             if (isRequired) hasRequired = true;
 
