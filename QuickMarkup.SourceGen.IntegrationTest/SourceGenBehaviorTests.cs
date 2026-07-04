@@ -863,6 +863,14 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ProvideInjectCtorArgsRequired_AllAvailable()
+    {
+        var page = new ProvideInjectCtorArgsRequiredCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+        Assert.AreEqual("hello-world:42", text.Text);
+    }
+
+    [TestMethod]
     public void ProvideInjectOptional_NoProvider_ReturnsDefault()
     {
         var page = new ProvideInjectOptionalMissingCase();

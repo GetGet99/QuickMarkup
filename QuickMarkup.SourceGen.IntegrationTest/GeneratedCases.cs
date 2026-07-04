@@ -972,6 +972,36 @@ public partial class ProvideInjectCtorArgsTarget : IQuickMarkupComponent<TestTex
     """)]
 public partial class ProvideInjectCtorArgsCase : TestRoot;
 
+// --- Provide/Inject with ctor args + required refs tests ---
+
+// Child with inject + ctor param + required ref
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    inject string Label;
+    string Extra = "";
+    required int RequiredCount = 0;
+    <TestText Text=`$"{Label}-{Extra}:{RequiredCount}"` />
+    """)]
+public partial class ProvideInjectCtorArgsRequiredTarget : IQuickMarkupComponent<TestText>
+{
+    [QuickMarkupConstructor]
+    private void MyInit(string extra)
+    {
+        Extra = extra;
+        Init(extra);
+    }
+}
+
+// Parent with provide + ctor arg syntax + required ref set via attribute
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    public provide string Label = "hello";
+    <root>
+        <ProvideInjectCtorArgsRequiredTarget("world") RequiredCount=42 />
+    </root>
+    """)]
+public partial class ProvideInjectCtorArgsRequiredCase : TestRoot;
+
 // --- Primary constructor context propagation tests ---
 
 // Component that exposes its context for testing
