@@ -205,10 +205,12 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 var analyzer = new QuickMarkupBinder(componentInfoResolver, Binder.FailFast);
                 var output = analyzer.Bind(template, typeSymbol);
                 ct.ThrowIfCancellationRequested();
+                var hasExplicitConstructors = typeSymbol.InstanceConstructors.Any(x => !x.IsImplicitlyDeclared);
                 var cgen = new CodeGenContext(
                     generatedProperties,
                     codeBuilder,
-                    initMode
+                    initMode,
+                    hasExplicitConstructors
                 );
                 cgen.CGenWrite(output, "this");
                 ct.ThrowIfCancellationRequested();

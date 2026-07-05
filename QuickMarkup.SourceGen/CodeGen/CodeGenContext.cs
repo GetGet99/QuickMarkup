@@ -5,13 +5,16 @@ using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, QuickMarkupInitializationMode initMode)
+class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, QuickMarkupInitializationMode initMode, bool hasExplicitConstructors)
 {
     int counterRef = 0;
     readonly Stack<ForScope> forScopes = [];
     string disposableAddTarget = "QUICKMARKUP_DISPOSABLES";
-    // Named nodes need null-forgiving assignment when not in a real constructor
-    bool useNullForgivingFields => initMode is not QuickMarkupInitializationMode.BackwardCompatible;
+    // Use null-forgiving assignment (private T X = null!) when fields are assigned in Init(),
+    // not directly in a constructor body. readonly only works when everything is inline in
+    // the constructor (old v0.1.15 behavior: BackwardCompatible + no explicit constructors).
+    bool useNullForgivingFields => initMode is QuickMarkupInitializationMode.DeferredInit
+        || (initMode is QuickMarkupInitializationMode.BackwardCompatible && hasExplicitConstructors);
 
     string NewVariable() => $"QUICKMARKUP_NODE_{counterRef++}";
 
@@ -119,7 +122,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             // Build lambda body for property initializers
             var lambdaParam = NewVariable();
             var lambdaBuilder = new StringBuilder();
-            var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible)
+            var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible, hasExplicitConstructors: true)
             {
                 counterRef = counterRef,
                 disposableAddTarget = disposableAddTarget
@@ -859,7 +862,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
 
     CodeGenContext Clone(StringBuilder builder)
     {
-        var clone = new CodeGenContext(membersBuilder, builder, initMode)
+        var clone = new CodeGenContext(membersBuilder, builder, initMode, hasExplicitConstructors)
         {
             counterRef = counterRef,
             disposableAddTarget = disposableAddTarget
