@@ -560,6 +560,25 @@ public partial class ForeachIndexKeyCase : TestRoot
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test;
+    <root>
+        <TestPanel>
+            foreach (var item in `Items`) {
+                <SimpleTextComponent SimpleText=`item.Text` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class ForeachComponentCase : TestRoot
+{
+    public ObservableCollection<TestItem> Items { get; } =
+    [
+        new(1, "one"),
+        new(2, "two")
+    ];
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
     int RowIndex = 42;
     <root>
         <TestText Grid.Row=1 />

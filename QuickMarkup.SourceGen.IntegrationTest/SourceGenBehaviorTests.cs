@@ -481,6 +481,30 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ForeachWithComponentCapturesLoopVariable()
+    {
+        var page = new ForeachComponentCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        ReactiveScheduler.Tick();
+
+        // SimpleTextComponent is a DeferredInit component (IQuickMarkupComponent<TestText>).
+        // Its constructor lambda receives the component instance, and property bindings
+        // inside must correctly resolve the foreach iterator variable via ClosureValue.
+        var first = TestTreeAssert.Child<TestText>(panel.Children, 0);
+        var second = TestTreeAssert.Child<TestText>(panel.Children, 1);
+
+        Assert.AreEqual("one", first.Text);
+        Assert.AreEqual("two", second.Text);
+
+        // Verify reactive update: add an item and check the component renders correctly
+        page.Items.Add(new(3, "three"));
+        ReactiveScheduler.Tick();
+
+        var third = TestTreeAssert.Child<TestText>(panel.Children, 2);
+        Assert.AreEqual("three", third.Text);
+    }
+
+    [TestMethod]
     public void AttachedPropertySetRowAssignsNumericValue()
     {
         var page = new AttachedPropertyAssignCase();
