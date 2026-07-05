@@ -163,3 +163,10 @@ public static class TestElementExtensions
         element.ElementExtensionApplied = true;
     }
 }
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test;
+    string SimpleText = "";
+    <TestText Text=`SimpleText` />
+    """)]
+public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;
