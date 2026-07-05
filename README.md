@@ -12,7 +12,7 @@ QuickMarkup is a reactive UI DSL for C# that lets you build declarative interfac
 It combines:
 
 * Reactive state updates
-* HTML/Vue-inspired markup syntax
+* Vue-inspired markup syntax
 * Direct C# expressions
 * Compile-time code generation
 * No MVVM boilerplate
