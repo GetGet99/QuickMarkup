@@ -6,3 +6,4 @@ Frameworks/*/bin
 Frameworks/*/obj
 QuickMarkup.VSCode.Extension/server
 .weave
+QuickMarkup.Uno.csproj.SdkResolver.*.tmp

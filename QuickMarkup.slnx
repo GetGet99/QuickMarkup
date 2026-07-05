@@ -4,6 +4,7 @@
     <Project Path="Frameworks/QuickMarkup.UWP/QuickMarkup.UWP.csproj" />
     <Project Path="Frameworks/QuickMarkup.Win/QuickMarkup.Win.shproj" />
     <Project Path="Frameworks/QuickMarkup.WinUI/QuickMarkup.WinUI.csproj" />
+    <Project Path="Frameworks/QuickMarkup.Uno/QuickMarkup.Uno.csproj" />
   </Folder>
   <Folder Name="/Libraries/">
     <Project Path="Parser/Get.EasyCSharp.GeneratorTools/Get.EasyCSharp.GeneratorTools.csproj" />

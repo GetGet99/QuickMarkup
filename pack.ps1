@@ -11,6 +11,7 @@ switch ($args[0]) {
     'all' {
         Pack 'QuickMarkup.Infra'
         Pack 'Frameworks/QuickMarkup.WinUI'
+        Pack 'Frameworks/QuickMarkup.Uno'
         Pack 'Frameworks/QuickMarkup.UWP'
     }
     'infra' {
