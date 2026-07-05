@@ -124,6 +124,8 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 counterRef = counterRef,
                 disposableAddTarget = disposableAddTarget
             };
+            foreach (var scope in forScopes.Reverse())
+                lambdaCtx.forScopes.Push(scope);
             // Assign outer variable before property initializers to match order-of-operations promise
             lambdaBuilder.AppendLine($"{varTarget} = {lambdaParam};");
 
