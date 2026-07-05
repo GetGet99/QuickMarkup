@@ -8,6 +8,14 @@
     <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/GetGet99/QuickMarkup</RepositoryUrl>
-    <PackageOutputPath>D:\Programming\VS\.LocalNugetPackages</PackageOutputPath>
   </PropertyGroup>
+  <PropertyGroup>
+  <PackageOutputPath Condition="'$(OS)' == 'Windows_NT'">
+    D:\Programming\VS\.LocalNugetPackages
+  </PackageOutputPath>
+
+  <PackageOutputPath Condition="'$(OS)' != 'Windows_NT'">
+    /mnt/Data/Programming/VS/.LocalNugetPackages
+  </PackageOutputPath>
+</PropertyGroup>
 </Project>
