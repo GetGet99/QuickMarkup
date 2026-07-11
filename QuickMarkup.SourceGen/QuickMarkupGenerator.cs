@@ -288,67 +288,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         const string initMethodName = "Init";
 
-        // DeferredInit mode
-        var userCtorMethodName = typeMembers?.QuickMarkupConstructorMethodName;
-        var userCtorParams = typeMembers?.ConstructorParameters;
-
-        StringBuilder userCtorCall;
-
-        StringBuilder initParamSig = new(), actionParamSig = new(), primaryParamSig = new(), reqAssignmentsBlock = new();
-
-        if (userCtorMethodName is null)
-            userCtorCall = new($"{initMethodName}();");
-        else
-        {
-            userCtorCall = new();
-            userCtorCall.Append(userCtorMethodName);
-            userCtorCall.Append('(');
-            if (userCtorParams is { Count: > 0 })
-            {
-                for (int i = 0; i < userCtorParams.Count; i++)
-                {
-                    var (type, name) = userCtorParams[i];
-                    if (i is not 0)
-                    {
-                        initParamSig.Append(", ");
-                        actionParamSig.Append(", ");
-                        primaryParamSig.Append(", ");
-                        userCtorCall.Append(", ");
-                    }
-                    var typeAndName = $"{type} {name}";
-                    initParamSig.Append(typeAndName);
-                    actionParamSig.Append(typeAndName);
-                    primaryParamSig.Append(typeAndName);
-                    userCtorCall.Append(name);
-                }
-            }
-            userCtorCall.Append(");");
-        }
-
-        if (requiredRefs is {Count: > 0})
-        {
-            for (int i = 0; i < requiredRefs.Count; i++)
-            {
-                var (type, name) = requiredRefs[i];
-                if (i is not 0)
-                {
-                    primaryParamSig.Append(", ");
-                    reqAssignmentsBlock.AppendLine();
-                } else if (userCtorParams is { Count: > 0 })
-                    primaryParamSig.Append(", ");
-                var typeAndName = $"{type} {name}";
-                primaryParamSig.Append(typeAndName);
-                reqAssignmentsBlock.Append($"this.{name} = {name};");
-            }
-        }
-
-        if (actionParamSig.Length > 0)
-            actionParamSig.Append(", ");
-        actionParamSig.Append($"global::System.Action<{typeName}> quickMarkupInitializer");
-
-        if (primaryParamSig.Length > 0)
-            primaryParamSig.Append(", ");
-        primaryParamSig.Append($"global::QuickMarkup.Infra.QuickMarkupContext? QUICKMARKUP_CONTEXT = null");
+        BuildConstructorSignatures(
+            typeName, initMethodName, typeMembers, requiredRefs,
+            out var initParamSig, out var actionParamSig, out var primaryParamSig,
+            out var reqAssignmentsBlock, out var userCtorCall);
 
         var initMethod = $$"""
             private void {{initMethodName}}({{initParamSig}}) {
@@ -384,6 +327,81 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         {initMethod}
         """;
+    }
+
+    static void BuildConstructorSignatures(
+        string typeName,
+        string initMethodName,
+        QuickMarkupGeneratedTypeMembers? typeMembers,
+        List<(string TypeName, string Name)> requiredRefs,
+        out StringBuilder initParamSig,
+        out StringBuilder actionParamSig,
+        out StringBuilder primaryParamSig,
+        out StringBuilder reqAssignmentsBlock,
+        out StringBuilder userCtorCall)
+    {
+        var userCtorMethodName = typeMembers?.QuickMarkupConstructorMethodName;
+        var userCtorParams = typeMembers?.ConstructorParameters;
+
+        initParamSig = new();
+        actionParamSig = new();
+        primaryParamSig = new();
+        reqAssignmentsBlock = new();
+
+        if (userCtorMethodName is null)
+            userCtorCall = new($"{initMethodName}();");
+        else
+        {
+            userCtorCall = new();
+            userCtorCall.Append(userCtorMethodName);
+            userCtorCall.Append('(');
+            if (userCtorParams is { Count: > 0 })
+            {
+                for (int i = 0; i < userCtorParams.Count; i++)
+                {
+                    var (type, name) = userCtorParams[i];
+                    if (i is not 0)
+                    {
+                        initParamSig.Append(", ");
+                        actionParamSig.Append(", ");
+                        primaryParamSig.Append(", ");
+                        userCtorCall.Append(", ");
+                    }
+                    var typeAndName = $"{type} {name}";
+                    initParamSig.Append(typeAndName);
+                    actionParamSig.Append(typeAndName);
+                    primaryParamSig.Append(typeAndName);
+                    userCtorCall.Append(name);
+                }
+            }
+            userCtorCall.Append(");");
+        }
+
+        if (requiredRefs is { Count: > 0 })
+        {
+            for (int i = 0; i < requiredRefs.Count; i++)
+            {
+                var (type, name) = requiredRefs[i];
+                if (i is not 0)
+                {
+                    primaryParamSig.Append(", ");
+                    reqAssignmentsBlock.AppendLine();
+                }
+                else if (userCtorParams is { Count: > 0 })
+                    primaryParamSig.Append(", ");
+                var typeAndName = $"{type} {name}";
+                primaryParamSig.Append(typeAndName);
+                reqAssignmentsBlock.Append($"this.{name} = {name};");
+            }
+        }
+
+        if (actionParamSig.Length > 0)
+            actionParamSig.Append(", ");
+        actionParamSig.Append($"global::System.Action<{typeName}> quickMarkupInitializer");
+
+        if (primaryParamSig.Length > 0)
+            primaryParamSig.Append(", ");
+        primaryParamSig.Append($"global::QuickMarkup.Infra.QuickMarkupContext? QUICKMARKUP_CONTEXT = null");
     }
 
     static string GenerateCtor(string typeName, StringBuilder paramSig, string body)

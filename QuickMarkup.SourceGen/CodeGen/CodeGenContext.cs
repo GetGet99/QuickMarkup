@@ -29,51 +29,28 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             return CGenDeferredInit(node);
 
         var constructor = CGen(node.Constructor);
-
-        string varName;
-        if (string.IsNullOrWhiteSpace(node.Name))
-        {
-            varName = NewVariable();
-            codeBuilder.AppendLine($"{node.Type?.FullName() ?? "QM_UnknownType"} {varName} = {constructor};");
-        }
-        else if (node.IsRef)
-        {
-            var name = node.Name!;
-            var type = node.Type?.FullName() ?? "QM_UnknownType";
-            var nullableType = type + "?";
-            var fieldName = name + "Prop";
-
-            membersBuilder.AppendLine($"private readonly global::QuickMarkup.Infra.Reference<{nullableType}> {fieldName} = new(null);");
-            membersBuilder.AppendLine($"private {nullableType} {name} => {fieldName}.Value;");
-            codeBuilder.AppendLine($"{fieldName}.Value = {constructor};");
-
-            varName = $"{fieldName}.Value!";
-        }
-        else
-        {
-            varName = node.Name!;
-            var type = node.Type?.FullName() ?? "QM_UnknownType";
-            if (useNullForgivingFields)
-                membersBuilder.AppendLine($"private {type} {varName} = null!;");
-            else
-                membersBuilder.AppendLine($"private readonly {type} {varName};");
-            codeBuilder.AppendLine($"{varName} = {constructor};");
-        }
-
+        var varName = EmitVariableAndField(node, constructor);
         CGenWrite(node, varName);
         return varName;
     }
 
-    string CGenDeferredInit(QMNodeSymbol<ITypeSymbol?> node)
+    /// <summary>
+    /// Shared variable and field generation for both BackwardCompatible and DeferredInit paths.
+    /// BackwardCompatible calls the constructor inline at declaration; DeferredInit defers it.
+    /// </summary>
+    string EmitVariableAndField(QMNodeSymbol<ITypeSymbol?> node, string constructorExpr)
     {
         var typeName = node.Type?.FullName() ?? "QM_UnknownType";
-        var constructorExpr = CGen(node.Constructor); // "new TypeName()"
+        bool isDeferred = node.InitMode == QuickMarkupInitializationMode.DeferredInit;
 
-        string varName;
         if (string.IsNullOrWhiteSpace(node.Name))
         {
-            varName = NewVariable();
-            codeBuilder.AppendLine($"{typeName} {varName} = null!;");
+            var varName = NewVariable();
+            if (isDeferred)
+                codeBuilder.AppendLine($"{typeName} {varName} = null!;");
+            else
+                codeBuilder.AppendLine($"{typeName} {varName} = {constructorExpr};");
+            return varName;
         }
         else if (node.IsRef)
         {
@@ -82,13 +59,28 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             var fieldName = name + "Prop";
             membersBuilder.AppendLine($"private readonly global::QuickMarkup.Infra.Reference<{nullableType}> {fieldName} = new(null);");
             membersBuilder.AppendLine($"private {nullableType} {name} => {fieldName}.Value;");
-            varName = $"{fieldName}.Value!";
+            if (!isDeferred)
+                codeBuilder.AppendLine($"{fieldName}.Value = {constructorExpr};");
+            return $"{fieldName}.Value!";
         }
         else
         {
-            varName = node.Name!;
-            membersBuilder.AppendLine($"private {typeName} {varName} = null!;");
+            var varName = node.Name!;
+            if (useNullForgivingFields)
+                membersBuilder.AppendLine($"private {typeName} {varName} = null!;");
+            else
+                membersBuilder.AppendLine($"private readonly {typeName} {varName};");
+            if (!isDeferred)
+                codeBuilder.AppendLine($"{varName} = {constructorExpr};");
+            return varName;
         }
+    }
+
+    string CGenDeferredInit(QMNodeSymbol<ITypeSymbol?> node)
+    {
+        var typeName = node.Type?.FullName() ?? "QM_UnknownType";
+        var constructorExpr = CGen(node.Constructor);
+        var varName = EmitVariableAndField(node, constructorExpr);
 
         // Separate init properties from post-init members
         var initMembers = new List<IQMMemberSymbol>();
