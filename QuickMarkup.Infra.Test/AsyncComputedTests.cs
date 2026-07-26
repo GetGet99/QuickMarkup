@@ -48,7 +48,7 @@ namespace QuickMarkup.Infra.Test
         {
             var tcs = new TaskCompletionSource<int>();
             var ac = new AsyncComputed<int>(() => tcs.Task);
-            var expected = new InvalidOperationException("boom");
+            var expected = new Exception("boom");
 
             tcs.SetException(expected);
 
@@ -64,7 +64,6 @@ namespace QuickMarkup.Infra.Test
         public void RerunsWhenDependencyChanges()
         {
             Reference<int> dep = new(1);
-            var tcs = new TaskCompletionSource<int>();
             var ac = new AsyncComputed<int>(() => Task.FromResult(dep.Value * 10));
 
             Assert.AreEqual(10, ac.Value);
