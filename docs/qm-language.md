@@ -89,6 +89,16 @@ double Output => `FirstOperand + SecondOperand`;
 </root>
 ```
 
+### Async Computed Variables
+
+Use `=> async` with a C# expression returning `Task<T>` for asynchronous operations. The expression re-evaluates when dependencies change, cancelling any in-flight operation.
+
+```cs
+User MyUser => async `Api.FetchUserAsync(Id)`;
+```
+
+Generates `AsyncComputed<User>` backing field (`MyUserAsync`) and three properties: the resolved value (`MyUser`), `MyUserStatus` (`AsyncComputedState`), and `MyUserFailure` (`Exception?`). The value property throws if not yet loaded — check `MyUserStatus` first.
+
 ## Provide/Inject (Experimental)
 
 Provide/Inject is a context-based dependency injection system for passing reactive references between parent and child components. A parent `provide`s a value, and child components `inject` it by name and type.

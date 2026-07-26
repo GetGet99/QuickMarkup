@@ -53,7 +53,7 @@ The generated constructor:
 ## Sections (in order)
 
 1. **Usings** (optional) — namespace imports for the markup scope. Supports aliases (`using NavigationView = Microsoft.UI.Xaml.Controls.NavigationView;`) and `using static`. Global usings from C# files also apply.
-2. **Reference/Computed declarations** (optional) — reactive variable declarations.
+2. **Reference/Computed/AsyncComputed declarations** (optional) — reactive variable declarations.
 3. **`<setup>`** (optional) — C# code that runs before UI creation. Variables declared here are accessible in `<root>` but not exported outside.
 4. **`<root>`** — the UI tree. This is where the markup goes.
 
@@ -64,11 +64,12 @@ Declaring variables outside `<setup>` creates reactive references. The generated
 ```
 double Value = 0;          // creates Reference<double>, property Value, backing field ValueProp
 double Output => `A + B`;  // creates Computed<double>, property Output, backing field OutputComp
+User MyUser => async `Api.FetchUserAsync(Id)`; // creates AsyncComputed<User>, properties MyUser, MyUserStatus, MyUserFailure, backing field MyUserAsync
 ```
 
 References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change. Computed variables are lazily initialized — not evaluated until first accessed.
 
-References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed.
+References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed. Async computed gets `*Async` backing field (`AsyncComputed<T>`), plus `*Status` (`AsyncComputedState`) and `*Failure` (`Exception?`) properties. The value property throws if not yet loaded — check `*Status` first.
 
 ## Required Properties
 

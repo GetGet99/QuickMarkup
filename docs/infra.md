@@ -74,6 +74,18 @@ With `immediete: true`, it will also runs the callback the first time as well.
 computedVar.Watch(x => Console.WriteLine(x), immediete: true);
 ```
 
+## Async Computed Variables
+
+Async computed variables handle asynchronous operations. They track dependencies like computed variables, but the evaluation function returns a `Task<T>`. When dependencies change, the previous in-flight operation is cancelled and a new one starts.
+
+```cs
+AsyncComputed<User> user = new(async () => await Api.FetchUserAsync());
+```
+
+`AsyncComputed<T>` exposes `State` (`Loading`/`Success`/`Failed`), `Value` (throws if not `Success`), and `Failure` (the exception, or null). `Watch` and `immediate: true` work like computed variables. In QuickMarkup: `User MyUser => async \`Api.FetchUserAsync(Id)\`;
+
+This generates `AsyncComputed<User>` backing and three properties: `MyUser` (value), `MyUserStatus` (state), `MyUserFailure` (exception).
+
 ## Reactive Scheduler
 
 We have simplified a bit earlier about how the callback is executed whenever the changes happened. In reality, it does not get re-evaluated immedietely. It waits for the next "Tick" to happen.
