@@ -44,6 +44,18 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
+        public void SynchronousSuccessfulCompletionSetsValue()
+        {
+            var ac = new AsyncComputed<int>(() => Task.FromResult(42));
+            Assert.IsTrue(ac.IsSuccess);
+            Assert.IsFalse(ac.IsLoading);
+            Assert.IsFalse(ac.IsFailed);
+            Assert.AreEqual(AsyncComputedState.Success, ac.State);
+            Assert.AreEqual(42, ac.Value);
+            Assert.IsNull(ac.Failure);
+        }
+
+        [TestMethod]
         public void FailedCompletionSetsException()
         {
             var tcs = new TaskCompletionSource<int>();

@@ -14,6 +14,7 @@ public static class ReferenceExtension
         public string BackingSuffix => refSym.Kind switch
         {
             RefDeclarationKind.Computed => "Comp",
+            RefDeclarationKind.AsyncComputed => "Async",
             RefDeclarationKind.Ref or RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional =>
                 "Prop",
             _ => throw new NotImplementedException()
@@ -26,6 +27,7 @@ public static class ReferenceExtension
         public string BackingTypeName => refSym.Kind switch
         {
             RefDeclarationKind.Computed => $"global::QuickMarkup.Infra.Computed<{refSym.TypeName}>",
+            RefDeclarationKind.AsyncComputed => $"global::QuickMarkup.Infra.AsyncComputed<{refSym.TypeName}>",
             RefDeclarationKind.Ref or RefDeclarationKind.Provide or RefDeclarationKind.Inject =>
                 $"global::QuickMarkup.Infra.Reference<{refSym.TypeName}>",
             RefDeclarationKind.InjectOptional =>

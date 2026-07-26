@@ -31,9 +31,12 @@ static class QuickMarkupGeneratedMemberTableBuilder
             var isRequired = @ref.IsRequired;
             if (isRequired) hasRequired = true;
 
-            var memberTableKind = @ref.Kind is RefDeclarationKind.Computed
-                ? QuickMarkupGeneratedPropertyKind.ComputedValue
-                : QuickMarkupGeneratedPropertyKind.RefValue;
+            var memberTableKind = @ref.Kind switch
+            {
+                RefDeclarationKind.Computed => QuickMarkupGeneratedPropertyKind.ComputedValue,
+                RefDeclarationKind.AsyncComputed => QuickMarkupGeneratedPropertyKind.AsyncComputedValue,
+                _ => QuickMarkupGeneratedPropertyKind.RefValue
+            };
 
             AddGeneratedProperty(
                 properties,
@@ -41,9 +44,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     @ref.Name,
                     unknownTypes ? null : @ref.TypeName,
                     @ref.Accessibility,
-                    @ref.Kind is RefDeclarationKind.Computed
-                    ? QuickMarkupGeneratedPropertyKind.ComputedValue
-                    : QuickMarkupGeneratedPropertyKind.RefValue,
+                    memberTableKind,
                     isRequired));
 
             var backingName = @ref.BackingName;
@@ -58,10 +59,30 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     {
                         RefDeclarationKind.Ref => QuickMarkupGeneratedPropertyKind.RefBacking,
                         RefDeclarationKind.Computed => QuickMarkupGeneratedPropertyKind.ComputedBacking,
+                        RefDeclarationKind.AsyncComputed => QuickMarkupGeneratedPropertyKind.AsyncComputedBacking,
                         RefDeclarationKind.Provide => QuickMarkupGeneratedPropertyKind.ProvideValue,
                         RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional => QuickMarkupGeneratedPropertyKind.InjectValue,
                         _ => throw new NotImplementedException()
                     }));
+
+            if (@ref.Kind is RefDeclarationKind.AsyncComputed)
+            {
+                AddGeneratedProperty(
+                    properties,
+                    new QuickMarkupGeneratedPropertySymbol(
+                        $"{@ref.Name}Status",
+                        unknownTypes ? null : "global::QuickMarkup.Infra.AsyncComputedState",
+                        @ref.Accessibility,
+                        QuickMarkupGeneratedPropertyKind.AsyncComputedStatus));
+
+                AddGeneratedProperty(
+                    properties,
+                    new QuickMarkupGeneratedPropertySymbol(
+                        $"{@ref.Name}Failure",
+                        unknownTypes ? null : "global::System.Exception?",
+                        @ref.Accessibility,
+                        QuickMarkupGeneratedPropertyKind.AsyncComputedFailure));
+            }
 
             ct.ThrowIfCancellationRequested();
         }

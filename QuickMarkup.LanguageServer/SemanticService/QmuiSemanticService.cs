@@ -243,6 +243,7 @@ public class QmuiSemanticService : IQmuiSemanticService
                 {
                     RefDeclarationKind.Ref => refDecl.DefaultValue?.Kind is DefaultValueKind.Computed ? "(computed)" : "(reactive)",
                     RefDeclarationKind.Computed => "(computed)",
+                    RefDeclarationKind.AsyncComputed => "(async computed)",
                     RefDeclarationKind.Provide => "(reactive) provide",
                     RefDeclarationKind.Inject => "(reactive) inject",
                     RefDeclarationKind.InjectOptional => "(reactive) inject?",

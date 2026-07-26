@@ -50,6 +50,9 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
                 RefDeclarationKind.Computed => $"""
                     => field ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
                     """,
+                RefDeclarationKind.AsyncComputed => $"""
+                    => field ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
+                    """,
                 RefDeclarationKind.Inject => "= null!",
                 RefDeclarationKind.InjectOptional => "= null",
                 _ => throw new NotImplementedException()
@@ -57,6 +60,34 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
 
         string backingDecl = $"{accessibility} {backingType} {backingName} {backingDefaultValue};";
         membersBuilder.AppendLine(backingDecl);
+
+        if (bound.Kind is RefDeclarationKind.AsyncComputed)
+        {
+            string backing2 = $"{thisRef}{bound.BackingName}";
+
+            string asyncPropertyHead = $"{accessibility} {typeName} {bound.Name}";
+            membersBuilder.AppendLine($$"""
+                {{asyncPropertyHead}} {
+                    get => {{backing2}}.Value;
+                }
+                """);
+
+            string statusPropertyHead = $"{accessibility} global::QuickMarkup.Infra.AsyncComputedState {bound.Name}Status";
+            membersBuilder.AppendLine($$"""
+                {{statusPropertyHead}} {
+                    get => {{backing2}}.State;
+                }
+                """);
+
+            string failurePropertyHead = $"{accessibility} global::System.Exception? {bound.Name}Failure";
+            membersBuilder.AppendLine($$"""
+                {{failurePropertyHead}} {
+                    get => {{backing2}}.Failure;
+                }
+                """);
+
+            return;
+        }
 
         string propertyHead = $"{accessibility} {typeName} {bound.Name}";
         if (bound.IsRequired)

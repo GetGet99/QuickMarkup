@@ -1,5 +1,11 @@
 using System.Xml.Linq;
 
+#if NET6_0_OR_GREATER
+using IntType = uint;
+#else
+using IntType = int;
+#endif
+
 namespace QuickMarkup.Infra;
 
 public class AsyncComputed<T> : IReference, IDisposable
@@ -15,7 +21,7 @@ public class AsyncComputed<T> : IReference, IDisposable
     }
 
     public string Name { get; }
-    uint currentVersion = 0;
+    IntType currentVersion = 0;
 
     public AsyncComputed(AsyncFunctionWithCancellation<T> computed, string name = "")
     {
@@ -30,7 +36,7 @@ public class AsyncComputed<T> : IReference, IDisposable
             return computed(cts.Token);
         }, async task =>
         {
-            uint curIter = Interlocked.Increment(ref currentVersion);
+            IntType curIter = Interlocked.Increment(ref currentVersion);
             Loading();
             T result;
             try

@@ -171,6 +171,13 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             WITHPARAM, nameof(RefDeclarationDefaultValue.Kind), DefaultValueKind.Computed,
             typeof(RefDeclarationDefaultValue)
         )]
+        [Rule(
+            Terminal.EqualArrowRight,
+            Terminal.Async,
+            QMValue, AS, nameof(RefDeclarationDefaultValue.Value),
+            WITHPARAM, nameof(RefDeclarationDefaultValue.Kind), DefaultValueKind.AsyncComputed,
+            typeof(RefDeclarationDefaultValue)
+        )]
         [Rule(WITHPARAM, VALUE, null, IDENTITY)]
         RefDeclInitialValue,
         [Type<Accessibility>]

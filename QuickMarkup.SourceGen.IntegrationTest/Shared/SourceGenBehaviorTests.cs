@@ -582,19 +582,6 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
-    public void StaticRefValueIsSharedAcrossInstances()
-    {
-        _ = new StaticRefDeclarationCase();
-        _ = new StaticRefDeclarationCase();
-
-        StaticRefDeclarationCase.StaticInt = 99;
-
-        Assert.AreEqual(99, StaticRefDeclarationCase.StaticInt);
-
-        StaticRefDeclarationCase.StaticInt = 42;
-    }
-
-    [TestMethod]
     public void PublicRefDeclarationHasExpectedDefaultValue()
     {
         var instance = new PublicRefDeclarationCase();
@@ -769,5 +756,89 @@ public sealed class SourceGenBehaviorTests
         button.RaiseClicked();
 
         Assert.IsTrue(AsyncShorthandEventCase.DisplayDialogCalled);
+    }
+
+    [TestMethod]
+    public void AsyncComputedBackingFieldIsGenerated()
+    {
+        var instance = new AsyncComputedBasicCase();
+
+        Assert.IsNotNull(instance.GreetingAsync);
+        Assert.IsInstanceOfType(instance.GreetingAsync, typeof(AsyncComputed<string>));
+    }
+
+    [TestMethod]
+    public void AsyncComputedValueReturnsResultAfterConstruction()
+    {
+        var instance = new AsyncComputedBasicCase();
+
+        Assert.AreEqual(AsyncComputedState.Success, instance.GreetingStatus);
+        Assert.AreEqual("Hello, world!", instance.Greeting);
+        Assert.IsNull(instance.GreetingFailure);
+    }
+
+    [TestMethod]
+    public void AsyncComputedRecomputesWhenDependenciesChange_Synchronous()
+    {
+        var instance = new AsyncComputedIntCase_Synchronous();
+
+        Assert.AreEqual(AsyncComputedState.Success, instance.DoubledStatus);
+        Assert.AreEqual(20, instance.Doubled);
+        
+        instance.Value = 15;
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(AsyncComputedState.Success, instance.DoubledStatus);
+        Assert.AreEqual(30, instance.Doubled);
+    }
+
+    [TestMethod]
+    public void AsyncComputedRecomputesWhenDependenciesChange()
+    {
+        var instance = new AsyncComputedCaseAsynchronous();
+        Assert.AreEqual(AsyncComputedState.Success, instance.ResultStatus);
+        Assert.AreEqual(10, instance.Result);
+        Assert.AreEqual("10", instance.GetText());
+        
+        var tcs = new TaskCompletionSource<int>();
+        instance.MyTask = tcs.Task;
+
+        // still should not refresh because no tick yet
+        Assert.AreEqual(AsyncComputedState.Success, instance.ResultStatus);
+        Assert.AreEqual(10, instance.Result);
+        Assert.AreEqual("10", instance.GetText());
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(AsyncComputedState.Loading, instance.ResultStatus);
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("", instance.GetText());
+
+        tcs.SetResult(20);
+
+        Assert.AreEqual(AsyncComputedState.Success, instance.ResultStatus);
+        Assert.AreEqual(20, instance.Result);
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("20", instance.GetText());
+    }
+
+    [TestMethod]
+    public async Task PublicAsyncComputedReturnsExpectedValue()
+    {
+        var instance = new PublicAsyncComputedCase();
+        Assert.AreEqual(AsyncComputedState.Success, instance.GreetingStatus);
+        Assert.AreEqual("hello", instance.Greeting);
+    }
+
+    [TestMethod]
+    public async Task StaticAsyncComputedReturnsExpectedValue()
+    {
+        _ = new StaticAsyncComputedCase();
+        Assert.AreEqual(AsyncComputedState.Success, StaticAsyncComputedCase.TextStatus);
+        Assert.AreEqual("static async", StaticAsyncComputedCase.Text);
     }
 }

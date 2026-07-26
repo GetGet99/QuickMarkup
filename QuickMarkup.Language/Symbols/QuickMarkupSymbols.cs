@@ -55,6 +55,7 @@ public enum RefDeclarationKind
 {
     Ref,
     Computed,
+    AsyncComputed,
     Provide,
     Inject,
     InjectOptional

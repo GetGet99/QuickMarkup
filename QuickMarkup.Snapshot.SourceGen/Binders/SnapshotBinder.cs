@@ -57,6 +57,11 @@ class SnapshotBinder(CodeTypeResolver resolver, Action<QMBinderError> onError) :
                 Error(declaration.Name, "Derived/computed value should not be saved.");
                 continue;
             }
+            if (isIncluded && declaration.Kind is RefDeclarationKind.AsyncComputed)
+            {
+                Error(declaration.Name, "Async computed value should not be saved.");
+                continue;
+            }
             if (isIncluded && configuration.DiagnosticMode.HasFlag(SnapshotDiagnosticMode.NoName) && !hasExplicitName)
             {
                 Warn(

@@ -191,7 +191,8 @@ public record class RefDeclarationDefaultValue(
 public enum DefaultValueKind
 {
     Assignment,
-    Computed
+    Computed,
+    AsyncComputed
 }
 public interface ISFCTag;
 public abstract record class QuickMarkupValue() : AST, IQMNodeChild;

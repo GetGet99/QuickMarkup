@@ -39,6 +39,14 @@ partial class QuickMarkupBinder
                 kind = RefDeclarationKind.Computed;
         }
 
+        if (r.DefaultValue?.Kind is DefaultValueKind.AsyncComputed)
+        {
+            if (kind is not RefDeclarationKind.Ref)
+                Error(r, "Unsupported: Provide/Inject cannot use async computed syntax");
+            else
+                kind = RefDeclarationKind.AsyncComputed;
+        }
+
         string name = r.Name.Name.Name;
         string? contextName = null;
 
@@ -66,7 +74,7 @@ partial class QuickMarkupBinder
             }
         }
 
-        if (kind is not (RefDeclarationKind.Ref or RefDeclarationKind.Computed))
+        if (kind is not (RefDeclarationKind.Ref or RefDeclarationKind.Computed or RefDeclarationKind.AsyncComputed))
         {
             if (r.IsStatic)
                 Error(r, "Unsupported: Provide/Inject cannot be static");
@@ -94,7 +102,7 @@ partial class QuickMarkupBinder
                 AST.Accessibility.Protected => ResolvedAccessibility.Protected,
                 AST.Accessibility.Default => kind switch
                 {
-                    RefDeclarationKind.Ref or RefDeclarationKind.Computed => ResolvedAccessibility.Public,
+                    RefDeclarationKind.Ref or RefDeclarationKind.Computed or RefDeclarationKind.AsyncComputed => ResolvedAccessibility.Public,
                     RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional => ResolvedAccessibility.Private,
                     _ => throw new NotImplementedException()
                 },

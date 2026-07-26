@@ -10,6 +10,10 @@ public enum QuickMarkupGeneratedPropertyKind
     RefBacking,
     ComputedValue,
     ComputedBacking,
+    AsyncComputedValue,
+    AsyncComputedBacking,
+    AsyncComputedStatus,
+    AsyncComputedFailure,
     ComponentOutput,
     ProvideValue,
     InjectValue

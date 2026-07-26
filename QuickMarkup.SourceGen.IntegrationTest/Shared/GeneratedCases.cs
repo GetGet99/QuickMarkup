@@ -749,3 +749,44 @@ public partial class AsyncShorthandEventCase : TestRoot
     }
 }
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    string Name = "world";
+    string Greeting => async `Task.FromResult($"Hello, {Name}!")`;
+    """)]
+public partial class AsyncComputedBasicCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    int Value = 10;
+    int Doubled => async `Task.FromResult(Value * 2)`;
+    """)]
+public partial class AsyncComputedIntCase_Synchronous : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    using QuickMarkup.Infra;
+    `Task<int>` MyTask = `Task.FromResult(10)`;
+    int Result => async `MyTask`;
+
+    <root>
+        tb = <TestText Text=`ResultStatus is AsyncComputedState.Success ? Result.ToString() : ""` />
+    </root>
+    """)]
+public partial class AsyncComputedCaseAsynchronous : TestRoot
+{
+    public string GetText() => tb.Text;
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    public string Greeting => async `Task.FromResult("hello")`;
+    """)]
+public partial class PublicAsyncComputedCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    static string Text => async `Task.FromResult("static async")`;
+    """)]
+public partial class StaticAsyncComputedCase : TestRoot;
+
