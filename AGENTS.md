@@ -129,6 +129,14 @@ It is almost always okay to extract shared helpers. If you need behavior to be a
 
 ## Contribution to the skills and documentation
 
+When making changes to the codebase, it is critical that we maintain the docs to be proper. For new changes in codebase, should also reflect in the documentation. This includes [quickmarkup](.agents/skills/quickmarkup/SKILL.md) skill - other agents will be referencing this skill for writing QuickMarkup code.
+
+### Writing Guideline
+
+You should make changes as minimal as possible to the existing skills and documentations while preserving the intent of documenting new changes or features. More writing does not mean better in terms of guidelines.
+
+### Code Blocks
+
 In the agent skills or rules (SKILL.md or AGENTS.md), use code block with `quickmarkup` for QuickMarkup snippet and `csharp` for C# snippet.
 
 ```quickmarkup
