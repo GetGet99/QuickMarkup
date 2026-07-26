@@ -23,7 +23,7 @@ namespace QuickMarkup.Infra.Test
             Assert.IsFalse(ac.IsSuccess);
             Assert.IsFalse(ac.IsFailed);
             Assert.AreEqual(AsyncComputedState.Loading, ac.State);
-            Assert.IsNull(ac.Exception);
+            Assert.IsNull(ac.Failure);
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = ac.Value);
         }
 
@@ -40,7 +40,7 @@ namespace QuickMarkup.Infra.Test
             Assert.IsFalse(ac.IsFailed);
             Assert.AreEqual(AsyncComputedState.Success, ac.State);
             Assert.AreEqual(42, ac.Value);
-            Assert.IsNull(ac.Exception);
+            Assert.IsNull(ac.Failure);
         }
 
         [TestMethod]
@@ -56,7 +56,7 @@ namespace QuickMarkup.Infra.Test
             Assert.IsFalse(ac.IsSuccess);
             Assert.IsFalse(ac.IsLoading);
             Assert.AreEqual(AsyncComputedState.Failed, ac.State);
-            Assert.AreSame(expected, ac.Exception);
+            Assert.AreSame(expected, ac.Failure);
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = ac.Value);
         }
 
@@ -208,7 +208,7 @@ namespace QuickMarkup.Infra.Test
 
             Assert.ThrowsExactly<ObjectDisposedException>(() => _ = ac.State);
             Assert.ThrowsExactly<ObjectDisposedException>(() => _ = ac.Value);
-            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = ac.Exception);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = ac.Failure);
         }
 
         [TestMethod]

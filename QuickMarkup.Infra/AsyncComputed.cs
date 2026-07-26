@@ -73,7 +73,7 @@ public class AsyncComputed<T> : IReference, IDisposable
             return value!;
         }
     }
-    public Exception? Exception
+    public Exception? Failure
     {
         get
         {
@@ -110,7 +110,7 @@ public class AsyncComputed<T> : IReference, IDisposable
     {
         if (disposed) return;
         value = default;
-        Exception = default;
+        Failure = default;
         State = AsyncComputedState.Loading;
         StateChanged?.Invoke();
     }
@@ -118,7 +118,7 @@ public class AsyncComputed<T> : IReference, IDisposable
     {
         if (disposed) return;
         value = result;
-        Exception = default!;
+        Failure = default!;
         State = AsyncComputedState.Success;
         StateChanged?.Invoke();
     }
@@ -126,7 +126,7 @@ public class AsyncComputed<T> : IReference, IDisposable
     {
         if (disposed) return;
         value = default;
-        Exception = e;
+        Failure = e;
         State = AsyncComputedState.Failed;
         StateChanged?.Invoke();
     }
