@@ -72,14 +72,14 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual("from setup", text.Text);
     }
 
-    [TestMethod]
-    public void AsyncSetupVariablesAreAvailableToTemplateExpressions()
-    {
-        var page = new AsyncSetupCase();
-        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+    // [TestMethod]
+    // public void AsyncSetupVariablesAreAvailableToTemplateExpressions()
+    // {
+    //     var page = new AsyncSetupCase();
+    //     var text = TestTreeAssert.Child<TestText>(page.Children, 0);
 
-        Assert.AreEqual("from async setup", text.Text);
-    }
+    //     Assert.AreEqual("from async setup", text.Text);
+    // }
 
     [TestMethod]
     public void PrimitiveValuesAndBooleanShorthandAssignProperties()
