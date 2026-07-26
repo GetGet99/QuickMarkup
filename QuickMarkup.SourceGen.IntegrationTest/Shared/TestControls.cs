@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
 
@@ -59,13 +60,13 @@ public sealed class TestDependencyHoldButton : TestElement
 public sealed class Grid
 {
     public static readonly DependencyProperty RowProperty = new();
-    static readonly Dictionary<TestElement, int> attachedRowValues = [];
+    static readonly ConcurrentDictionary<TestElement, int> attachedRowValues = [];
     public static void SetRow(TestElement element, int value)
         => attachedRowValues[element] = value;
     public static int GetRow(TestElement element)
         => attachedRowValues.TryGetValue(element, out var val) ? val : 0;
     public static readonly DependencyProperty ColumnProperty = new();
-    static readonly Dictionary<TestElement, int> attachedColumnValues = [];
+    static readonly ConcurrentDictionary<TestElement, int> attachedColumnValues = [];
     public static void SetColumn(TestElement element, int value)
         => attachedColumnValues[element] = value;
     public static int GetColumn(TestElement element)

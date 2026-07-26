@@ -323,7 +323,7 @@ public partial class ContextExposingTarget : IQuickMarkupComponent<TestText>;
     """)]
 public partial class ContextCaptureTarget : IQuickMarkupComponent<TestText>
 {
-    public static QuickMarkupContext? CapturedContext { get; set; }
+    public QuickMarkupContext? CapturedContext { get; set; }
 
     [QuickMarkupConstructor]
     private void MyInit()

@@ -248,23 +248,21 @@ public sealed class SourceGenBehaviorTests
     [TestMethod]
     public void ActionConstructor_CreatesContextWhenNotSet()
     {
-        ContextCaptureTarget.CapturedContext = null;
         var comp = new ContextCaptureTarget(x => { });
-        Assert.IsNotNull(ContextCaptureTarget.CapturedContext,
+        Assert.IsNotNull(comp.CapturedContext,
             "Action constructor should create a context when not set by initializer");
     }
 
     [TestMethod]
     public void ActionConstructor_UsesContextFromInitializer()
     {
-        ContextCaptureTarget.CapturedContext = null;
         var sharedContext = new QuickMarkupContext();
         var comp = new ContextCaptureTarget(x =>
         {
             x.Context = sharedContext;
         });
 
-        Assert.AreSame(sharedContext, ContextCaptureTarget.CapturedContext,
+        Assert.AreSame(sharedContext, comp.CapturedContext,
             "Action constructor should use context set by initializer (??= semantics)");
     }
 

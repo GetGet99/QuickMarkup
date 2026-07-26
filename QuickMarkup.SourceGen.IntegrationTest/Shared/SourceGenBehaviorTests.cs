@@ -551,6 +551,10 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual(1, Grid.GetRow(child));
     }
 
+    // IMPORTANT: Tests below use static fields/properties to verify QuickMarkup's `static` keyword.
+    // Do NOT use static fields or properties in other tests that are not specifically about static
+    // behavior. Static state is shared across all test instances and will cause flaky failures when
+    // tests run in parallel. Use instance members instead.
     [TestMethod]
     public void StaticRefDeclarationHasExpectedDefaultValue()
     {
@@ -577,6 +581,8 @@ public sealed class SourceGenBehaviorTests
         StaticRefDeclarationCase.StaticInt = 99;
 
         Assert.AreEqual(99, StaticRefDeclarationCase.StaticInt);
+
+        StaticRefDeclarationCase.StaticInt = 42;
     }
 
     [TestMethod]
