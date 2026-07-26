@@ -16,6 +16,27 @@ Code generation - Generates code based on what was provided by the binder. Code 
 
 ## QuickMarkup Test standards
 
+### Running tests
+
+Run all tests
+
+```sh
+dotnet test
+```
+
+Run tests in Native AOT environment (note: Linux only)
+
+```sh
+test-nativeaot.sh # run all
+test-nativeaot.sh -- no-build # run without building (good for testing flakiness without waiting for rebuild)
+test-nativeaot.sh QuickMarkup.SourceGen.IntegrationTest # run specific project
+test-nativeaot.sh QuickMarkup.SourceGen.IntegrationTest --no-build # can specify both
+
+# To run more than one specific project, run as separate terminal commands or without parameter to run all
+```
+
+To ensure that the work is done well for NativeAOT users as well, please run tests for NativeAOT too.
+
 ### Project and path specific tests
 
 QuickMarkup.Infra.Test - tests on infrastructure level without source generator component. 
