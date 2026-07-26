@@ -296,15 +296,18 @@ public partial class SettingsPage : Page;
 | Reactive state system | Automatic dependency tracking and UI updates without `INotifyPropertyChanged` | Cross-platform | Preview |
 | Inline C# expressions | Reactive C# expressions directly inside markup | Cross-platform | Preview |
 | Events & callbacks | Concise event and inline callback syntax | Cross-platform | Preview |
-| Reactive bindings | One-way, bindback, and two-way bindings | WinUI 3 / UWP / Uno* | Preview |
+| Reactive bindings | One-way, bindback, and two-way bindings | WinUI 3 / UWP / Uno\* | Preview |
 | Structural rendering | Reactive `if` / `else` / `foreach` rendering | Cross-platform | Preview |
 | Reusable components | Single-node and fragment-based reusable components | Cross-platform | Preview |
 | Native control interoperability | Use existing WinUI/UWP controls and component libraries directly inside QuickMarkup | WinUI 3 / UWP / Uno* | Preview |
+| NativeAOT | NativeAOT comptaible generaetd code and library | Cross-platform\*\* | Preview |
 | Roslyn analyzers | Real-time diagnostics and compile-time validation | Cross-platform | Preview |
 | Theme integration | Reactive theme-aware brushes and resources | WinUI 3 / UWP | Preview |
 | Snapshot persistence | Source-generated state persistence | Cross-platform | Draft |
 
 \* Uno Platform support currently relies on WinUI-compatible APIs and patterns. Official support and compatibility guarantees are still evolving.
+
+\*\* Framework and other libraries used must support NativeAOT compilation.
 
 ---
 
