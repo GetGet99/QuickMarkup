@@ -358,6 +358,8 @@ string[] options = ["Apple", "Orange", "Banana"];
         SizeChanged+=`(_, _) => Debug.WriteLine("ComboBox was resized.")`
         // With @ symbol, it will automatically wrap in delegates
         @SelectionChanged+=`Debug.WriteLine("User has chanegd item.")`
+        // With @ symbol and await, it will automatically wrap in async delegates
+        @Click+=`await DisplayDialog("Click")`
     />
 </root>
 ```

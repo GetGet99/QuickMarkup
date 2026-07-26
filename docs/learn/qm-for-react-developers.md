@@ -323,6 +323,16 @@ Events are native .NET events.
 
 The `@` shorthand automatically wraps the expression in a delegate.
 
+You can also use `await` in the shorthand syntax:
+
+```csharp
+<Button
+    @Click+=`await DisplayDialog("Click")`
+/>
+```
+
+This automatically generates an `async` delegate wrapper.
+
 You can also write full handlers:
 
 ```csharp

@@ -564,11 +564,13 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                     eventSymbol = outputEventSymbol;
                     eventTargetName = $"{CodeTypeResolver.ComponentOutputPropertyName}.{eventName}";
                 }
+                var isAsync = isShorthand && property.Value is QuickMarkupForeign awaitForeign && IsAwaitExpression(awaitForeign.Code);
                 targetCollection.Add(new QMAddEventMember<ITypeSymbol>(
                     eventSymbol?.Type, // type hint to null
                     eventTargetName,
                     Bind(property.Value ?? throw new NotImplementedException(), null, tagInfo),
-                    isShorthand
+                    isShorthand,
+                    isAsync
                 ));
                 break;
             case ParsedPropertyOperator.Assign:
@@ -843,4 +845,9 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
 
     bool ContainsStructuralChildren(IReadOnlyList<IQMMemberSymbol> members)
         => members.Any(RequiresStructuralLowering);
+
+    static bool IsAwaitExpression(string code)
+    {
+        return Regex.IsMatch(code, @"\bawait\b");
+    }
 }

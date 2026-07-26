@@ -742,4 +742,17 @@ public sealed class SourceGenBehaviorTests
         var text = TestTreeAssert.Child<TestText>(page.Children, 0);
         Assert.AreEqual("ctor with params", text.Text);
     }
+
+    [TestMethod]
+    public void AsyncShorthandEvent_GeneratesAsyncDelegate()
+    {
+        AsyncShorthandEventCase.DisplayDialogCalled = false;
+        var page = new AsyncShorthandEventCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        var button = TestTreeAssert.Child<TestButton>(panel.Children, 0);
+
+        button.RaiseClicked();
+
+        Assert.IsTrue(AsyncShorthandEventCase.DisplayDialogCalled);
+    }
 }

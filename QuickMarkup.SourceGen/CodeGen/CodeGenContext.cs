@@ -445,20 +445,21 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         {
             codeBuilder.AddEventAssign(
                 $"{target}.{addEvent.EventName}",
-                CGenCapturedEventHandler(capturedValue, eventType, invokeMethod, addEvent.IsShorthand));
+                CGenCapturedEventHandler(capturedValue, eventType, invokeMethod, addEvent.IsShorthand, addEvent.IsAsync));
             return;
         }
 
         var rhs = CGen(addEvent.Value);
         if (addEvent.IsShorthand)
         {
+            var asyncKeyword = addEvent.IsAsync ? "async " : "";
             if ((addEvent.MemberType as INamedTypeSymbol)?.DelegateInvokeMethod?.ReturnsVoid ?? true)
                 rhs = $$"""
-                    delegate { {{rhs}}; }
+                    {{asyncKeyword}}delegate { {{rhs}}; }
                     """;
             else
                 rhs = $$"""
-                    delegate { return {{rhs}}; }
+                    {{asyncKeyword}}delegate { return {{rhs}}; }
                     """;
         }
         codeBuilder.AddEventAssign($"{target}.{addEvent.EventName}", rhs);
@@ -468,7 +469,8 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         QMValueSymbol<ITypeSymbol?> value,
         INamedTypeSymbol eventType,
         IMethodSymbol invokeMethod,
-        bool isShorthand)
+        bool isShorthand,
+        bool isAsync)
     {
         var parameters = invokeMethod.Parameters
             .Select((_, index) => $"QUICKMARKUP_EVENT_ARG_{index}")
@@ -481,6 +483,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         var body = new StringBuilder();
         body.Append(locals);
 
+        var asyncKeyword = isAsync ? "async " : "";
         if (isShorthand)
         {
             if (invokeMethod.ReturnsVoid)
@@ -498,7 +501,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         }
 
         return $$"""
-        {{parameterList}} => {
+        {{asyncKeyword}}{{parameterList}} => {
             {{body.ToString().IndentWOF(1)}}
         }
         """;

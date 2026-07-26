@@ -353,6 +353,14 @@ The `@` shorthand automatically wraps the expression in a delegate, allowing con
 <Button @Click+=`Count++` />
 ```
 
+You can also use `await` in the shorthand syntax:
+
+```csharp
+<Button @Click+=`await DisplayDialog("Click")` />
+```
+
+This automatically generates an `async` delegate wrapper.
+
 Because QuickMarkup targets native WinUI/UWP controls directly, these are regular platform events — not synthetic DOM events.
 
 ## Element references

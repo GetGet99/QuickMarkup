@@ -720,4 +720,21 @@ public partial class ConstructorWithParamsCase : TestRoot
     }
 }
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestPanel>
+            <TestButton @Clicked+=`await DisplayDialog()` />
+        </TestPanel>
+    </root>
+    """)]
+public partial class AsyncShorthandEventCase : TestRoot
+{
+    public static bool DisplayDialogCalled { get; set; }
+    public static Task DisplayDialog()
+    {
+        DisplayDialogCalled = true;
+        return Task.CompletedTask;
+    }
+}
 

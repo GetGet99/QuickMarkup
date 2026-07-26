@@ -131,6 +131,8 @@ It is almost always okay to extract shared helpers. If you need behavior to be a
 
 When making changes to the codebase, it is critical that we maintain the docs to be proper. For new changes in codebase, should also reflect in the documentation. This includes [quickmarkup](.agents/skills/quickmarkup/SKILL.md) skill - other agents will be referencing this skill for writing QuickMarkup code.
 
+Note: in most cases README.md does not have to be updated. README.md is designed to showcase minimally, so unless how the basic onboarding or getting started flow changes, you don't need to update in README.md.
+
 ### Writing Guideline
 
 You should make changes as minimal as possible to the existing skills and documentations while preserving the intent of documenting new changes or features. More writing does not mean better in terms of guidelines.

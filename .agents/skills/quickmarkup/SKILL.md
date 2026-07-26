@@ -249,6 +249,7 @@ You can combine one-way + bindback for preprocessing:
 ```
 Click+=`(sender, args) => DoSomething()`
 @Click+=`Counter++`                        // @ auto-wraps in delegate { ... }
+@Click+=`await DisplayDialog("Click")`     // @ with await auto-wraps in async delegate { ... }
 ```
 
 ### Variable Capture
