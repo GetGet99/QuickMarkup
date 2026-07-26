@@ -1,24 +1,10 @@
 using QuickMarkup.Infra;
 
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.Shared;
 
 [TestClass]
 public sealed class QmuiGeneratedOutputTests
 {
-    [TestMethod]
-    public void StaticTreeCaseQmui_GeneratesCorrectTree()
-    {
-        var page = new StaticTreeCaseQmui();
-
-        Assert.IsNotNull(page.Children);
-        Assert.HasCount(1, page.Children);
-
-        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
-        Assert.HasCount(2, panel.Children);
-
-        TestTreeAssert.Texts(panel.Children, "A", "B");
-    }
-
     [TestMethod]
     public void ComponentCaseQmui_GeneratesCorrectComponent()
     {
@@ -73,14 +59,5 @@ public sealed class QmuiGeneratedOutputTests
         ReactiveScheduler.Tick();
 
         Assert.IsEmpty(panel.Children);
-    }
-
-    [TestMethod]
-    public void UsingStatementCaseQmui_GeneratesCorrectTree()
-    {
-        var page = new UsingStatementCaseQmui();
-
-        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
-        TestTreeAssert.Texts(panel.Children, "using test");
     }
 }

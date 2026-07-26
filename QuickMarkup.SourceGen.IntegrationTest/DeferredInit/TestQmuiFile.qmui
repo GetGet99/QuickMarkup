@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.DeferredInit;
 class StaticTreeCaseQmui : TestRoot;
 int Integer = 0;
 <root>

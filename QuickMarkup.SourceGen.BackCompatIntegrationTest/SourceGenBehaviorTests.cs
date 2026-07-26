@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.BackCompat;
 
 [TestClass]
 public sealed class SourceGenBehaviorTests

@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
 
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.Shared;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             <TestText Text="A" />
@@ -15,7 +15,7 @@ namespace QuickMarkup.SourceGen.Test;
 public partial class StaticTreeCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel Name="children"><TestText Text="children" /></TestPanel>
         <ItemsOnlyElement Name="items"><TestText Text="items" /></ItemsOnlyElement>
@@ -27,7 +27,7 @@ public partial class StaticTreeCase : TestRoot;
 public partial class ContentResolutionCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestButton Name="property-value" Content=<TestText Text="content property" /> />
         <TestPanel Name="value-list" Children=<>
@@ -48,7 +48,7 @@ public partial class ContentResolutionCase : TestRoot;
 public partial class AlternateChildSyntaxCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string Label = "A";
     <root>
         <TestText Text=`Label` />
@@ -57,7 +57,7 @@ public partial class AlternateChildSyntaxCase : TestRoot;
 public partial class ReactiveBindingCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <setup>
     var suffix = " setup";
     </setup>
@@ -68,7 +68,7 @@ public partial class ReactiveBindingCase : TestRoot;
 public partial class SetupScopeCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText Name="true" Flag />
         <TestText Name="false" !Flag />
@@ -78,7 +78,7 @@ public partial class SetupScopeCase : TestRoot;
 public partial class PrimitiveValueCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string Text = "";
     TestKind Kind = Default;
     bool Flag = false;
@@ -88,7 +88,7 @@ public partial class GeneratedPropertyElement : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     static string StaticText = "static";
     static int StaticInt = 42;
     """)]
@@ -97,7 +97,7 @@ public partial class StaticRefDeclarationCase : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     static string StaticComputedText => `"static computed"`;
     """)]
 public partial class StaticComputedDeclarationCase : TestElement
@@ -105,7 +105,7 @@ public partial class StaticComputedDeclarationCase : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     public string PublicText = "public";
     public int PublicInt = 42;
     """)]
@@ -114,7 +114,7 @@ public partial class PublicRefDeclarationCase : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     public static string PublicStaticText = "public static";
     """)]
 public partial class PublicStaticRefDeclarationCase : TestElement
@@ -122,7 +122,7 @@ public partial class PublicStaticRefDeclarationCase : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     public string PublicComputedText => `"public computed"`;
     """)]
 public partial class PublicComputedDeclarationCase : TestElement
@@ -130,7 +130,7 @@ public partial class PublicComputedDeclarationCase : TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <GeneratedPropertyElement Text="from generated property" Kind=Secondary Flag />
     </root>
@@ -138,7 +138,7 @@ public partial class PublicComputedDeclarationCase : TestElement
 public partial class GeneratedPropertyConsumerCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string Text = "";
     TestKind Kind = Default;
     <root>
@@ -150,7 +150,7 @@ public partial class StyledTestText : IQuickMarkupComponent<TestText>
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string Text = "";
     TestKind Kind = Default;
     <TestText Text=`$"{Kind}:{Text}"` />
@@ -160,7 +160,7 @@ public partial class StyledTestTextNoRoot : IQuickMarkupComponent<TestText>
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             <StyledTestText Text="Hello" Kind=Secondary Number=7 MarkElement />
@@ -170,7 +170,7 @@ public partial class StyledTestTextNoRoot : IQuickMarkupComponent<TestText>
 public partial class SingleComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestPanel>
         <StyledTestTextNoRoot Text="Hello" Kind=Secondary Number=7 MarkElement />
     </TestPanel>
@@ -178,7 +178,7 @@ public partial class SingleComponentConsumerCase : TestRoot;
 public partial class StyledTestTextNoRootConsumerCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText Text="fragment A" />
         <TestText Text="fragment B" />
@@ -189,7 +189,7 @@ public partial class TwoTextFragment : IQuickMarkupFragmentComponent<TestElement
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestText Text="fragment A" />
     """)]
 public partial class SingleTextFragmentNoRoot : IQuickMarkupFragmentComponent<TestElement>
@@ -197,7 +197,7 @@ public partial class SingleTextFragmentNoRoot : IQuickMarkupFragmentComponent<Te
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestText Text="fragment A" />
     <TestText Text="fragment B" />
     <TestText Text="fragment C" />
@@ -207,7 +207,7 @@ public partial class MultiTextFragmentNoRoot : IQuickMarkupFragmentComponent<Tes
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestPanel>
         <TestText Text="before" />
         <MultiTextFragmentNoRoot />
@@ -217,7 +217,7 @@ public partial class MultiTextFragmentNoRoot : IQuickMarkupFragmentComponent<Tes
 public partial class MultiTextFragmentNoRootUsage : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             <TestText Text="before" />
@@ -229,7 +229,7 @@ public partial class MultiTextFragmentNoRootUsage : IQuickMarkupComponent<TestPa
 public partial class FragmentComponentConsumerCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestPanel>
         <TestText Text="before" />
         <SingleTextFragmentNoRoot />
@@ -239,7 +239,7 @@ public partial class FragmentComponentConsumerCase : TestRoot;
 public partial class SingleTextFragmentNoRootUsage : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string CallbackText = "";
     <root>
         <TestText Text=`CallbackText` />
@@ -248,14 +248,14 @@ public partial class SingleTextFragmentNoRootUsage : IQuickMarkupComponent<TestP
 public partial class CallbackComponent : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string CallbackText = "";
     <TestText Text=`CallbackText` />
     """)]
 public partial class CallbackComponentNoRoot : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             <CallbackComponent `x => x.CallbackText = "from callback"` />
@@ -265,7 +265,7 @@ public partial class CallbackComponentNoRoot : IQuickMarkupComponent<TestText>;
 public partial class ComponentCallbackTargetsComponentCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <TestPanel>
         <CallbackComponentNoRoot `x => x.CallbackText = "from callback"` />
     </TestPanel>
@@ -273,7 +273,7 @@ public partial class ComponentCallbackTargetsComponentCase : TestRoot;
 public partial class ComponentCallbackNoRootConsumerCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string RefText = "";
     <root>
         <TestText Text=`RefText` />
@@ -282,7 +282,7 @@ public partial class ComponentCallbackNoRootConsumerCase : IQuickMarkupComponent
 public partial class RefPropertyComponent : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             <RefPropertyComponent Name="myComp" RefText="named" />
@@ -292,7 +292,7 @@ public partial class RefPropertyComponent : IQuickMarkupComponent<TestText>;
 public partial class ComponentNamedRefInstanceCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string SimpleText = "";
     <root>
         <TestText Text=`SimpleText` />
@@ -301,14 +301,14 @@ public partial class ComponentNamedRefInstanceCase : TestRoot;
 public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string SimpleText = "";
     <TestText Text=`SimpleText` />
     """)]
 public partial class SimpleTextComponentNoRoot : IQuickMarkupComponent<TestText>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool Show = true;
     <root>
         <TestPanel>
@@ -321,7 +321,7 @@ public partial class SimpleTextComponentNoRoot : IQuickMarkupComponent<TestText>
 public partial class ComponentInConditionalCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool Show = true;
     <TestPanel>
         if (`Show`) {
@@ -332,7 +332,7 @@ public partial class ComponentInConditionalCase : TestRoot;
 public partial class ComponentNoRootInConditionalCase : IQuickMarkupComponent<TestPanel>;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <AutoNewElement Radius=16 />
     </root>
@@ -340,7 +340,7 @@ public partial class ComponentNoRootInConditionalCase : IQuickMarkupComponent<Te
 public partial class AutoNewCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel MarkPanel `x => x.CallbackApplied = true` />
     </root>
@@ -348,7 +348,7 @@ public partial class AutoNewCase : TestRoot;
 public partial class CallbackCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool UseA = true;
     string AText = "A";
     string BText = "B";
@@ -364,7 +364,7 @@ public partial class CallbackCase : TestRoot;
 public partial class ConditionalContentCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool ShowPanel = false;
     <root>
         <TestButton>
@@ -378,7 +378,7 @@ public partial class ConditionalContentCase : TestRoot;
 public partial class ConditionalContentDifferentTypesCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool ShowPanel = false;
     <root>
         <TestButton>
@@ -394,7 +394,7 @@ public partial class ConditionalContentDifferentTypesCase : TestRoot;
 public partial class ConditionalSlotDifferentBranchTypesCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool ShouldShowOriginal;
     <root>
         holdButton=<TestComputedHoldButton IsHolding=>`ShouldShowOriginal` />
@@ -403,7 +403,7 @@ public partial class ConditionalSlotDifferentBranchTypesCase : TestRoot;
 public partial class ComputedBindBackCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool ShouldShowOriginal;
     <root>
         holdButton=<TestDependencyHoldButton IsHolding=>`ShouldShowOriginal` />
@@ -412,7 +412,7 @@ public partial class ComputedBindBackCase : TestRoot;
 public partial class DependencyPropertyBindBackCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool SharedHolding;
     <root>
         <TestDependencyHoldButton IsHolding<=>`SharedHolding` />
@@ -423,7 +423,7 @@ public partial class DependencyPropertyTwoWayCase : TestRoot;
 
 [QuickMarkup("""
     using System.Collections.Generic;
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     NullableRefItem? NullableItem = null;
     `List<int>?` SomeList = null;
     <root>
@@ -432,7 +432,7 @@ public partial class DependencyPropertyTwoWayCase : TestRoot;
 public partial class NullableNullRefDeclarationCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool Outer = true;
     bool Inner = false;
     string InnerTrue = "inner true";
@@ -453,7 +453,7 @@ public partial class NullableNullRefDeclarationCase : TestRoot;
 public partial class NestedConditionalContentCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     bool Show = true;
     <root>
         <TestPanel>
@@ -472,7 +472,7 @@ public partial class NestedConditionalContentCase : TestRoot;
 public partial class CollectionIfCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             {
@@ -485,7 +485,7 @@ public partial class CollectionIfCase : TestRoot;
 public partial class FragmentCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             foreach (var row in ..3) {
@@ -500,7 +500,7 @@ public partial class FragmentCase : TestRoot;
 public partial class RangeForeachCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             foreach (var item in `Items`) {
@@ -519,7 +519,7 @@ public partial class ForeachCase : TestRoot
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             foreach (EventItem item in `Items`; `item.Id`) {
@@ -539,7 +539,7 @@ public partial class ForeachEventCaptureCase : TestRoot
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             foreach (index; TestItem item in `Items`; `item.Id`) {
@@ -559,7 +559,7 @@ public partial class ForeachIndexKeyCase : TestRoot
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
             foreach (var item in `Items`) {
@@ -578,7 +578,7 @@ public partial class ForeachComponentCase : TestRoot
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     int RowIndex = 42;
     <root>
         <TestText Grid.Row=1 />
@@ -588,7 +588,7 @@ public partial class ForeachComponentCase : TestRoot
 public partial class AttachedPropertyAssignCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     int StoredRow;
     <root>
         <TestDependencyHoldButton Grid.Row=>`StoredRow` />
@@ -597,7 +597,7 @@ public partial class AttachedPropertyAssignCase : TestRoot;
 public partial class AttachedPropertyBindBackCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText>
             <Grid.Row>1</Grid.Row>
@@ -607,7 +607,7 @@ public partial class AttachedPropertyBindBackCase : TestRoot;
 public partial class AttachedPropertyChildTagAssignCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     int RowIndex = 42;
     <root>
         <TestText>
@@ -618,7 +618,7 @@ public partial class AttachedPropertyChildTagAssignCase : TestRoot;
 public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         ref TB = <TestText Text="ref named tag" />
     </root>
@@ -626,7 +626,7 @@ public partial class AttachedPropertyChildTagReactiveCase : TestRoot;
 public partial class RefNamedTagCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     string Text = "ref binding";
     <root>
         ref TB = <TestText Text=`Text` />
@@ -635,7 +635,7 @@ public partial class RefNamedTagCase : TestRoot;
 public partial class RefNamedTagBindingCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText `Nested.Text`="from foreign key" />
     </root>
@@ -643,7 +643,7 @@ public partial class RefNamedTagBindingCase : TestRoot;
 public partial class ForeignDottedKeyCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     NullableRefItem? NullItem = null;
     <root>
     </root>
@@ -651,7 +651,7 @@ public partial class ForeignDottedKeyCase : TestRoot;
 public partial class NullRefDeclarationCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestPanel>
         </TestPanel>
@@ -660,7 +660,7 @@ public partial class NullRefDeclarationCase : TestRoot;
 public partial class EmptyPanelCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     // 你好, this is a line comment with Unicode
     <root>
         <TestText Text="café" />
@@ -671,7 +671,7 @@ public partial class EmptyPanelCase : TestRoot;
 public partial class UnicodeStringCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     // コメント with Unicode
     /* 这是一个块注释
        with Unicode: ñoño */
@@ -683,22 +683,7 @@ public partial class UnicodeStringCase : TestRoot;
 public partial class UnicodeCommentCase : TestRoot;
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string InjectedText = "";
-    <TestText Text=`InjectedText` />
-    """)]
-public partial class ActionConstructorTarget : IQuickMarkupComponent<TestText>;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <ActionConstructorTarget InjectedText="from consumer" />
-    </root>
-    """)]
-public partial class ActionConstructorConsumerCase : TestRoot;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText Text="ctor called" />
     </root>
@@ -716,7 +701,7 @@ public partial class QuickMarkupConstructorNoParamCase : TestRoot
 }
 
 [QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText Text="ctor with params" />
     </root>
@@ -735,357 +720,4 @@ public partial class ConstructorWithParamsCase : TestRoot
     }
 }
 
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <setup>
-    ConstructorCallOrderCase.SetupValue = ConstructorCallOrderCase.SharedValue;
-    </setup>
-    <root>
-        <TestText Text="call order" />
-    </root>
-    """)]
-public partial class ConstructorCallOrderCase : TestRoot
-{
-    public static string SharedValue { get; set; } = "";
-    public static string ConstructorValue { get; set; } = "";
-    public static string SetupValue { get; set; } = "";
-    public string? InstanceProp { get; set; }
 
-    [QuickMarkupConstructor]
-    private void MyInit()
-    {
-        ConstructorValue = SharedValue;
-        Init();
-    }
-}
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string DeferredPreInitValue = "";
-    <TestText Text=`DeferredPreInitValue` />
-    """)]
-public partial class DeferredPreInitTarget : IQuickMarkupComponent<TestText>;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <DeferredPreInitTarget DeferredPreInitValue="set before init" />
-    </root>
-    """)]
-public partial class DeferredPreInitConsumerCase : TestRoot;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    required string RequiredText = "";
-    <TestText Text=`RequiredText` />
-    """)]
-public partial class RequiredRefsTarget : IQuickMarkupComponent<TestText>;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <RequiredRefsTarget RequiredText="required value" />
-    </root>
-    """)]
-public partial class RequiredRefsConsumerCase : TestRoot;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string Label = "";
-    string Extra = "";
-    <TestText Text=`$"{Label}: {Extra}"` />
-    """)]
-public partial class CtorArgWithRefsTarget : IQuickMarkupComponent<TestText>
-{
-    [QuickMarkupConstructor]
-    private void MyInit(string label)
-    {
-        Label = label;
-        Init(label);
-    }
-}
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <CtorArgWithRefsTarget("hello") Extra="world" />
-    </root>
-    """)]
-public partial class CtorArgWithRefsConsumerCase : TestRoot;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string Label = "";
-    required int RequiredCount = 0;
-    <TestText Text=`$"{Label}: {RequiredCount}"` />
-    """)]
-public partial class CtorArgWithRequiredTarget : IQuickMarkupComponent<TestText>
-{
-    [QuickMarkupConstructor]
-    private void MyInit(string label)
-    {
-        Label = label;
-        Init(label);
-    }
-}
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        namedBtn = <DeferredPreInitTarget DeferredPreInitValue="test" `x => DeferredInitNamedAssignmentCase.NamedResult = x == namedBtn` />
-    </root>
-    """)]
-public partial class DeferredInitNamedAssignmentCase : TestRoot
-{
-    public static bool NamedResult { get; set; }
-}
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        ref refBtn = <DeferredPreInitTarget DeferredPreInitValue="test" `x => DeferredInitRefAssignmentCase.RefResult = x == refBtn` />
-    </root>
-    """)]
-public partial class DeferredInitRefAssignmentCase : TestRoot
-{
-    public static bool RefResult { get; set; }
-}
-
-// --- Provide/Inject tests ---
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string Label;
-    <TestText Text=`Label` />
-    """)]
-public partial class ProvideInjectBasicTarget : IQuickMarkupComponent<TestText>;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "hello";
-    <root>
-        <ProvideInjectBasicTarget />
-    </root>
-    """)]
-public partial class ProvideInjectBasicCase : TestRoot;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject? string Label;
-    <TestText Text=`Label` />
-    """)]
-public partial class ProvideInjectOptionalTarget : IQuickMarkupComponent<TestText>;
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <ProvideInjectOptionalTarget />
-    </root>
-    """)]
-public partial class ProvideInjectOptionalMissingCase : TestRoot;
-
-// --- Provide/Inject with 'as' keyword tests ---
-
-// Provider: backing ref is MyRefProp, but exposed to context as MyCtx
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string MyRef as MyCtx = "from-provider";
-    <root>
-        <ProvideInjectAsTarget />
-    </root>
-    """)]
-public partial class ProvideInjectAsProviderCase : TestRoot;
-
-// Consumer: inject from context key MyCtx into local backing ref MyRefProp
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string MyCtx as MyRef;
-    <TestText Text=`MyRef` />
-    """)]
-public partial class ProvideInjectAsTarget : IQuickMarkupComponent<TestText>;
-
-// Provider without 'as' to verify basic provide/inject still works
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "basic-hello";
-    <root>
-        <ProvideInjectBasicTarget />
-    </root>
-    """)]
-public partial class ProvideInjectBasicNoAsCase : TestRoot;
-
-// Optional inject with 'as' keyword
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject? string MyCtx as MyRef;
-    <TestText Text=`MyRef` />
-    """)]
-public partial class ProvideInjectOptionalAsTarget : IQuickMarkupComponent<TestText>;
-
-// No provider for optional as target - should return default
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    <root>
-        <ProvideInjectOptionalAsTarget />
-    </root>
-    """)]
-public partial class ProvideInjectOptionalAsMissingCase : TestRoot;
-
-// --- Provide/Inject timing tests (runs before QuickMarkupConstructor) ---
-
-// Target: inject is available inside QuickMarkupConstructor
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string Label;
-    <TestText Text=`Label` />
-    """)]
-public partial class ProvideInjectTimingTarget : IQuickMarkupComponent<TestText>
-{
-    public static string? CapturedLabelInCtor { get; set; }
-
-    [QuickMarkupConstructor]
-    private void MyInit()
-    {
-        // Label (injected) should be available here because provide/inject runs before ctor
-        CapturedLabelInCtor = Label;
-        Init();
-    }
-}
-
-// Parent that provides and uses the timing target
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "injected-before-ctor";
-    <root>
-        <ProvideInjectTimingTarget />
-    </root>
-    """)]
-public partial class ProvideInjectTimingCase : TestRoot;
-
-// --- Provide/Inject with ctor args tests ---
-
-// Child with inject + ctor param
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string Label;
-    string Extra = "";
-    <TestText Text=`$"{Label}-{Extra}"` />
-    """)]
-public partial class ProvideInjectCtorArgsTarget : IQuickMarkupComponent<TestText>
-{
-    [QuickMarkupConstructor]
-    private void MyInit(string extra)
-    {
-        Extra = extra;
-        Init(extra);
-    }
-}
-
-// Parent with provide + ctor arg syntax
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "hello";
-    <root>
-        <ProvideInjectCtorArgsTarget("world") />
-    </root>
-    """)]
-public partial class ProvideInjectCtorArgsCase : TestRoot;
-
-// --- Provide/Inject with ctor args + required refs tests ---
-
-// Child with inject + ctor param + required ref
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string Label;
-    string Extra = "";
-    required int RequiredCount = 0;
-    <TestText Text=`$"{Label}-{Extra}:{RequiredCount}"` />
-    """)]
-public partial class ProvideInjectCtorArgsRequiredTarget : IQuickMarkupComponent<TestText>
-{
-    [QuickMarkupConstructor]
-    private void MyInit(string extra)
-    {
-        Extra = extra;
-        Init(extra);
-    }
-}
-
-// Parent with provide + ctor arg syntax + required ref set via attribute
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "hello";
-    <root>
-        <ProvideInjectCtorArgsRequiredTarget("world") RequiredCount=42 />
-    </root>
-    """)]
-public partial class ProvideInjectCtorArgsRequiredCase : TestRoot;
-
-// --- Primary constructor context propagation tests ---
-
-// Component that exposes its context for testing
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string Value = "";
-    <TestText Text=`Value` />
-    """)]
-public partial class ContextExposingTarget : IQuickMarkupComponent<TestText>;
-
-// --- Action constructor context behavior tests ---
-
-// Target that captures context in QuickMarkupConstructor
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    string Value = "";
-    <TestText Text=`Value` />
-    """)]
-public partial class ContextCaptureTarget : IQuickMarkupComponent<TestText>
-{
-    public static QuickMarkupContext? CapturedContext { get; set; }
-
-    [QuickMarkupConstructor]
-    private void MyInit()
-    {
-        CapturedContext = Context;
-        Init();
-    }
-}
-
-// --- Context hierarchy tests (parent -> child with provide/inject) ---
-
-// Child that injects
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    inject string DeepValue;
-    <TestText Text=`DeepValue` />
-    """)]
-public partial class ProvideInjectHierarchyChildTarget : IQuickMarkupComponent<TestText>;
-
-// Parent that provides and creates child
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string DeepValue = "from-parent";
-    <root>
-        <ProvideInjectHierarchyChildTarget />
-    </root>
-    """)]
-public partial class ProvideInjectHierarchyCase : TestRoot;
-
-// --- Provide in QuickMarkupConstructor (provide runs before ctor method) ---
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test;
-    public provide string Label = "default";
-    <root>
-        <ProvideInjectBasicTarget />
-    </root>
-    """)]
-public partial class ProvideInCtorCase : TestRoot
-{
-    [QuickMarkupConstructor]
-    private void MyInit()
-    {
-        // Change the provided value after provide has run
-        Label = "changed-in-ctor";
-        Init();
-    }
-}

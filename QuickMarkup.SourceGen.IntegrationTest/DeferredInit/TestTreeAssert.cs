@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.DeferredInit;
 
 static class TestTreeAssert
 {

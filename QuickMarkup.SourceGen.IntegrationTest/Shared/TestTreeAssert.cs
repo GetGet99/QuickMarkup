@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test.BackCompat;
+namespace QuickMarkup.SourceGen.Test.Shared;
 
 static class TestTreeAssert
 {

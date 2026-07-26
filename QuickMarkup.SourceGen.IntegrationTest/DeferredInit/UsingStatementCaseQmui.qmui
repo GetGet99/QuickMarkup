@@ -1,5 +1,5 @@
 using System.Linq;
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.DeferredInit;
 class UsingStatementCaseQmui : TestRoot;
 <root>
     <TestPanel>

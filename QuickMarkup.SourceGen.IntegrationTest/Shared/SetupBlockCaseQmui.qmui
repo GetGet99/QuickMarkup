@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.Shared;
 class SetupBlockCaseQmui : TestRoot;
 <setup>
 var greeting = "Hi";

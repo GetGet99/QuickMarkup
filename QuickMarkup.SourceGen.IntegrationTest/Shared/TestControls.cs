@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
 
-namespace QuickMarkup.SourceGen.Test.BackCompat;
+namespace QuickMarkup.SourceGen.Test.Shared;
 
 public abstract class TestElement
 {
@@ -163,10 +163,3 @@ public static class TestElementExtensions
         element.ElementExtensionApplied = true;
     }
 }
-
-[QuickMarkup("""
-    using QuickMarkup.SourceGen.Test.BackCompat;
-    string SimpleText = "";
-    <TestText Text=`SimpleText` />
-    """)]
-public partial class SimpleTextComponent : IQuickMarkupComponent<TestText>;

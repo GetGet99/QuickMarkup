@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
 
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.DeferredInit;
 
 public abstract class TestElement
 {

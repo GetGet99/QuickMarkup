@@ -1,4 +1,4 @@
-namespace QuickMarkup.SourceGen.Test;
+namespace QuickMarkup.SourceGen.Test.Shared;
 class RefDeclarationCaseQmui : TestRoot;
 int Counter = 0;
 string Label = "hello";
