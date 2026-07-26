@@ -24,6 +24,18 @@ Run all tests
 dotnet test
 ```
 
+Run individual tests
+
+```sh
+# In .NET 10 there are some changes to how tests are being run to migrate away from VSTest.
+# It is a bit buggy in running individual project.
+
+dotnet test QuickMarkup.SourceGen.IntegrationTest # no longer works
+dotnet test --project QuickMarkup.SourceGen.IntegrationTest # does not work too
+
+cd QuickMarkup.SourceGen.IntegrationTest && dotnet test # this works
+```
+
 Run tests in Native AOT environment (note: Linux only)
 
 ```sh
