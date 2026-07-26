@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <AdditionalFiles Include="**/*.qmui" />
+    <AdditionalFiles Include="../QuickMarkup.SourceGen.IntegrationTest/Shared/**/*.qmui" />
+    <Compile Include="../QuickMarkup.SourceGen.IntegrationTest/Shared/**/*.cs" />
   </ItemGroup>
 
 </Project>
