@@ -73,6 +73,15 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void AsyncSetupVariablesAreAvailableToTemplateExpressions()
+    {
+        var page = new AsyncSetupCase();
+        var text = TestTreeAssert.Child<TestText>(page.Children, 0);
+
+        Assert.AreEqual("from async setup", text.Text);
+    }
+
+    [TestMethod]
     public void PrimitiveValuesAndBooleanShorthandAssignProperties()
     {
         var page = new PrimitiveValueCase();

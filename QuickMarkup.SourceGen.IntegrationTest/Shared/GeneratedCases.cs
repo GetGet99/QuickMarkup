@@ -69,6 +69,17 @@ public partial class SetupScopeCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test.Shared;
+    <setup async>
+    var suffix = " async setup";
+    </setup>
+    <root>
+        <TestText Text=`"from" + suffix` />
+    </root>
+    """)]
+public partial class AsyncSetupCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
     <root>
         <TestText Name="true" Flag />
         <TestText Name="false" !Flag />

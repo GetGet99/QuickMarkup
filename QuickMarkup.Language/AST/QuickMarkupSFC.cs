@@ -137,7 +137,7 @@ public record class QuickMarkupAttachedPropertyTagStart(string TypeName, string 
 }
 
 public record class QuickMarkupUsings(string RawScript) : AST, ISFCTag;
-public record class QuickMarkupScript(string RawScript) : AST, ISFCTag;
+public record class QuickMarkupScript(string RawScript, bool IsAsync = false) : AST, ISFCTag;
 public interface IQMNodeChild;
 public interface ITagStart
 {

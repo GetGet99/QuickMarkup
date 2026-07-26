@@ -36,15 +36,15 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 (x, _) =>
                 {
                     var combined = CombineMarkupTags(x.AST.MarkupTags);
-                    return (x.Target, x.AST.Usings, x.AST.Scirpt?.RawScript, combined, x.AST);
+                    return (x.Target, x.AST.Usings, x.AST.Scirpt, combined, x.AST);
                 }
             );
 
             var sources = sfcs.Combine(context.CompilationProvider).Combine(generatedMemberTable).Select(
                 (x, ct) =>
                 {
-                    var (((target, usings, script, template, ast), compilation), generatedMembers) = x;
-                    return GenerateInitSource(target, usings, template, script, compilation, generatedMembers, ast, ct);
+                    var (((target, usings, scriptAst, template, ast), compilation), generatedMembers) = x;
+                    return GenerateInitSource(target, usings, template, scriptAst, compilation, generatedMembers, ast, ct);
                 }
             );
 
@@ -113,7 +113,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             QuickMarkupTargetContext target,
             string usings,
             QuickMarkupParsedTag? template,
-            string? script,
+            QuickMarkupScript? scriptAst,
             Compilation compilation,
             QuickMarkupGeneratedMemberTable? generatedMembers,
             QuickMarkupSFC ast,
@@ -238,7 +238,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             return (target, usings, "", error, componentKind is not QMComponentKind.None);
         }
 
-        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, script, codeBuilder, requiredRefs, provideInjectInit.ToString());
+        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, scriptAst?.RawScript, scriptAst?.IsAsync == true, codeBuilder, requiredRefs, provideInjectInit.ToString());
         return (target, usings, $$"""
                     {{generatedProperties}}
                     {{generatedMethod}}
@@ -268,6 +268,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         QuickMarkupInitializationMode initMode,
         QuickMarkupGeneratedTypeMembers? typeMembers,
         string? script,
+        bool isAsync,
         StringBuilder codeBuilder,
         List<(string TypeName, string Name)> requiredRefs,
         string provideInjectInitCode)
@@ -289,12 +290,16 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         const string initMethodName = "Init";
 
         BuildConstructorSignatures(
-            typeName, initMethodName, typeMembers, requiredRefs,
+            typeName, initMethodName, typeMembers, requiredRefs, isAsync,
             out var initParamSig, out var actionParamSig, out var primaryParamSig,
             out var reqAssignmentsBlock, out var userCtorCall);
 
+        var initMethodSignature = isAsync
+            ? $"private async global::System.Threading.Tasks.Task {initMethodName}({initParamSig})"
+            : $"private void {initMethodName}({initParamSig})";
+
         var initMethod = $$"""
-            private void {{initMethodName}}({{initParamSig}}) {
+            {{initMethodSignature}} {
                 {{cleanupBlock.IndentWOF()}}
                 {{scriptBody.IndentWOF()}}
                 {{initBody.IndentWOF()}}
@@ -334,6 +339,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         string initMethodName,
         QuickMarkupGeneratedTypeMembers? typeMembers,
         List<(string TypeName, string Name)> requiredRefs,
+        bool isAsync,
         out StringBuilder initParamSig,
         out StringBuilder actionParamSig,
         out StringBuilder primaryParamSig,
@@ -349,7 +355,9 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         reqAssignmentsBlock = new();
 
         if (userCtorMethodName is null)
-            userCtorCall = new($"{initMethodName}();");
+            userCtorCall = isAsync
+                ? new($"_ = {initMethodName}();")
+                : new($"{initMethodName}();");
         else
         {
             userCtorCall = new();

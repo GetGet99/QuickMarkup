@@ -57,6 +57,9 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex<string>(@"<setup>[^]*</setup>", nameof(GetScriptInner), State = LexerStates.BeforeRoot)]
         [TextmateTagScope(TagMatchKind.Setup, Priority = (int)TextmateOrder.StringChar)]
         Setup,
+        [Regex<string>(@"<setup[ \t\r\n]+async>[^]*</setup>", nameof(GetScriptInnerAsync), State = LexerStates.BeforeRoot)]
+        [TextmateTagScope(TagMatchKind.Setup, Priority = (int)TextmateOrder.StringChar)]
+        SetupAsync,
         [Regex<string>(@"[a-zA-Z_][a-zA-Z0-9_]*", nameof(Identity), State = LexerStates.Props | LexerStates.BeforeRoot | LexerStates.QMTag)]
         [Regex<string>(@"@[a-zA-Z_][a-zA-Z0-9]*", nameof(Identity), State = LexerStates.InsideQMOpenTag)]
         [TextmateOtherVariableScope(VariableType.Other, Priority = (int)TextmateOrder.Identifier)]
@@ -332,6 +335,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
     }
     private partial string Identity() => MatchedText;
     private partial string GetScriptInner() => MatchedText["<setup>".Length..^"</setup>".Length];
+    private partial string GetScriptInnerAsync() => MatchedText[(MatchedText.IndexOf('>') + 1)..^"</setup>".Length];
     private partial bool TrueValue() => true;
     private partial bool FalseValue() => false;
     private partial int ParseInt() => int.Parse(MatchedText.Replace("_", ""));

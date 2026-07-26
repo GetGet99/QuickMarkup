@@ -61,6 +61,9 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         ClassKindPrefix,
         [Type<ISFCTag>]
         [Rule(Terminal.Setup, AS, nameof(QuickMarkupScript.RawScript), typeof(QuickMarkupScript))]
+        [Rule(Terminal.SetupAsync, AS, nameof(QuickMarkupScript.RawScript),
+            WITHPARAM, nameof(QuickMarkupScript.IsAsync), true,
+            typeof(QuickMarkupScript))]
         [Rule(ParsedTag, AS, VALUE, IDENTITY)]
         SFCTag,
         // USINGS
