@@ -10,7 +10,7 @@ using Terminal = QuickMarkup.Parser.QuickMarkupLexer.Tokens;
 namespace QuickMarkup.Parser;
 
 [Parser(SFC, UseGetLexerTypeInformation = true)]
-[Precedence(Terminal.Else, Associativity.Right)]
+[Precedence(Terminal.Else, Associativity.Right, Terminal.With, Terminal.Catch, Terminal.Then, Associativity.Right)]
 public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, QuickMarkupSFC>
 {
     public enum NonTerminal
@@ -354,6 +354,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<IQMNodeChild>]
         [Rule(ParsedIfNode, AS, VALUE, IDENTITY, WITHPRECDENCE, Terminal.Else)]
         [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
+        [Rule(ParsedAwaitNode, AS, VALUE, IDENTITY)]
         [Rule(ParsedFragmentNode, AS, VALUE, IDENTITY)]
         [Rule(QMValue, AS, VALUE, IDENTITY)]
         QMChild,
@@ -364,6 +365,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<IQMNodeChild>]
         [Rule(ParsedFragmentNode, AS, VALUE, IDENTITY)]
         [Rule(ParsedForNode, AS, VALUE, IDENTITY)]
+        [Rule(ParsedAwaitNode, AS, VALUE, IDENTITY)]
         [Rule(QMValue, AS, VALUE, IDENTITY)]
         [Rule(MatchedIf, AS, VALUE, IDENTITY)]
         MatchedStructuralBody,
@@ -470,6 +472,50 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             typeof(QuickMarkupParsedFragmentNode)
         )]
         ParsedFragmentNode,
+        [Type<QuickMarkupParsedAwaitNode>]
+        [Rule(
+            Terminal.Await,
+            Terminal.OpenBracket,
+            QMValue, AS, nameof(QuickMarkupParsedAwaitNode.AsyncExpression),
+            Terminal.CloseBracket,
+            AwaitBranchList, AS, nameof(QuickMarkupParsedAwaitNode.Branches),
+            typeof(QuickMarkupParsedAwaitNode),
+            WITHPRECDENCE, Terminal.With
+        )]
+        ParsedAwaitNode,
+        [Type<ListAST<QuickMarkupParsedAwaitBranch>>]
+        [Rule(EMPTYLIST)]
+        [Rule(AwaitBranchList, AS, LIST, AwaitBranch, AS, VALUE, APPENDLIST)]
+        AwaitBranchList,
+        [Type<QuickMarkupParsedAwaitBranch>]
+        [Rule(
+            AwaitBranchKeyword, AS, "kind",
+            AwaitOutputOpt, AS, "output",
+            StructuralBody, AS, "body",
+            nameof(CreateAwaitBranch)
+        )]
+        AwaitBranch,
+        [Type<AwaitBranchKind>]
+        [Rule(Terminal.With, WITHPARAM, VALUE, AwaitBranchKind.With, IDENTITY)]
+        [Rule(Terminal.Catch, WITHPARAM, VALUE, AwaitBranchKind.Catch, IDENTITY)]
+        [Rule(Terminal.Then, WITHPARAM, VALUE, AwaitBranchKind.Then, IDENTITY)]
+        AwaitBranchKeyword,
+        [Type<AwaitOutputInfo>]
+        [Rule(WITHPARAM, VALUE, null, IDENTITY)]
+        [Rule(
+            Terminal.OpenBracket,
+            Terminal.Identifier, AS, "name",
+            Terminal.CloseBracket,
+            nameof(MakeAwaitOutputNameOnly)
+        )]
+        [Rule(
+            Terminal.OpenBracket,
+            TypeDeclOrVarKeyword, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.CloseBracket,
+            nameof(MakeAwaitOutputFull)
+        )]
+        AwaitOutputOpt,
         [Type<PositionedIdentifier>]
         [Rule(Terminal.Identifier, AS, nameof(PositionedIdentifier.Name), typeof(PositionedIdentifier))]
         QMPositionedIdentifier,
@@ -528,6 +574,11 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         QuickMarkupValue? Key);
     static QuickMarkupParsedForNode CreateForNode(ParsedForHeader header, IQMNodeChild body)
         => new(header.VarType, header.VarName, header.Iterable, body, header.IndexVarName, header.Key);
+    record class AwaitOutputInfo(TypeDeclaration? VarType, string? VarName);
+    static QuickMarkupParsedAwaitBranch CreateAwaitBranch(AwaitBranchKind kind, AwaitOutputInfo? output, IQMNodeChild body)
+        => new(kind, output?.VarType, output?.VarName, body);
+    static AwaitOutputInfo MakeAwaitOutputNameOnly(string name) => new(null, name);
+    static AwaitOutputInfo MakeAwaitOutputFull(TypeDeclaration? VarType, string VarName) => new(VarType, VarName);
     static QuickMarkupParsedTag AttachName(PositionedIdentifier name, QuickMarkupParsedTag tag)
     {
         tag.Name = name;

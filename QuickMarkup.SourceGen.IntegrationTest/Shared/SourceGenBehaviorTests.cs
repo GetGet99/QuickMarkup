@@ -841,4 +841,44 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual(AsyncComputedState.Success, StaticAsyncComputedCase.TextStatus);
         Assert.AreEqual("static async", StaticAsyncComputedCase.Text);
     }
+
+    [TestMethod]
+    public void AwaitBlock_ShowsThenBranchForSynchronousSuccess()
+    {
+        var page = new AwaitBlockCase();
+        var panel = (TestPanel)page.Children[0];
+
+        Assert.AreEqual(AsyncComputedState.Success, page.ResultStatus);
+        Assert.AreEqual(10, page.Result);
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("10", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlock_SwitchesToLoadingBranchWhenTaskChanges()
+    {
+        var page = new AwaitBlockCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("Loading...", text.Text);
+
+        tcs.SetResult(20);
+        Assert.AreEqual(AsyncComputedState.Success, page.ResultStatus);
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        text = (TestText)panel.Children[0];
+        Assert.AreEqual("20", text.Text);
+    }
 }

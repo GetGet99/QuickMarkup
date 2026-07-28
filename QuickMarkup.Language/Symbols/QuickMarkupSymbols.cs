@@ -104,6 +104,24 @@ public record class QMConditionalValueSymbol<T>(
     IQMNodeChildSymbol ValueWhenTrue,
     IQMNodeChildSymbol ValueWhenFalse
 ) : IQMNodeChildSymbol;
+public record class QMAwaitNodeSymbol<T>(
+    IQMValueSymbol AsyncExpression,
+    IReadOnlyList<IQMMemberSymbol>? BodyWhenLoading,
+    IReadOnlyList<IQMMemberSymbol>? BodyWhenFailed,
+    IReadOnlyList<IQMMemberSymbol>? BodyWhenSuccess,
+    T? ResultType,
+    string? ThenOutputName,
+    string? CatchOutputName
+) : IQMNodeChildSymbol;
+public record class QMAwaitValueSymbol<T>(
+    IQMValueSymbol AsyncExpression,
+    IQMNodeChildSymbol? ValueWhenLoading,
+    IQMNodeChildSymbol? ValueWhenFailed,
+    IQMNodeChildSymbol? ValueWhenSuccess,
+    T? ResultType,
+    string? ThenOutputName,
+    string? CatchOutputName
+) : IQMNodeChildSymbol;
 public record class QMFragmentNodeSymbol(
     IReadOnlyList<IQMMemberSymbol> Body
 ) : IQMNodeChildSymbol;

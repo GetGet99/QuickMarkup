@@ -188,6 +188,148 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_AwaitWithAllBranches()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`expr`) with { <Loading /> } catch (ex) { <Error /> } then (val) { <Success /> }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(awaitNode.AsyncExpression);
+            Assert.HasCount(3, awaitNode.Branches);
+
+            var withBranch = awaitNode.Branches[0];
+            Assert.AreEqual(AwaitBranchKind.With, withBranch.Kind);
+            Assert.IsNull(withBranch.VarType);
+            Assert.IsNull(withBranch.VarName);
+
+            var catchBranch = awaitNode.Branches[1];
+            Assert.AreEqual(AwaitBranchKind.Catch, catchBranch.Kind);
+            Assert.IsNull(catchBranch.VarType);
+            Assert.AreEqual("ex", catchBranch.VarName);
+
+            var thenBranch = awaitNode.Branches[2];
+            Assert.AreEqual(AwaitBranchKind.Then, thenBranch.Kind);
+            Assert.IsNull(thenBranch.VarType);
+            Assert.AreEqual("val", thenBranch.VarName);
+        }
+
+        [TestMethod]
+        public void Parse_AwaitWithBranchesInAnyOrder()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`expr`) then (result) { <Result /> } with { <Loading /> } catch { <Error /> }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.HasCount(3, awaitNode.Branches);
+
+            Assert.AreEqual(AwaitBranchKind.Then, awaitNode.Branches[0].Kind);
+            Assert.AreEqual(AwaitBranchKind.With, awaitNode.Branches[1].Kind);
+            Assert.AreEqual(AwaitBranchKind.Catch, awaitNode.Branches[2].Kind);
+        }
+
+        [TestMethod]
+        public void Parse_AwaitWithOnlyWithBranch()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`loading`) with { <Spinner /> }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.HasCount(1, awaitNode.Branches);
+            Assert.AreEqual(AwaitBranchKind.With, awaitNode.Branches[0].Kind);
+        }
+
+        [TestMethod]
+        public void Parse_AwaitWithCatchAndThenTyped()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`expr`) catch (Exception e) { <Error /> } then (string val) { <Success /> }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.HasCount(2, awaitNode.Branches);
+
+            var catchBranch = awaitNode.Branches[0];
+            Assert.AreEqual(AwaitBranchKind.Catch, catchBranch.Kind);
+            Assert.IsNotNull(catchBranch.VarType);
+            Assert.AreEqual("Exception", catchBranch.VarType.Type);
+            Assert.AreEqual("e", catchBranch.VarName);
+
+            var thenBranch = awaitNode.Branches[1];
+            Assert.AreEqual(AwaitBranchKind.Then, thenBranch.Kind);
+            Assert.IsNotNull(thenBranch.VarType);
+            Assert.AreEqual("string", thenBranch.VarType.Type);
+            Assert.AreEqual("val", thenBranch.VarName);
+        }
+
+        [TestMethod]
+        public void Parse_AwaitCatchWithoutOutputVar()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`expr`) catch { <Error /> }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.HasCount(1, awaitNode.Branches);
+            var catchBranch = awaitNode.Branches[0];
+            Assert.AreEqual(AwaitBranchKind.Catch, catchBranch.Kind);
+            Assert.IsNull(catchBranch.VarType);
+            Assert.IsNull(catchBranch.VarName);
+        }
+
+        [TestMethod]
+        public void Parse_AwaitWithBodyAsFragment()
+        {
+            var sfc = Parse("""
+                <root>
+                    await (`expr`) then (val) {
+                        <A />
+                        <B />
+                    }
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            Assert.HasCount(1, sfc.Template.Children);
+            var awaitNode = sfc.Template.Children[0] as QuickMarkupParsedAwaitNode;
+            Assert.IsNotNull(awaitNode);
+            Assert.HasCount(1, awaitNode.Branches);
+
+            var thenBranch = awaitNode.Branches[0];
+            Assert.AreEqual(AwaitBranchKind.Then, thenBranch.Kind);
+            Assert.IsInstanceOfType<QuickMarkupParsedFragmentNode>(thenBranch.Body);
+            var fragment = (QuickMarkupParsedFragmentNode)thenBranch.Body;
+            Assert.HasCount(2, fragment.Children);
+        }
+
+        [TestMethod]
         public void PropsLexer_RefAttributePunctuation()
         {
             var output = Lex("""

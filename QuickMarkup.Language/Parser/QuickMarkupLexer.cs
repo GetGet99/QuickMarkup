@@ -228,6 +228,18 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"foreach", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
         Foreach,
+        [Regex(@"await", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
+        Await,
+        [Regex(@"with", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
+        With,
+        [Regex(@"catch", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
+        Catch,
+        [Regex(@"then", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
+        Then,
         [Regex(@"if", State = LexerStates.BeforeRoot, Order = (int)Order.KeywordAndSpecialSyntax)]
         [TextmateKeywordScope(KeywordType.Control, Priority = (int)TextmateOrder.Keywords)]
         If,

@@ -95,7 +95,20 @@ public record class QuickMarkupParsedForNode(
     QuickMarkupValue? Key = null
 ) : AST, IQMNodeChild;
 
-// Not implemented yet
+public enum AwaitBranchKind { With, Catch, Then }
+
+public record class QuickMarkupParsedAwaitBranch(
+    AwaitBranchKind Kind,
+    TypeDeclaration? VarType,
+    string? VarName,
+    IQMNodeChild Body
+) : AST;
+
+public record class QuickMarkupParsedAwaitNode(
+    QuickMarkupValue AsyncExpression,
+    ListAST<QuickMarkupParsedAwaitBranch> Branches
+) : AST, IQMNodeChild;
+
 public record class QuickMarkupParsedIfNode(
     QuickMarkupValue Condition,
     IQMNodeChild BodyWhenTrue,

@@ -311,6 +311,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         {
             QuickMarkupParsedIfNode ifNode => BindCollectionIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => Bind(forNode, tagInfo),
+            QuickMarkupParsedAwaitNode awaitNode => BindCollectionAwait(awaitNode, tagInfo),
             QuickMarkupParsedFragmentNode fragment => BindFragment(fragment, tagInfo),
             QuickMarkupParsedTag tag => Bind(tag),
             QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
@@ -329,6 +330,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         {
             QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
+            QuickMarkupParsedAwaitNode awaitNode => BindSingleChildAwait(awaitNode, tagInfo),
             QuickMarkupParsedFragmentNode fragment => BindSingleChildFragment(fragment, tagInfo),
             QuickMarkupParsedTag tag => BindSingleChildTag(tag),
             QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
@@ -415,6 +417,77 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         return fragment.Children.Count == 0
             ? ErrorRecoveryChild(tagInfo)
             : BindSingleChildNode(fragment.Children[0], tagInfo);
+    }
+
+    QMAwaitNodeSymbol<ITypeSymbol?> BindCollectionAwait(QuickMarkupParsedAwaitNode awaitNode, QMBinderTagInfo tagInfo)
+    {
+        var asyncExpr = utils.Bind(awaitNode.AsyncExpression, null);
+        var branches = new Dictionary<AwaitBranchKind, (string? OutputName, IReadOnlyList<IQMMemberSymbol> Body)>();
+
+        foreach (var branch in awaitNode.Branches)
+        {
+            if (branches.ContainsKey(branch.Kind))
+                Error(awaitNode, $"Duplicate '{branch.Kind}' branch in await block.");
+            else
+                branches[branch.Kind] = (branch.VarName, BindStructuralBody(branch.Body, tagInfo));
+
+            if (branch.Kind is AwaitBranchKind.With && branch.VarName is not null)
+            {
+                Error(branch, "with branch does not support an output variable.");
+            }
+        }
+
+        branches.TryGetValue(AwaitBranchKind.With, out var with);
+        branches.TryGetValue(AwaitBranchKind.Catch, out var catch_);
+        branches.TryGetValue(AwaitBranchKind.Then, out var then_);
+
+        return new(
+            asyncExpr,
+            with.Body,
+            catch_.Body,
+            then_.Body,
+            default,
+            then_.OutputName,
+            catch_.OutputName
+        );
+    }
+
+    QMAwaitValueSymbol<ITypeSymbol?> BindSingleChildAwait(QuickMarkupParsedAwaitNode awaitNode, QMBinderTagInfo tagInfo)
+    {
+        var asyncExpr = utils.Bind(awaitNode.AsyncExpression, null);
+        var branches = new Dictionary<AwaitBranchKind, (string? OutputName, IQMNodeChildSymbol Value)>();
+
+        foreach (var branch in awaitNode.Branches)
+        {
+            if (branches.ContainsKey(branch.Kind))
+                Error(awaitNode, $"Duplicate '{branch.Kind}' branch in await block.");
+            else
+                branches[branch.Kind] = (branch.VarName, BindSingleChildBranch(branch.Body, tagInfo));
+
+            if (branch.Kind is AwaitBranchKind.With && branch.VarName is not null)
+            {
+                Error(branch, "with branch does not support an output variable.");
+            }
+        }
+
+        if (!branches.ContainsKey(AwaitBranchKind.With))
+            Error(awaitNode, "Single-child await block requires a 'with' branch.");
+        if (!branches.ContainsKey(AwaitBranchKind.Then))
+            Error(awaitNode, "Single-child await block requires a 'then' branch.");
+
+        branches.TryGetValue(AwaitBranchKind.With, out var with);
+        branches.TryGetValue(AwaitBranchKind.Catch, out var catch_);
+        branches.TryGetValue(AwaitBranchKind.Then, out var then_);
+
+        return new(
+            asyncExpr,
+            with.Value,
+            catch_.Value,
+            then_.Value,
+            default,
+            then_.OutputName,
+            catch_.OutputName
+        );
     }
 
     QMFragmentNodeSymbol BindFragment(QuickMarkupParsedFragmentNode fragment, QMBinderTagInfo tagInfo)
@@ -836,6 +909,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         {
             QMIfNodeSymbol<ITypeSymbol?> => true,
             QMConditionalValueSymbol<ITypeSymbol?> => true,
+            QMAwaitNodeSymbol<ITypeSymbol?> => true,
+            QMAwaitValueSymbol<ITypeSymbol?> => true,
             QMFragmentNodeSymbol => true,
             QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment } => true,
             QMForNodeSymbol<ITypeSymbol> { Kind: QMForKind.ReactiveCollection } => true,

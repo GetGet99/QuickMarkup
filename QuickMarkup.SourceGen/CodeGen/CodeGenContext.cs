@@ -285,6 +285,8 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             case QMConditionalValueSymbol<ITypeSymbol?> conditional:
                 CGenConditionalSlot(conditional, $"{target}.{assignChild.ChildPropertyPath}", assignChild.ChildType);
                 break;
+            case QMAwaitValueSymbol<ITypeSymbol?>:
+                throw new NotImplementedException("Single-child await block is not yet supported.");
             default:
                 throw new NotImplementedException();
         }
@@ -516,6 +518,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             QMValueSymbol<ITypeSymbol?> value => CGenStaticBlock(value, elementType),
             QMIfNodeSymbol<ITypeSymbol?> ifNode => CGenConditionalBlock(ifNode, elementType),
             QMForNodeSymbol<ITypeSymbol?> forNode => CGenForBlock(forNode, elementType),
+            QMAwaitNodeSymbol<ITypeSymbol?> awaitNode => CGenAwaitBlock(awaitNode, elementType),
             QMFragmentNodeSymbol fragment => CGenFragmentBlock(fragment, elementType),
             _ => throw new NotImplementedException($"Block codegen does not support {child.GetType().Name}.")
         };
@@ -577,6 +580,30 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             () => {{CGen(ifNode.Condition)}},
             () => {{trueBlock}},
             () => {{falseBlock}})
+        """;
+    }
+
+    string CGenAwaitBlock(QMAwaitNodeSymbol<ITypeSymbol?> awaitNode, ITypeSymbol? elementType)
+    {
+        var typeName = TypeName(elementType);
+        var asyncExpr = CGen(awaitNode.AsyncExpression);
+        var loadingBlock = awaitNode.BodyWhenLoading is null ? null : CGenFragmentBlock(awaitNode.BodyWhenLoading, elementType);
+        var errorBlock = awaitNode.BodyWhenFailed is null ? null : CGenFragmentBlock(awaitNode.BodyWhenFailed, elementType);
+        var successBlock = awaitNode.BodyWhenSuccess is null ? null : CGenFragmentBlock(awaitNode.BodyWhenSuccess, elementType);
+
+        var successParam = awaitNode.ThenOutputName ?? "_";
+        var errorParam = awaitNode.CatchOutputName ?? "_";
+        var loadingFactory = loadingBlock ?? "null";
+        var errorFactory = errorBlock is null ? "null" : $"({errorParam}) => {errorBlock}";
+        var successFactory = successBlock is null ? "null" : $"({successParam}) => {successBlock}";
+
+        return $$"""
+        global::QuickMarkup.Infra.AwaitBlock.Create(
+            new global::QuickMarkup.Infra.ReactiveScope(),
+            {{asyncExpr}},
+            {{loadingFactory}},
+            {{errorFactory}},
+            {{successFactory}})
         """;
     }
 
