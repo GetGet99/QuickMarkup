@@ -356,6 +356,32 @@ foreach (index; var item in `items`) { <TextBlock Text=`$"{index + 1}. {item}"` 
 foreach (index; var item in `items`; `item.Id`) { <TextBlock Text=`$"{index + 1}. {item}"` /> }
 ```
 
+### Await Blocks
+
+Reactive async branching for `AsyncComputed<T>` values. Switch between loading, error, and success UI based on async state — useful whenever you're loading data from an async source:
+
+```quickmarkup
+User? User => async `Api.FetchCurrentUserAsync()`;
+
+<StackPanel>
+    await (`UserAsync`) with {
+        <ProgressRing />
+    } catch (ex) {
+        <TextBlock Text=`$"Failed to load: {ex.Message}"` Foreground=Red />
+    } then (user) {
+        <TextBlock Text=`$"Welcome, {user.Name}!"` />
+    }
+</StackPanel>
+```
+
+- **`with`** — shown in loading state (no parameter).
+- **`catch (ex)`** — shown on failure; `ex` captures the `Exception` (parameter is optional — `catch { ... }` is valid).
+- **`then (val)`** — shown on success; `val` captures the resolved value (parameter is optional — `then { ... }` is valid).
+
+The async expression is the `*Async` property (of type `AsyncComputed<T>`) auto-generated from an async computed declaration (`` Property => async `...` ``). Each branch renders independently as the state transitions.
+
+All three branches are optional. If omitted, nothing renders in that state.
+
 ### Root Tag With Properties
 
 `<root>` can carry properties that apply to the class itself (since it inherits from a UI type):
