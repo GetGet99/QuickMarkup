@@ -93,9 +93,17 @@ public static class AwaitBlock
 {
     public static AwaitBlock<TElement, TValue> Create<TElement, TValue>(
         ReactiveScope controllerScope,
-        AsyncComputed<TValue> asyncComputed,
+        Func<AsyncComputed<TValue>> asyncComputed,
         Func<IUIBlock<TElement>>? loadingFactory = null,
         Func<Exception?, IUIBlock<TElement>>? errorFactory = null,
         Func<TValue, IUIBlock<TElement>>? successFactory = null)
-        => new(controllerScope, asyncComputed, loadingFactory, errorFactory, successFactory);
+        => new(controllerScope, asyncComputed(), loadingFactory, errorFactory, successFactory);
+
+    public static AwaitBlock<TElement, TValue> Create<TElement, TValue>(
+        ReactiveScope controllerScope,
+        AsyncFunction<TValue> asyncComputed,
+        Func<IUIBlock<TElement>>? loadingFactory = null,
+        Func<Exception?, IUIBlock<TElement>>? errorFactory = null,
+        Func<TValue, IUIBlock<TElement>>? successFactory = null)
+        => new(controllerScope, new(asyncComputed), loadingFactory, errorFactory, successFactory);
 }

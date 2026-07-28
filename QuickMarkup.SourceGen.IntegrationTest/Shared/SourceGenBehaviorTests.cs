@@ -1008,4 +1008,158 @@ public sealed class SourceGenBehaviorTests
         Assert.IsInstanceOfType<TestText>(button.Content);
         Assert.AreEqual("Error: test error", ((TestText)button.Content).Text);
     }
+
+    [TestMethod]
+    public void AwaitBlockDirectTask_ShowsThenBranchForSynchronousSuccess()
+    {
+        var page = new AwaitBlockDirectTaskCase();
+        var panel = (TestPanel)page.Children[0];
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("10", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlockDirectTask_SwitchesToLoadingBranchWhenTaskChanges()
+    {
+        var page = new AwaitBlockDirectTaskCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("Loading...", text.Text);
+
+        tcs.SetResult(20);
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        text = (TestText)panel.Children[0];
+        Assert.AreEqual("20", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlockDirectTask_ShowsErrorBranchOnFailure()
+    {
+        var page = new AwaitBlockDirectTaskCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("Loading...", text.Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        text = (TestText)panel.Children[0];
+        Assert.AreEqual("Error: test error", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlockDirectTask_TransitionsFromErrorToSuccessWhenTaskReplaces()
+    {
+        var page = new AwaitBlockDirectTaskCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Loading...", ((TestText)panel.Children[0]).Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Error: test error", ((TestText)panel.Children[0]).Text);
+
+        var tcs2 = new TaskCompletionSource<int>();
+        page.MyTask = tcs2.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Loading...", ((TestText)panel.Children[0]).Text);
+
+        tcs2.SetResult(42);
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("42", ((TestText)panel.Children[0]).Text);
+    }
+
+    [TestMethod]
+    public void SingleChildAwaitDirectTask_ShowsSuccessBranchOnSuccess()
+    {
+        var page = new SingleChildAwaitDirectTaskCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        ReactiveScheduler.Tick();
+
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("42", ((TestText)button.Content).Text);
+    }
+
+    [TestMethod]
+    public void SingleChildAwaitDirectTask_SwitchesToLoadingBranchWhenTaskChanges()
+    {
+        var page = new SingleChildAwaitDirectTaskCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("Loading...", ((TestText)button.Content).Text);
+
+        tcs.SetResult(20);
+        ReactiveScheduler.Tick();
+
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("20", ((TestText)button.Content).Text);
+    }
+
+    [TestMethod]
+    public void SingleChildAwaitDirectTask_SwitchesToErrorBranchOnFailure()
+    {
+        var page = new SingleChildAwaitDirectTaskCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+
+        ReactiveScheduler.Tick();
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("Loading...", ((TestText)button.Content).Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        ReactiveScheduler.Tick();
+
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("Error: test error", ((TestText)button.Content).Text);
+    }
 }

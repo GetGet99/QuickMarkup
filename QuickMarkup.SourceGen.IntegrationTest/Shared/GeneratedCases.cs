@@ -829,3 +829,40 @@ public partial class AwaitBlockCase : TestRoot;
     """)]
 public partial class SingleChildAwaitCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    using QuickMarkup.Infra;
+    `Task<int>` MyTask = `Task.FromResult(10)`;
+
+    <root>
+        <TestPanel>
+            await (`MyTask`) with {
+                <TestText Text="Loading..." />
+            } catch (ex) {
+                <TestText Text=`$"Error: {ex.Message}"` />
+            } then (val) {
+                <TestText Text=`val.ToString()` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class AwaitBlockDirectTaskCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    using QuickMarkup.Infra;
+    `Task<int>` MyTask = `Task.FromResult(42)`;
+
+    <root>
+        <TestButton>
+            await (`MyTask`)
+            with <TestText Text="Loading..." />
+            catch (ex) <TestText Text=`$"Error: {ex.Message}"` />
+            then (val) {
+                <TestText Text=`val.ToString()` />
+            }
+        </TestButton>
+    </root>
+    """)]
+public partial class SingleChildAwaitDirectTaskCase : TestRoot;
+

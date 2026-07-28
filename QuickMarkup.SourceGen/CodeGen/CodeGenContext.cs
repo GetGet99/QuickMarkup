@@ -587,7 +587,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
     string CGenAwaitBlock(QMAwaitNodeSymbol<ITypeSymbol?> awaitNode, ITypeSymbol? elementType)
     {
         var typeName = TypeName(elementType);
-        var asyncExpr = CGen(awaitNode.AsyncExpression);
+        var asyncExpr = $"() => {CGen(awaitNode.AsyncExpression)}";
         var loadingBlock = awaitNode.BodyWhenLoading is null ? null : CGenFragmentBlock(awaitNode.BodyWhenLoading, elementType);
         var errorBlock = awaitNode.BodyWhenFailed is null ? null : CGenFragmentBlock(awaitNode.BodyWhenFailed, elementType);
         var successBlock = awaitNode.BodyWhenSuccess is null ? null : CGenFragmentBlock(awaitNode.BodyWhenSuccess, elementType);
@@ -784,11 +784,11 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         """);
     }
 
-    void CGenAwaitValueSlot(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, string target, ITypeSymbol? expectedType)
-    {
-        var type = expectedType ?? GetChildValueType(awaitValue);
-        var asyncExpr = CGen(awaitValue.AsyncExpression);
-        var slot = NewVariable();
+     void CGenAwaitValueSlot(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, string target, ITypeSymbol? expectedType)
+     {
+         var type = expectedType ?? GetChildValueType(awaitValue);
+         var asyncExpr = $"() => {CGen(awaitValue.AsyncExpression)}";
+         var slot = NewVariable();
 
         var loadingBody = awaitValue.ValueWhenLoading is null
             ? "null"

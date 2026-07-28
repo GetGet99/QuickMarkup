@@ -74,10 +74,19 @@ public static class AwaitValueSlot
 {
     public static AwaitValueSlot<TElement, TValue> Create<TElement, TValue>(
         ReactiveScope controllerScope,
-        AsyncComputed<TValue> asyncComputed,
+        Func<AsyncComputed<TValue>> asyncComputed,
         Action<TElement> setValue,
         Func<ScopedValue<TElement>>? loadingFactory = null,
         Func<Exception?, ScopedValue<TElement>>? errorFactory = null,
         Func<TValue, ScopedValue<TElement>>? successFactory = null)
-        => new(controllerScope, asyncComputed, setValue, loadingFactory, errorFactory, successFactory);
+        => new(controllerScope, asyncComputed(), setValue, loadingFactory, errorFactory, successFactory);
+
+    public static AwaitValueSlot<TElement, TValue> Create<TElement, TValue>(
+        ReactiveScope controllerScope,
+        AsyncFunction<TValue> asyncComputed,
+        Action<TElement> setValue,
+        Func<ScopedValue<TElement>>? loadingFactory = null,
+        Func<Exception?, ScopedValue<TElement>>? errorFactory = null,
+        Func<TValue, ScopedValue<TElement>>? successFactory = null)
+        => new(controllerScope, new(asyncComputed), setValue, loadingFactory, errorFactory, successFactory);
 }
