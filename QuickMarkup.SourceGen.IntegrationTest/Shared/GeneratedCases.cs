@@ -810,3 +810,22 @@ public partial class StaticAsyncComputedCase : TestRoot;
     """)]
 public partial class AwaitBlockCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    using QuickMarkup.Infra;
+    `Task<int>` MyTask = `Task.FromResult(42)`;
+    int Result => async `MyTask`;
+
+    <root>
+        <TestButton>
+            await (`ResultAsync`)
+            with <TestText Text="Loading..." />
+            catch <TestText Text=`$"Error: {ResultFailure?.Message}"` />
+            then (val) {
+                <TestText Text=`val.ToString()` />
+            }
+        </TestButton>
+    </root>
+    """)]
+public partial class SingleChildAwaitCase : TestRoot;
+

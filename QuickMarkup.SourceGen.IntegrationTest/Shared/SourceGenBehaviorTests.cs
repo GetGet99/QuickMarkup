@@ -945,4 +945,67 @@ public sealed class SourceGenBehaviorTests
         ReactiveScheduler.Tick();
         Assert.AreEqual("42", ((TestText)panel.Children[0]).Text);
     }
+
+    [TestMethod]
+    public void SingleChildAwait_ShowsSuccessBranchOnSuccess()
+    {
+        var page = new SingleChildAwaitCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(AsyncComputedState.Success, page.ResultStatus);
+        Assert.AreEqual(42, page.Result);
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("42", ((TestText)button.Content).Text);
+    }
+
+    [TestMethod]
+    public void SingleChildAwait_SwitchesToLoadingBranchWhenTaskChanges()
+    {
+        var page = new SingleChildAwaitCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        ReactiveScheduler.Tick();
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("Loading...", ((TestText)button.Content).Text);
+
+        tcs.SetResult(20);
+        ReactiveScheduler.Tick();
+
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("20", ((TestText)button.Content).Text);
+    }
+
+    [TestMethod]
+    public void SingleChildAwait_SwitchesToErrorBranchOnFailure()
+    {
+        var page = new SingleChildAwaitCase();
+        var button = TestTreeAssert.Child<TestButton>(page.Children, 0);
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Loading...", ((TestText)button.Content).Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        ReactiveScheduler.Tick();
+
+        Assert.IsNotNull(button.Content);
+        Assert.IsInstanceOfType<TestText>(button.Content);
+        Assert.AreEqual("Error: test error", ((TestText)button.Content).Text);
+    }
 }

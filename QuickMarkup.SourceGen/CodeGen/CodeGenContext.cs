@@ -285,8 +285,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             case QMConditionalValueSymbol<ITypeSymbol?> conditional:
                 CGenConditionalSlot(conditional, $"{target}.{assignChild.ChildPropertyPath}", assignChild.ChildType);
                 break;
-            case QMAwaitValueSymbol<ITypeSymbol?>:
-                throw new NotImplementedException("Single-child await block is not yet supported.");
+            case QMAwaitValueSymbol<ITypeSymbol?> awaitValue:
+                CGenAwaitValueSlot(awaitValue, $"{target}.{assignChild.ChildPropertyPath}", assignChild.ChildType);
+                break;
             default:
                 throw new NotImplementedException();
         }
@@ -781,6 +782,66 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             });
         QUICKMARKUP_DISPOSABLES.Add({{slot}});
         """);
+    }
+
+    void CGenAwaitValueSlot(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, string target, ITypeSymbol? expectedType)
+    {
+        var type = expectedType ?? GetChildValueType(awaitValue);
+        var asyncExpr = CGen(awaitValue.AsyncExpression);
+        var slot = NewVariable();
+
+        var loadingBody = awaitValue.ValueWhenLoading is null
+            ? "null"
+            : null;
+        var errorBody = awaitValue.ValueWhenFailed is null
+            ? "null"
+            : null;
+        var successBody = awaitValue.ValueWhenSuccess is null
+            ? "null"
+            : null;
+
+        codeBuilder.AppendLine($$"""
+        var {{slot}} = global::QuickMarkup.Infra.AwaitValueSlot.Create(
+            new global::QuickMarkup.Infra.ReactiveScope(),
+            {{asyncExpr}},
+            QUICKMARKUP_VALUE => {{target}} = QUICKMARKUP_VALUE,
+            {{AwaitLoadingFactory(awaitValue, type, target)}},
+            {{AwaitErrorFactory(awaitValue, type, target)}},
+            {{AwaitSuccessFactory(awaitValue, type, target)}});
+        QUICKMARKUP_DISPOSABLES.Add({{slot}});
+        """);
+    }
+
+    string AwaitLoadingFactory(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, ITypeSymbol? type, string target)
+    {
+        if (awaitValue.ValueWhenLoading is null) return "null";
+        return $$"""
+            () => {
+                {{CGenScopedValueFactoryBody(awaitValue.ValueWhenLoading, type, target).IndentWOF(4)}}
+            }
+            """;
+    }
+
+    string AwaitErrorFactory(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, ITypeSymbol? type, string target)
+    {
+        if (awaitValue.ValueWhenFailed is null) return "null";
+        var param = awaitValue.CatchOutputName ?? "_";
+        return $$"""
+            ({{param}}) => {
+                {{CGenScopedValueFactoryBody(awaitValue.ValueWhenFailed, type, target).IndentWOF(4)}}
+            }
+            """;
+    }
+
+    string AwaitSuccessFactory(QMAwaitValueSymbol<ITypeSymbol?> awaitValue, ITypeSymbol? type, string target)
+    {
+        if (awaitValue.ValueWhenSuccess is null) return "null";
+        var param = awaitValue.ThenOutputName ?? "_";
+        return $$"""
+            ({{param}}) => {
+                {{CGenScopedValueFactoryBody(awaitValue.ValueWhenSuccess, type, target).IndentWOF(4)}}
+            }
+            """;
     }
 
     string CGenScopedValueFactoryBody(IQMNodeChildSymbol child, ITypeSymbol? type, string target)
