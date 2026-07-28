@@ -869,6 +869,8 @@ public sealed class SourceGenBehaviorTests
         ReactiveScheduler.Tick();
         Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
 
+        ReactiveScheduler.Tick();
+
         Assert.AreEqual(1, panel.Children.Count);
         var text = (TestText)panel.Children[0];
         Assert.AreEqual("Loading...", text.Text);
@@ -880,5 +882,67 @@ public sealed class SourceGenBehaviorTests
         Assert.AreEqual(1, panel.Children.Count);
         text = (TestText)panel.Children[0];
         Assert.AreEqual("20", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlock_ShowsErrorBranchOnFailure()
+    {
+        var page = new AwaitBlockCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        var text = (TestText)panel.Children[0];
+        Assert.AreEqual("Loading...", text.Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        Assert.AreEqual(AsyncComputedState.Failed, page.ResultStatus);
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual(1, panel.Children.Count);
+        text = (TestText)panel.Children[0];
+        Assert.AreEqual("Error: test error", text.Text);
+    }
+
+    [TestMethod]
+    public void AwaitBlock_TransitionsFromErrorToSuccessWhenTaskReplaces()
+    {
+        var page = new AwaitBlockCase();
+        var panel = (TestPanel)page.Children[0];
+
+        var tcs = new TaskCompletionSource<int>();
+        page.MyTask = tcs.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Loading...", ((TestText)panel.Children[0]).Text);
+
+        tcs.SetException(new InvalidOperationException("test error"));
+        Assert.AreEqual(AsyncComputedState.Failed, page.ResultStatus);
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Error: test error", ((TestText)panel.Children[0]).Text);
+
+        var tcs2 = new TaskCompletionSource<int>();
+        page.MyTask = tcs2.Task;
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual(AsyncComputedState.Loading, page.ResultStatus);
+
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("Loading...", ((TestText)panel.Children[0]).Text);
+
+        tcs2.SetResult(42);
+        Assert.AreEqual(AsyncComputedState.Success, page.ResultStatus);
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("42", ((TestText)panel.Children[0]).Text);
     }
 }

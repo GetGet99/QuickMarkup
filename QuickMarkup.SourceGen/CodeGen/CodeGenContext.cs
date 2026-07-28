@@ -593,7 +593,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
 
         var successParam = awaitNode.ThenOutputName ?? "_";
         var errorParam = awaitNode.CatchOutputName ?? "_";
-        var loadingFactory = loadingBlock ?? "null";
+        var loadingFactory = loadingBlock is null ? "null" : $"() => {loadingBlock}";
         var errorFactory = errorBlock is null ? "null" : $"({errorParam}) => {errorBlock}";
         var successFactory = successBlock is null ? "null" : $"({successParam}) => {successBlock}";
 
