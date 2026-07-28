@@ -15,7 +15,7 @@
   </PackageOutputPath>
 
   <PackageOutputPath Condition="'$(OS)' != 'Windows_NT'">
-    /mnt/Data/Programming/VS/.LocalNugetPackages
+    /mnt/LinuxProgramData/Codes/.LocalNugetPackages
   </PackageOutputPath>
 </PropertyGroup>
 </Project>
