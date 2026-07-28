@@ -374,7 +374,7 @@ User? User => async `Api.FetchCurrentUserAsync()`;
 </StackPanel>
 ```
 
-The async expression is the `*Async` property (of type `AsyncComputed<T>`) auto-generated from an async computed declaration (`` Property => async `...` ``), or any `Task<T>` expression. Brackets around the expression are optional — both `await (`UserAsync`)` and `await `UserAsync`` are equivalent.
+The async expression is the `*Async` property (of type `AsyncComputed<T>`) auto-generated from an async computed declaration (`` Property => async `...` ``), or any `Task<T>` expression.
 
 ```quickmarkup
 // Direct Task<T> usage — no async computed property needed (preferred if needed in one place)
