@@ -358,13 +358,21 @@ foreach (index; var item in `items`; `item.Id`) { <TextBlock Text=`$"{index + 1}
 
 ### Await Blocks
 
-Reactive async branching for `AsyncComputed<T>` values. Switch between loading, error, and success UI based on async state — useful whenever you're loading data from an async source:
+Reactive async branching for `AsyncComputed<T>` or async expression values. Switch between loading, error, and success UI based on async state — useful whenever you're loading data from an async source:
 
 ```quickmarkup
 User? User => async `Api.FetchCurrentUserAsync()`;
 
 <StackPanel>
     await (`UserAsync`) with {
+        <ProgressRing />
+    } catch (ex) {
+        <TextBlock Text=`$"Failed to load: {ex.Message}"` Foreground=Red />
+    } then (user) {
+        <TextBlock Text=`$"Welcome, {user.Name}!"` />
+    }
+    // or using it directly (preferred if not needed anywhere else)
+    await (`Api.FetchCurrentUserAsync()`) with {
         <ProgressRing />
     } catch (ex) {
         <TextBlock Text=`$"Failed to load: {ex.Message}"` Foreground=Red />
