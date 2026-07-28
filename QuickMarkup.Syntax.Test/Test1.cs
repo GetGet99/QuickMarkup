@@ -192,7 +192,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`expr`) with { <Loading /> } catch (ex) { <Error /> } then (val) { <Success /> }
+                    await `expr` with { <Loading /> } catch (ex) { <Error /> } then (val) { <Success /> }
                 </root>
                 """);
 
@@ -224,7 +224,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`expr`) then (result) { <Result /> } with { <Loading /> } catch { <Error /> }
+                    await `expr` then (result) { <Result /> } with { <Loading /> } catch { <Error /> }
                 </root>
                 """);
 
@@ -244,7 +244,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`loading`) with { <Spinner /> }
+                    await `loading` with { <Spinner /> }
                 </root>
                 """);
 
@@ -261,7 +261,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`expr`) catch (Exception e) { <Error /> } then (string val) { <Success /> }
+                    await `expr` catch (Exception e) { <Error /> } then (string val) { <Success /> }
                 </root>
                 """);
 
@@ -289,7 +289,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`expr`) catch { <Error /> }
+                    await `expr` catch { <Error /> }
                 </root>
                 """);
 
@@ -309,7 +309,7 @@ namespace QuickMarkup.Syntax.Test
         {
             var sfc = Parse("""
                 <root>
-                    await (`expr`) then (val) {
+                    await `expr` then (val) {
                         <A />
                         <B />
                     }

@@ -475,9 +475,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<QuickMarkupParsedAwaitNode>]
         [Rule(
             Terminal.Await,
-            Terminal.OpenBracket,
             QMValue, AS, nameof(QuickMarkupParsedAwaitNode.AsyncExpression),
-            Terminal.CloseBracket,
             AwaitBranchList, AS, nameof(QuickMarkupParsedAwaitNode.Branches),
             typeof(QuickMarkupParsedAwaitNode),
             WITHPRECDENCE, Terminal.With

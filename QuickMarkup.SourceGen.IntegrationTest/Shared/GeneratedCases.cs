@@ -798,7 +798,7 @@ public partial class StaticAsyncComputedCase : TestRoot;
 
     <root>
         <TestPanel>
-            await (`ResultAsync`) with {
+            await `ResultAsync` with {
                 <TestText Text="Loading..." />
             } catch (ex) {
                 <TestText Text=`$"Error: {ex.Message}"` />
@@ -818,7 +818,7 @@ public partial class AwaitBlockCase : TestRoot;
 
     <root>
         <TestButton>
-            await (`ResultAsync`)
+            await `ResultAsync`
             with <TestText Text="Loading..." />
             catch <TestText Text=`$"Error: {ResultFailure?.Message}"` />
             then (val) {
@@ -836,7 +836,7 @@ public partial class SingleChildAwaitCase : TestRoot;
 
     <root>
         <TestPanel>
-            await (`MyTask`) with {
+            await `MyTask` with {
                 <TestText Text="Loading..." />
             } catch (ex) {
                 <TestText Text=`$"Error: {ex.Message}"` />
@@ -855,7 +855,7 @@ public partial class AwaitBlockDirectTaskCase : TestRoot;
 
     <root>
         <TestButton>
-            await (`MyTask`)
+            await `MyTask`
             with <TestText Text="Loading..." />
             catch (ex) <TestText Text=`$"Error: {ex.Message}"` />
             then (val) {

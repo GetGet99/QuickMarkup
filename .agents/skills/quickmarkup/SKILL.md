@@ -358,21 +358,28 @@ foreach (index; var item in `items`; `item.Id`) { <TextBlock Text=`$"{index + 1}
 
 ### Await Blocks
 
-Reactive async branching for `AsyncComputed<T>` or async expression values. Switch between loading, error, and success UI based on async state — useful whenever you're loading data from an async source:
+Reactive async branching for `AsyncComputed<T>`, async expression values, or direct `Task<T>` values. Switch between loading, error, and success UI based on async state — useful whenever you're loading data from an async source:
 
 ```quickmarkup
 User? User => async `Api.FetchCurrentUserAsync()`;
 
 <StackPanel>
-    await (`UserAsync`) with {
+    await `UserAsync` with {
         <ProgressRing />
     } catch (ex) {
         <TextBlock Text=`$"Failed to load: {ex.Message}"` Foreground=Red />
     } then (user) {
         <TextBlock Text=`$"Welcome, {user.Name}!"` />
     }
-    // or using it directly (preferred if not needed anywhere else)
-    await (`Api.FetchCurrentUserAsync()`) with {
+</StackPanel>
+```
+
+The async expression is the `*Async` property (of type `AsyncComputed<T>`) auto-generated from an async computed declaration (`` Property => async `...` ``), or any `Task<T>` expression. Brackets around the expression are optional — both `await (`UserAsync`)` and `await `UserAsync`` are equivalent.
+
+```quickmarkup
+// Direct Task<T> usage — no async computed property needed
+<StackPanel>
+    await `Api.FetchCurrentUserAsync()` with {
         <ProgressRing />
     } catch (ex) {
         <TextBlock Text=`$"Failed to load: {ex.Message}"` Foreground=Red />
@@ -385,8 +392,6 @@ User? User => async `Api.FetchCurrentUserAsync()`;
 - **`with`** — shown in loading state (no parameter).
 - **`catch (ex)`** — shown on failure; `ex` captures the `Exception` (parameter is optional — `catch { ... }` is valid).
 - **`then (val)`** — shown on success; `val` captures the resolved value (parameter is optional — `then { ... }` is valid).
-
-The async expression is the `*Async` property (of type `AsyncComputed<T>`) auto-generated from an async computed declaration (`` Property => async `...` ``). Each branch renders independently as the state transitions.
 
 All three branches are optional. If omitted, nothing renders in that state.
 
