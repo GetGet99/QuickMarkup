@@ -110,27 +110,27 @@ static class CodeSnippetsExtension
             """);
         }
 
-        public void AddAttachedDependencyPropertyBindBack(string attachedTypeFullName, string propertyName, string target, string dependencyPropertyName, string valueExpression)
+        public void AddAttachedDependencyPropertyBindBack(string target, string dependencyPropertyName, string assignmentStatement)
         {
             codeBuilder.AppendLine($$"""
-                {{valueExpression}} = {{attachedTypeFullName}}.Get{{propertyName}}({{target}});
+                {{assignmentStatement}};
                 {{target}}.RegisterPropertyChangedCallback(
                     {{dependencyPropertyName}},
                     (_, _) => {
-                        {{valueExpression}} = {{attachedTypeFullName}}.Get{{propertyName}}({{target}});
+                        {{assignmentStatement}};
                     }
                 );
                 """);
         }
 
-        public void AddDependencyPropertyBindBack(string target, string targetDependencyObject, string dependencyPropertyName, string valueExpression)
+        public void AddDependencyPropertyBindBack(string targetDependencyObject, string dependencyPropertyName, string assignmentStatement)
         {
             codeBuilder.AppendLine($$"""
-                {{valueExpression}} = {{target}};
+                {{assignmentStatement}};
                 {{targetDependencyObject}}.RegisterPropertyChangedCallback(
                     {{dependencyPropertyName}},
                     (_, _) => {
-                        {{valueExpression}} = {{target}};
+                        {{assignmentStatement}};
                     }
                 );
                 """);

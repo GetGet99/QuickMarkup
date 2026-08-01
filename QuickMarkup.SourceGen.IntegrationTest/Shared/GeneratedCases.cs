@@ -688,6 +688,16 @@ public partial class ItemTemplateBareCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestItemsControl ItemTemplate=template (TestExpandingItem? item) {
+            <TestDependencyHoldButton IsHolding=>`item?.IsHolding` />
+        } />
+    </root>
+    """)]
+public partial class TemplateBindBackCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
     // 你好, this is a line comment with Unicode
     <root>
         <TestText Text="café" />

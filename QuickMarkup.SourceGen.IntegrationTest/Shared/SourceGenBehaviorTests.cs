@@ -749,6 +749,34 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void TemplateBindBackWritesBackToCapturedTemplateItem()
+    {
+        var page = new TemplateBindBackCase();
+        var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
+
+        var first = new TestExpandingItem { IsHolding = false };
+        control.Materialize(first);
+        ReactiveScheduler.Tick();
+
+        var firstButton = TestTreeAssert.Child<TestDependencyHoldButton>(control.Items, 0);
+        Assert.IsFalse(first.IsHolding);
+
+        firstButton.IsHolding = true;
+
+        Assert.IsTrue(first.IsHolding);
+
+        var second = new TestExpandingItem { IsHolding = false };
+        control.Materialize(second);
+        ReactiveScheduler.Tick();
+
+        var secondButton = TestTreeAssert.Child<TestDependencyHoldButton>(control.Items, 1);
+        secondButton.IsHolding = true;
+
+        Assert.IsTrue(first.IsHolding);
+        Assert.IsTrue(second.IsHolding);
+    }
+
+    [TestMethod]
     public void UnicodeInStringLiteral_RendersCorrectCharacters()
     {
         var page = new UnicodeStringCase();

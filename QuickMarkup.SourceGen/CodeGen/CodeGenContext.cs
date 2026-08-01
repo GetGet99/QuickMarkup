@@ -331,10 +331,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         {
             if (addProp.IsDependencyProperty)
                 codeBuilder.AddDependencyPropertyBindBack(
-                    property,
                     TargetObjectForPropertyPath(target, addProp.PropertyName),
                     addProp.DependencyPropertyName,
-                    CGen(addProp.Value)
+                    CGenBindBackWrite(addProp.Value, property)
                 );
             else
                 codeBuilder.AddPropertyBindOneWay(
@@ -370,11 +369,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             case BindingModes.TargetToSource:
                 if (addProp.IsDependencyProperty)
                     codeBuilder.AddAttachedDependencyPropertyBindBack(
-                        addProp.AttachedTypeFullName,
-                        addProp.PropertyName,
                         target,
                         addProp.DependencyPropertyName,
-                        CGen(addProp.Value)
+                        CGenBindBackWrite(addProp.Value, $"{addProp.AttachedTypeFullName}.Get{addProp.PropertyName}({target})")
                     );
                 else
                     codeBuilder.AddPropertyBindOneWay(
@@ -394,11 +391,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 );
                 if (addProp.IsDependencyProperty)
                     codeBuilder.AddAttachedDependencyPropertyBindBack(
-                        addProp.AttachedTypeFullName,
-                        addProp.PropertyName,
                         target,
                         addProp.DependencyPropertyName,
-                        CGen(addProp.Value)
+                        CGenBindBackWrite(addProp.Value, $"{addProp.AttachedTypeFullName}.Get{addProp.PropertyName}({target})")
                     );
                 else
                     codeBuilder.AddPropertyBindOneWay(
@@ -1032,6 +1027,46 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             return {{value.ValueInFinalCode}};
         }))()
         """;
+    }
+
+    /// <summary>
+    /// Generates the assignment statement used by bind-back (<c>=&gt;</c>) bindings.
+    /// When the value captures scoped locals (e.g. template parameters), the write is
+    /// performed inside a closure over the live references so the captured names resolve.
+    /// </summary>
+    string CGenBindBackWrite(IQMValueSymbol value, string target)
+    {
+        if (value is QMValueSymbol<ITypeSymbol?> { ValueInFinalCode: var code } qv &&
+            qv.CapturedLocalNames is { Count: > 0 })
+        {
+            var captures = GetCapturedLocals(qv);
+            return captures.Count switch
+            {
+                1 => $$"""
+                    global::QuickMarkup.Infra.CompilerHelpers.ClosureValue(
+                        {{captures[0].Ref}}.Value,
+                        {{captures[0].Name}} => {{code}} = {{target}})
+                    """,
+                2 => $$"""
+                    global::QuickMarkup.Infra.CompilerHelpers.ClosureValue(
+                        {{captures[0].Ref}}.Value,
+                        {{captures[1].Ref}}.Value,
+                        ({{captures[0].Name}}, {{captures[1].Name}}) => {{code}} = {{target}})
+                    """,
+                _ => $$"""
+                    (new global::System.Func<object>(() => {
+                        {{CGenCapturedLocalDeclarations(qv).IndentWOF(1)}}
+                        return {{code}} = {{target}};
+                    }))()
+                    """
+            };
+        }
+
+        return value switch
+        {
+            QMValueSymbol<ITypeSymbol?> symbol => $"{symbol.ValueInFinalCode} = {target}",
+            _ => throw new NotImplementedException($"Bind-back write does not support {value.GetType().Name}.")
+        };
     }
 
     List<(string Name, string Ref)> GetCapturedLocals(QMValueSymbol<ITypeSymbol?> value)

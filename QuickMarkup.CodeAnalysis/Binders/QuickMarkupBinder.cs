@@ -723,7 +723,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
                     targetPropertyName,
-                    new QMValueSymbol<ITypeSymbol>(targetType, target),
+                    AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(targetType, target)),
                     property.Operator is ParsedPropertyOperator.BindBack ?
                         BindingModes.TargetToSource :
                         BindingModes.TwoWay,
