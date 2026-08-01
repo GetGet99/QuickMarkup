@@ -1,5 +1,6 @@
 using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
+using QuickMarkup.CodeAnalysis;
 using QuickMarkup.Language.Symbols;
 using System.Text;
 
@@ -961,9 +962,44 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         {
             QMNodeSymbol<ITypeSymbol?> node => CGenNodeValue(node),
             QMValueSymbol<ITypeSymbol?> value => CGenValue(value),
+            QMTemplateNodeSymbol<ITypeSymbol?> template => CGenTemplate(template),
             QMNestedValuesSymbol<ITypeSymbol?> => throw new NotImplementedException(),
             _ => throw new NotImplementedException(),
         };
+    }
+
+    string CGenTemplate(QMTemplateNodeSymbol<ITypeSymbol?> template)
+    {
+        var nested = new StringBuilder();
+        var nestedContext = Clone(nested);
+        var scope = nestedContext.NewVariable();
+        var reference = nestedContext.NewVariable();
+        var owner = nestedContext.NewVariable();
+        var settings = nestedContext.NewVariable();
+        nestedContext.disposableAddTarget = scope;
+
+        var paramTypeName = ReferenceExtension.RefTypeDisplayName(template.ParamType, template.ParamName);
+        var templateTypeName = template.TemplateType?.FullNameWithoutAnnotation() ?? "object";
+
+        nestedContext.forScopes.Push(new ForScope(template.ParamName, reference, null, null));
+        var root = template.Body switch
+        {
+            QMNodeSymbol<ITypeSymbol?> node => nestedContext.CGenNodeValue(node),
+            _ => throw new NotImplementedException($"Template codegen does not support {template.Body.GetType().Name}.")
+        };
+        nestedContext.forScopes.Pop();
+        counterRef = nestedContext.counterRef;
+
+        nested.AppendLine($"{root}.DataContextChanged += (_, e) => {reference}.Value = ({paramTypeName})e.NewValue;");
+
+        return $$"""
+        new {{templateTypeName}}(null, ({{owner}}, {{settings}}) => {
+            global::QuickMarkup.Infra.ReactiveScope {{scope}} = new global::QuickMarkup.Infra.ReactiveScope();
+            global::QuickMarkup.Infra.Reference<{{paramTypeName}}> {{reference}} = new(default({{paramTypeName}}));
+            {{nested.ToString().IndentWOF(1)}}
+            return {{root}};
+        })
+        """;
     }
 
     string CGenValue(QMValueSymbol<ITypeSymbol?> value)

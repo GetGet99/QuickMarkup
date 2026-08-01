@@ -672,6 +672,14 @@ public partial class EmptyPanelCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestItemsControl ItemTemplate=template (TestItem? item) { <TestText Text=`item?.Text` /> } />
+    </root>
+    """)]
+public partial class ItemTemplateCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
     // 你好, this is a line comment with Unicode
     <root>
         <TestText Text="café" />

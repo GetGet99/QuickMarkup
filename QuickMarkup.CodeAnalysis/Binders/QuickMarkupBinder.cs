@@ -676,7 +676,9 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                     // <QM Value=`Target` />
                     if (targetType is not null)
                         CheckTypeMismatch(property.Value, targetType);
-                    var value = Bind(property.Value, targetType, tagInfo);
+                    var value = property.Value is QuickMarkupParsedTemplateNode templateNode
+                        ? Bind(templateNode, targetType, tagInfo, property.Key)
+                        : Bind(property.Value, targetType, tagInfo);
                     if (value is QMNodeSymbol<ITypeSymbol?> { ComponentKind: QMComponentKind.Fragment })
                         Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
@@ -758,11 +760,87 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                 return new QMNestedValuesSymbol<ITypeSymbol>(type, Bind(x.Value, tagInfo));
             case QuickMarkupParsedTag x:
                 return Bind(x);
+            case QuickMarkupParsedTemplateNode x:
+                return Bind(x, type, tagInfo);
             default:
                 return AddCapturedLocalNames(value, utils.Bind(value, type, d => Warn(d)));
         }
         ;
     }
+
+    QMTemplateNodeSymbol<ITypeSymbol?> Bind(QuickMarkupParsedTemplateNode template, ITypeSymbol? templateType, QMBinderTagInfo? tagInfo, string? propertyName = null)
+    {
+        var paramType = template.VarType is null ? null : resolver.GetTypeSymbol(template.VarType.Type);
+        if (paramType is null)
+        {
+            Error(template, $"template parameter type '{template.VarType?.Type ?? "<unknown>"}' could not be resolved.");
+        }
+        else if (!template.VarType!.IsTypeNullable && paramType.TypeKind is not TypeKind.Struct)
+        {
+            Error(template, $"template parameter type '{template.VarType.Type}' must be nullable or a value type.");
+        }
+
+        if (templateType is not null)
+        {
+            if (!IsTemplateLikeType(templateType) && !IsTemplateLikePropertyName(propertyName))
+                Error(template, $"Template value cannot be assigned to property of type '{templateType.FullNameWithoutAnnotation()}'.");
+        }
+        else if (!IsTemplateLikePropertyName(propertyName))
+        {
+            Error(template, "Template value requires a template-like target property.");
+        }
+
+        var body = BindTemplateBody(template, tagInfo);
+
+        return new QMTemplateNodeSymbol<ITypeSymbol?>(
+            paramType?.WithNullableAnnotation(
+                template.VarType!.IsTypeNullable ?
+                    NullableAnnotation.Annotated :
+                    NullableAnnotation.NotAnnotated
+            ),
+            template.VarName,
+            body,
+            templateType);
+    }
+
+    IQMNodeChildSymbol BindTemplateBody(QuickMarkupParsedTemplateNode template, QMBinderTagInfo? tagInfo)
+    {
+        if (template.Body is not QuickMarkupParsedFragmentNode fragment)
+        {
+            Error(template, "Template body must be a fragment.");
+            return ErrorRecoveryChild(tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
+        }
+
+        if (fragment.Children.Count != 1 || fragment.Children[0] is not QuickMarkupParsedTag rootTag)
+        {
+            Error(fragment, $"Template body must contain exactly one element, but got {fragment.Children.Count}.");
+            foreach (var child in fragment.Children)
+                BindCollectionChildForDiagnostics(child, tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
+            return ErrorRecoveryChild(tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
+        }
+
+        scopedLocalNames.Push(template.VarName);
+        var body = Bind(rootTag);
+        scopedLocalNames.Pop();
+
+        if (body.ComponentKind is not QMComponentKind.None)
+            Error(rootTag, "Template body must be a plain element, not a component.");
+        return body;
+    }
+
+    static bool IsTemplateLikeType(ITypeSymbol type)
+    {
+        for (ITypeSymbol? current = type; current is not null; current = current.BaseType)
+        {
+            var name = current.Name;
+            if (name.Contains("DataTemplate") || name.Contains("FrameworkTemplate"))
+                return true;
+        }
+        return false;
+    }
+
+    static bool IsTemplateLikePropertyName(string? propertyName)
+        => propertyName is not null && propertyName.Contains("Template");
 
     IQMValueSymbol AddCapturedLocalNames(QuickMarkupValue? value, IQMValueSymbol symbol)
     {

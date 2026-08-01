@@ -95,6 +95,12 @@ public record class QuickMarkupParsedForNode(
     QuickMarkupValue? Key = null
 ) : AST, IQMNodeChild;
 
+public record class QuickMarkupParsedTemplateNode(
+    TypeDeclaration? VarType,
+    string VarName,
+    IQMNodeChild Body
+) : QuickMarkupValue;
+
 public enum AwaitBranchKind { With, Catch, Then }
 
 public record class QuickMarkupParsedAwaitBranch(

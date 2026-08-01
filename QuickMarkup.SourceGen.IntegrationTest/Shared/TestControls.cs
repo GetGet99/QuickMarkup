@@ -11,6 +11,25 @@ public abstract class TestElement
     protected readonly List<Action<object?, object?>> propertyChangedCallbacks = [];
     public void RegisterPropertyChangedCallback(DependencyProperty property, Action<object?, object?> callback)
         => propertyChangedCallbacks.Add(callback);
+
+    object? dataContext;
+    public object? DataContext
+    {
+        get => dataContext;
+        set
+        {
+            if (ReferenceEquals(dataContext, value))
+                return;
+            dataContext = value;
+            DataContextChanged?.Invoke(this, new DataContextChangedEventArgs(value));
+        }
+    }
+    public event EventHandler<DataContextChangedEventArgs>? DataContextChanged;
+}
+
+public sealed class DataContextChangedEventArgs(object? newValue)
+{
+    public object? NewValue { get; } = newValue;
 }
 
 public class TestRoot
@@ -162,5 +181,31 @@ public static class TestElementExtensions
     public static void MarkElement(this TestElement element)
     {
         element.ElementExtensionApplied = true;
+    }
+}
+
+public sealed class TemplateMaterializationSettings;
+
+public sealed class TestDataTemplate
+{
+    readonly Func<object?, TemplateMaterializationSettings, TestElement> factory;
+    public TestDataTemplate(object? owner, Func<object?, TemplateMaterializationSettings, TestElement> factory)
+    {
+        this.factory = factory;
+    }
+
+    public TestElement LoadContent() => factory(null, new());
+}
+
+public sealed class TestItemsControl : TestElement
+{
+    public TestDataTemplate? ItemTemplate { get; set; }
+    public TestElementCollection Items { get; } = [];
+
+    public void Materialize(object? item)
+    {
+        var element = ItemTemplate!.LoadContent();
+        element.DataContext = item;
+        Items.Add(element);
     }
 }

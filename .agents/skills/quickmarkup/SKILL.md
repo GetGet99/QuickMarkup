@@ -284,6 +284,18 @@ On the initial run `InputLabel` will be null, but after `InputLabel` is set, `` 
 <NumberBox NumberFormatter=<DecimalFormatter IntegerDigits=1 /> />
 ```
 
+### Templates (ItemTemplate)
+
+Assign a `template` value to a template-typed property (e.g. `ItemTemplate`) for controls that use the `ItemsSource` + `ItemTemplate` contract:
+
+```quickmarkup
+<ItemsControl ItemsSource=`Items` ItemTemplate=template (Person? person) { <TextBlock Text=`person?.Name` /> } />
+```
+
+The body must contain **exactly one plain element**. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
+
+The framework materializes the template per item and sets the element's `DataContext`. The parameter is bridged from `DataContext`, so the body must handle the value being `null` — the framework assigns `DataContext` **after** first materialization, so write null-safe expressions (`` `person?.Name` ``) or guard the initial render yourself.
+
 ### Inline Collection Children
 
 Use `<>...</>` for collection-typed properties:

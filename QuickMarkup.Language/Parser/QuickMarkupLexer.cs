@@ -96,7 +96,7 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@":", State = LexerStates.Props)]
         [TextmatePunctuationSeparatorScope(PunctuationSeparatorType.Colon, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         Colon,
-        [Regex(@"\?", State = LexerStates.PropsAndBeforeRoot)]
+        [Regex(@"\?", State = LexerStates.PropsAndBeforeRoot | LexerStates.InsideQMOpenTag)]
         [TextmateKeywordOperatorScope(OperatorType.Ternary, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         QuestionMark,
         [Regex(@"!", State = LexerStates.InsideQMOpenTag)]
@@ -258,12 +258,15 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"\)", State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         CloseBracket,
-        [Regex(@"\{", State = LexerStates.BeforeRoot)]
+        [Regex(@"\{", State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         OpenCuryBracket,
-        [Regex(@"\}", State = LexerStates.BeforeRoot)]
+        [Regex(@"\}", State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         CloseCuryBracket,
+        [Regex(@"template", State = LexerStates.PropsAndInsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
+        [TextmateKeywordScope(KeywordType.Declaration, Priority = (int)TextmateOrder.Keywords)]
+        Template,
         // + cuz it will not invoke the empty rule
         [Regex(@"[ \t\r\n]+", ShouldReturnToken = false, State = LexerStates.Usings | LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         Whitespace,

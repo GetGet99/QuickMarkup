@@ -171,6 +171,11 @@ public class QmuiSemanticService : IQmuiSemanticService
                     return childResult;
             }
         }
+        else if (node is QuickMarkupParsedTemplateNode templateNode)
+        {
+            var result = ResolveAtPositionInNode(templateNode.Body, parentTag, sfc, compilation, generatedMembers, line, character);
+            if (result is not null) return result;
+        }
 
         return null;
     }

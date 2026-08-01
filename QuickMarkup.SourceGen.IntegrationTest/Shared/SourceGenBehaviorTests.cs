@@ -694,6 +694,43 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ItemTemplateMaterializesPerItemWithDataContextBinding()
+    {
+        var page = new ItemTemplateCase();
+        var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
+
+        control.Materialize(new TestItem(1, "one"));
+        ReactiveScheduler.Tick();
+
+        var first = TestTreeAssert.Child<TestText>(control.Items, 0);
+        Assert.AreEqual("one", first.Text);
+
+        control.Materialize(new TestItem(2, "two"));
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("one", TestTreeAssert.Child<TestText>(control.Items, 0).Text);
+        Assert.AreEqual("two", TestTreeAssert.Child<TestText>(control.Items, 1).Text);
+    }
+
+    [TestMethod]
+    public void ItemTemplateRebindsWhenDataContextChanges()
+    {
+        var page = new ItemTemplateCase();
+        var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
+
+        control.Materialize(new TestItem(1, "one"));
+        ReactiveScheduler.Tick();
+
+        var text = TestTreeAssert.Child<TestText>(control.Items, 0);
+        Assert.AreEqual("one", text.Text);
+
+        control.Items[0].DataContext = new TestItem(1, "updated");
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("updated", text.Text);
+    }
+
+    [TestMethod]
     public void UnicodeInStringLiteral_RendersCorrectCharacters()
     {
         var page = new UnicodeStringCase();

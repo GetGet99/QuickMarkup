@@ -188,6 +188,29 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_TemplatePropertyValue()
+        {
+            var sfc = Parse("""
+                <root>
+                    <ItemsControl ItemTemplate=template (TestItem? item) { <TextBlock Text=`item?.Text` /> } />
+                </root>
+                """);
+
+            var tag = Assert.IsInstanceOfType<QuickMarkupParsedTag>(sfc.Template?.Children[0]);
+            var prop = Assert.IsInstanceOfType<QuickMarkupParsedProperty>(tag.InlineMembers[0]);
+            Assert.AreEqual("ItemTemplate", prop.Key);
+            Assert.AreEqual(ParsedPropertyOperator.Assign, prop.Operator);
+
+            var templateNode = Assert.IsInstanceOfType<QuickMarkupParsedTemplateNode>(prop.Value);
+            Assert.AreEqual("item", templateNode.VarName);
+            Assert.AreEqual("TestItem", templateNode.VarType?.Type);
+            Assert.IsTrue(templateNode.VarType?.IsTypeNullable);
+            var body = Assert.IsInstanceOfType<QuickMarkupParsedFragmentNode>(templateNode.Body);
+            Assert.HasCount(1, body.Children);
+            Assert.IsInstanceOfType<QuickMarkupParsedTag>(body.Children[0]);
+        }
+
+        [TestMethod]
         public void Parse_AwaitWithAllBranches()
         {
             var sfc = Parse("""

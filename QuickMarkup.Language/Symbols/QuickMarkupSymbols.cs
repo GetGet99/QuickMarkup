@@ -126,6 +126,13 @@ public record class QMFragmentNodeSymbol(
     IReadOnlyList<IQMMemberSymbol> Body
 ) : IQMNodeChildSymbol;
 
+public record class QMTemplateNodeSymbol<T>(
+    T? ParamType,
+    string ParamName,
+    IQMNodeChildSymbol Body,
+    T? TemplateType
+) : IQMValueSymbol;
+
 public record class QMComponentRootMember<T>(
     QMComponentKind Kind,
     T? OutputType,

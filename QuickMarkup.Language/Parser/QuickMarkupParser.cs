@@ -531,6 +531,15 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             QMChildren, AS, nameof(QuickMarkupValueList.Value),
             Terminal.QMCloseTagOpen, Terminal.QMCloseTagClose,
             typeof(QuickMarkupValueList))]
+        [Rule(
+            Terminal.Template,
+            Terminal.OpenBracket,
+            TypeDecl, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.CloseBracket,
+            ParsedFragmentNode, AS, "Body",
+            nameof(CreateTemplateNode)
+        )]
         QMValueWithoutNamedTag,
         [Type<QuickMarkupValue>]
         [Rule(QMValueWithoutNamedTag, AS, VALUE, IDENTITY)]
@@ -572,6 +581,8 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         QuickMarkupValue? Key);
     static QuickMarkupParsedForNode CreateForNode(ParsedForHeader header, IQMNodeChild body)
         => new(header.VarType, header.VarName, header.Iterable, body, header.IndexVarName, header.Key);
+    static QuickMarkupParsedTemplateNode CreateTemplateNode(TypeDeclaration? VarType, string VarName, IQMNodeChild Body)
+        => new(VarType, VarName, Body);
     record class AwaitOutputInfo(TypeDeclaration? VarType, string? VarName);
     static QuickMarkupParsedAwaitBranch CreateAwaitBranch(AwaitBranchKind kind, AwaitOutputInfo? output, IQMNodeChild body)
         => new(kind, output?.VarType, output?.VarName, body);
