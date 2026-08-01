@@ -813,7 +813,14 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
 
         if (fragment.Children.Count != 1 || fragment.Children[0] is not QuickMarkupParsedTag rootTag)
         {
-            Error(fragment, $"Template body must contain exactly one element, but got {fragment.Children.Count}.");
+            if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedIfNode ifNode)
+                Error(ifNode, "Template body cannot be an if block because a template must always return the same single element, which cannot be swapped after returning.");
+            else if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedForNode forNode)
+                Error(forNode, "Template body cannot be a foreach block because a template must return exactly one element.");
+            else if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedAwaitNode awaitNode)
+                Error(awaitNode, "Template body cannot be an await block because a template must always return the same single element, which cannot be swapped after returning.");
+            else
+                Error(fragment, $"Template body must contain exactly one element, but got {fragment.Children.Count}.");
             foreach (var child in fragment.Children)
                 BindCollectionChildForDiagnostics(child, tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
             return ErrorRecoveryChild(tagInfo ?? new(null, "template", null, null, ChildrenModes.None));

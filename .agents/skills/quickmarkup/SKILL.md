@@ -292,7 +292,7 @@ Assign a `template` value to a template-typed property (e.g. `ItemTemplate`) for
 <ItemsControl ItemsSource=`Items` ItemTemplate=template (Person? person) { <TextBlock Text=`person?.Name` /> } />
 ```
 
-The body must contain **exactly one plain element**. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
+The body must contain **exactly one plain element**. `if`, `foreach`, and `await` blocks are not allowed in the body, because a template must always return the same single element that the framework materializes once. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
 
 The framework materializes the template per item and sets the element's `DataContext`. The parameter is bridged from `DataContext`, so the body must handle the value being `null` — the framework assigns `DataContext` **after** first materialization, so write null-safe expressions (`` `person?.Name` ``) or guard the initial render yourself.
 

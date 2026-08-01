@@ -258,10 +258,10 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"\)", State = LexerStates.PropsBeforeRootAndInsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         CloseBracket,
-        [Regex(@"\{", State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
+        [Regex(@"\{", nameof(HandleOpenCuryBracket), State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         OpenCuryBracket,
-        [Regex(@"\}", State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
+        [Regex(@"\}", nameof(HandleCloseCuryBracket), State = LexerStates.BeforeRoot | LexerStates.InsideQMOpenTag)]
         [TextmatePunctuationScope(PunctuationType.Bracket, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         CloseCuryBracket,
         [Regex(@"template", State = LexerStates.PropsAndInsideQMOpenTag, Order = (int)Order.KeywordAndSpecialSyntax)]
@@ -396,6 +396,30 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         Foriegn += MatchedText;
     }
     Stack<LexerStates> OpenTagStoredStates = [];
+    int TemplateBodyDepth;
+    private partial IToken<Tokens> HandleOpenCuryBracket()
+    {
+        if (CurrentState is LexerStates.InsideQMOpenTag)
+        {
+            TemplateBodyDepth = 1;
+            GoTo(LexerStates.BeforeRoot);
+        }
+        else if (TemplateBodyDepth > 0)
+        {
+            TemplateBodyDepth++;
+        }
+        return Make(Tokens.OpenCuryBracket);
+    }
+    private partial IToken<Tokens> HandleCloseCuryBracket()
+    {
+        if (TemplateBodyDepth > 0)
+        {
+            TemplateBodyDepth--;
+            if (TemplateBodyDepth == 0)
+                GoTo(LexerStates.InsideQMOpenTag);
+        }
+        return Make(Tokens.CloseCuryBracket);
+    }
     private partial IToken<Tokens> QMOpenTagOpenHandler()
     {
         OpenTagStoredStates.Push(CurrentState);
