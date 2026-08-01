@@ -135,5 +135,30 @@ static class CodeSnippetsExtension
                 );
                 """);
         }
+
+        public void AddDependencyPropertyBindBackDelegate(string targetDependencyObject, string dependencyPropertyName, string delegateInvocationStatement)
+        {
+            codeBuilder.AppendLine($$"""
+                {{targetDependencyObject}}.RegisterPropertyChangedCallback(
+                    {{dependencyPropertyName}},
+                    (_, _) => {
+                        {{delegateInvocationStatement.IndentWOF(1)}};
+                    }
+                );
+                """);
+        }
+
+        public void AddPropertyBindDelegate(ITypeSymbol? type, string propertyExpression, string delegateInvocationStatement, string disposableAddTarget = "QUICKMARKUP_DISPOSABLES")
+        {
+            codeBuilder.AppendLine($$"""
+                {{disposableAddTarget}}.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
+                            type is null ? "" : $"<{new FullType(type)}>"
+                        )}}(() => {
+                    return {{propertyExpression}};
+                }, QUICKMARUP_TEMPVALUE => {
+                    {{delegateInvocationStatement.IndentWOF(1)}};
+                }));
+                """);
+        }
     }
 }

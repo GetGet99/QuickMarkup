@@ -78,6 +78,9 @@ public partial class QuickMarkupLexer(ITextSeekable text, LexerStates initState 
         [Regex(@"<=>", State = LexerStates.InsideQMOpenTag)]
         [TextmateKeywordOperatorScope(OperatorType.Comparison, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         EqualArrowLeftRight,
+        [Regex(@"\+=>", State = LexerStates.InsideQMOpenTag)]
+        [TextmateKeywordOperatorScope(OperatorType.Assignment, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
+        PlusEqualArrowRight,
         [Regex(@"\+=", State = LexerStates.InsideQMOpenTag)]
         [TextmateKeywordOperatorScope(OperatorType.Assignment, Priority = (int)TextmateOrder.OperatorsAndPunctuations)]
         AddEqual,

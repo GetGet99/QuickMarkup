@@ -237,6 +237,7 @@ When you assign a **numeric or bool** literal to a property, the source generato
 |--------|-----------|---------|
 | `` =`expr` `` | One-way (source→UI) | `` Text=`Name` `` |
 | `` =>`var` `` | Bindback (UI→source) | `` SelectedValue=>`Choice` `` |
+| `` +=>`value => ...` `` | Bindback with `Action<T>` delegate | `` Text+=>`txt => Name = txt.Trim()` `` |
 | `` <=>`var` `` | Two-way | `` Value<=>`Amount` `` |
 
 You can combine one-way + bindback for preprocessing:

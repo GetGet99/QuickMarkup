@@ -83,6 +83,15 @@ public record class QMBinderEnumMemberUnknownError(AST Node, string TypeName, st
     public override string ToString() => base.ToString();
 }
 
+public record class QMBinderBindBackDelegateRequiresLambdaError(AST Node, string PropertyName)
+    : QMBinderError(Node, $"Bindback delegate '{PropertyName}+=>' requires a backtick C# lambda expression, e.g. `value => Target = Preprocess(value)`.");
+
+public record class QMBinderBindBackDelegateUnresolvedTypeError(AST Node, string PropertyName)
+    : QMBinderError(Node, $"Bindback delegate '{PropertyName}+=>' cannot resolve the property type to construct the delegate parameter type.");
+
+public record class QMBinderBindBackDelegateAttachedRequiresDependencyPropertyError(AST Node, string PropertyName)
+    : QMBinderError(Node, $"Bindback delegate '{PropertyName}+=>' on an attached property requires the attached property to be a dependency property.");
+
 static class QMDiagnosticSuggestion
 {
     public static string AppendSuggestions(string message, string[]? suggestions)

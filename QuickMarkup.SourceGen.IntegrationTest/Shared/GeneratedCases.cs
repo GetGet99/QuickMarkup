@@ -433,6 +433,24 @@ public partial class DependencyPropertyBindBackCase : TestRoot;
 public partial class DependencyPropertyTwoWayCase : TestRoot;
 
 [QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    bool SharedHolding = true;
+    <root>
+        <TestDependencyHoldButton IsHolding+=>`holding => SharedHolding = !holding` />
+    </root>
+    """)]
+public partial class BindBackDelegateCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    bool SharedHolding = true;
+    <root>
+        <TestComputedHoldButton IsHolding+=>`holding => SharedHolding = !holding` />
+    </root>
+    """)]
+public partial class BindBackDelegateNonDependencyCase : TestRoot;
+
+[QuickMarkup("""
     using System.Collections.Generic;
     using QuickMarkup.SourceGen.Test.Shared;
     NullableRefItem? NullableItem = null;
@@ -695,6 +713,16 @@ public partial class ItemTemplateBareCase : TestRoot;
     </root>
     """)]
 public partial class TemplateBindBackCase : TestRoot;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestItemsControl ItemTemplate=template (TestExpandingItem? item) {
+            <TestDependencyHoldButton IsHolding+=>`holding => item!.IsHolding = holding` />
+        } />
+    </root>
+    """)]
+public partial class TemplateBindBackDelegateCase : TestRoot;
 
 [QuickMarkup("""
     using QuickMarkup.SourceGen.Test.Shared;

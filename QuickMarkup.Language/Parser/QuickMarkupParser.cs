@@ -279,6 +279,7 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
         [Type<ParsedPropertyOperator>]
         [Rule(Terminal.Equal, WITHPARAM, VALUE, ParsedPropertyOperator.Assign, IDENTITY)]
         [Rule(Terminal.EqualArrowRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindBack, IDENTITY)]
+        [Rule(Terminal.PlusEqualArrowRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindBackDelegate, IDENTITY)]
         [Rule(Terminal.EqualArrowLeftRight, WITHPARAM, VALUE, ParsedPropertyOperator.BindTwoWay, IDENTITY)]
         [Rule(Terminal.AddEqual, WITHPARAM, VALUE, ParsedPropertyOperator.AddAssign, IDENTITY)]
         PropertyOperator,

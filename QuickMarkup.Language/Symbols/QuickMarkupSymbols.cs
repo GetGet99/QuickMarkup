@@ -23,6 +23,7 @@ public enum BindingModes
     OneTime, // =
     SourceToTarget, // = when used with foreign value
     TargetToSource, // =>
+    TargetToSourceDelegate, // +=>
     TwoWay, // in the future, perhaps <=>
 }
 

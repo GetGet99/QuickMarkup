@@ -459,6 +459,19 @@ double Value;
 </root>
 ```
 
+#### Bindback delegate
+
+If you need full control over how the incoming value is written back, use `` Property+=>`value => ...` `` instead. The backtick expression must be a lambda of type `Action<T>`, where `T` is the property's type; it is invoked with the new property value whenever the property changes.
+
+```cs
+string Name;
+<root>
+    <TextBox Text+=>`txt => Name = txt.Trim()` />
+</root>
+```
+
+Any time the user changes the text, the lambda runs with the updated text, so you can transform, validate, or route the value before assigning it.
+
 #### QuickMarkup Tags inside QuickMarkup tag.
 
 You can use QuickMarkup tags as property value.

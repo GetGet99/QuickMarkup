@@ -311,6 +311,9 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             case BindingModes.TargetToSource:
                 AddTargetToSource();
                 break;
+            case BindingModes.TargetToSourceDelegate:
+                AddTargetToSourceDelegate();
+                break;
             case BindingModes.TwoWay:
                 AddSourceToTarget();
                 AddTargetToSource();
@@ -340,6 +343,23 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                     addProp.PropertyType,
                     CGen(addProp.Value),
                     property,
+                    disposableAddTarget: disposableAddTarget
+                );
+        }
+
+        void AddTargetToSourceDelegate()
+        {
+            if (addProp.IsDependencyProperty)
+                codeBuilder.AddDependencyPropertyBindBackDelegate(
+                    TargetObjectForPropertyPath(target, addProp.PropertyName),
+                    addProp.DependencyPropertyName,
+                    CGenBindBackDelegateInvoke(addProp.Value, property)
+                );
+            else
+                codeBuilder.AddPropertyBindDelegate(
+                    addProp.PropertyType,
+                    property,
+                    CGenBindBackDelegateInvoke(addProp.Value, "QUICKMARUP_TEMPVALUE"),
                     disposableAddTarget: disposableAddTarget
                 );
         }
@@ -380,6 +400,13 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                         $"{target}",
                         disposableAddTarget: disposableAddTarget
                     );
+                break;
+            case BindingModes.TargetToSourceDelegate:
+                codeBuilder.AddDependencyPropertyBindBackDelegate(
+                    target,
+                    addProp.DependencyPropertyName,
+                    CGenBindBackDelegateInvoke(addProp.Value, $"{addProp.AttachedTypeFullName}.Get{addProp.PropertyName}({target})")
+                );
                 break;
             case BindingModes.TwoWay:
                 codeBuilder.AddAttachedPropertyBindOneWay(
@@ -1067,6 +1094,27 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             QMValueSymbol<ITypeSymbol?> symbol => $"{symbol.ValueInFinalCode} = {target}",
             _ => throw new NotImplementedException($"Bind-back write does not support {value.GetType().Name}.")
         };
+    }
+
+    /// <summary>
+    /// Generates the delegate invocation statement used by bind-back delegate (<c>+=&gt;</c>)
+    /// bindings. Captured scoped locals (e.g. template parameters) are declared as locals so
+    /// the delegate body resolves them against the live references, mirroring event handlers.
+    /// </summary>
+    string CGenBindBackDelegateInvoke(IQMValueSymbol value, string propertyValueExpression)
+    {
+        if (value is not QMValueSymbol<ITypeSymbol?> { ValueInFinalCode: var code } qv)
+            throw new NotImplementedException($"Bind-back delegate does not support {value.GetType().Name}.");
+
+        var invocation = $"((global::System.Action<{TypeName(qv.Type)}>)({code}))({propertyValueExpression})";
+        if (qv.CapturedLocalNames is not { Count: > 0 })
+            return invocation;
+
+        var locals = CGenCapturedLocalDeclarations(qv);
+        return $$"""
+            {{locals.TrimEnd()}}
+            {{invocation}}
+            """;
     }
 
     List<(string Name, string Ref)> GetCapturedLocals(QMValueSymbol<ITypeSymbol?> value)

@@ -23,6 +23,26 @@
         },
         {
           "name": "keyword.declaration",
+          "match": "\\brequired\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bprovide\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\binject\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\bas\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\basync\\b"
+        },
+        {
+          "name": "keyword.declaration",
           "match": "\\bprivate\\b"
         },
         {
@@ -83,6 +103,22 @@
         },
         {
           "name": "keyword.control",
+          "match": "\\bawait\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bwith\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bcatch\\b"
+        },
+        {
+          "name": "keyword.control",
+          "match": "\\bthen\\b"
+        },
+        {
+          "name": "keyword.control",
           "match": "\\bif\\b"
         },
         {
@@ -92,6 +128,10 @@
         {
           "name": "keyword.control",
           "match": "\\bin\\b"
+        },
+        {
+          "name": "keyword.declaration",
+          "match": "\\btemplate\\b"
         },
         {
           "name": "keyword.operator.assignment",
@@ -104,6 +144,10 @@
         {
           "name": "keyword.operator.comparison",
           "match": "\u003C=\u003E"
+        },
+        {
+          "name": "keyword.operator.assignment",
+          "match": "\\\u002B=\u003E"
         },
         {
           "name": "keyword.operator.assignment",

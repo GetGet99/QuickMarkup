@@ -306,6 +306,38 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void BindBackDelegateProcessesDependencyPropertyTarget()
+    {
+        var page = new BindBackDelegateCase();
+        var holdButton = TestTreeAssert.Child<TestDependencyHoldButton>(page.Children, 0);
+
+        Assert.IsTrue(page.SharedHolding);
+
+        holdButton.IsHolding = true;
+        Assert.IsFalse(page.SharedHolding);
+
+        holdButton.IsHolding = false;
+        Assert.IsTrue(page.SharedHolding);
+    }
+
+    [TestMethod]
+    public void BindBackDelegateProcessesComputedTarget()
+    {
+        var page = new BindBackDelegateNonDependencyCase();
+        var holdButton = TestTreeAssert.Child<TestComputedHoldButton>(page.Children, 0);
+
+        Assert.IsTrue(page.SharedHolding);
+
+        holdButton.IsHoldingInput = true;
+        ReactiveScheduler.Tick();
+        Assert.IsFalse(page.SharedHolding);
+
+        holdButton.IsHoldingInput = false;
+        ReactiveScheduler.Tick();
+        Assert.IsTrue(page.SharedHolding);
+    }
+
+    [TestMethod]
     public void TwoWayDependencyPropertyBindingSynchronizesBothDirections()
     {
         var page = new DependencyPropertyTwoWayCase();
@@ -752,6 +784,34 @@ public sealed class SourceGenBehaviorTests
     public void TemplateBindBackWritesBackToCapturedTemplateItem()
     {
         var page = new TemplateBindBackCase();
+        var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
+
+        var first = new TestExpandingItem { IsHolding = false };
+        control.Materialize(first);
+        ReactiveScheduler.Tick();
+
+        var firstButton = TestTreeAssert.Child<TestDependencyHoldButton>(control.Items, 0);
+        Assert.IsFalse(first.IsHolding);
+
+        firstButton.IsHolding = true;
+
+        Assert.IsTrue(first.IsHolding);
+
+        var second = new TestExpandingItem { IsHolding = false };
+        control.Materialize(second);
+        ReactiveScheduler.Tick();
+
+        var secondButton = TestTreeAssert.Child<TestDependencyHoldButton>(control.Items, 1);
+        secondButton.IsHolding = true;
+
+        Assert.IsTrue(first.IsHolding);
+        Assert.IsTrue(second.IsHolding);
+    }
+
+    [TestMethod]
+    public void TemplateBindBackDelegateWritesBackToCapturedTemplateItem()
+    {
+        var page = new TemplateBindBackDelegateCase();
         var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
 
         var first = new TestExpandingItem { IsHolding = false };

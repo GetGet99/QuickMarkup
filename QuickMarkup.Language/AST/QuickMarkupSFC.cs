@@ -82,6 +82,7 @@ public enum ParsedPropertyOperator
     None,          // Extension or "True" boolean
     Assign,        // =
     BindBack,      // =>
+    BindBackDelegate, // +=>
     BindTwoWay,    // <=>
     AddAssign      // +=
 }

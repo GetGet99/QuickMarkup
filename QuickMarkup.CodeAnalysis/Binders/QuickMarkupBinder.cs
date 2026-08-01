@@ -591,6 +591,34 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                         ));
                         return;
                     }
+                case ParsedPropertyOperator.BindBackDelegate:
+                    {
+                        if (property.Value is not QuickMarkupForeign lambdaForeign)
+                        {
+                            Error(new QMBinderBindBackDelegateRequiresLambdaError(property, property.Key));
+                            return;
+                        }
+                        if (attachedValueType is null)
+                        {
+                            Error(new QMBinderBindBackDelegateUnresolvedTypeError(property, property.Key));
+                            return;
+                        }
+                        if (!isDep)
+                        {
+                            Error(new QMBinderBindBackDelegateAttachedRequiresDependencyPropertyError(property, property.Key));
+                            return;
+                        }
+                        targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
+                            attachedValueType,
+                            attachedTypeFullName,
+                            propName,
+                            AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(attachedValueType, lambdaForeign.Code)),
+                            BindingModes.TargetToSourceDelegate,
+                            isDep,
+                            depName
+                        ));
+                        return;
+                    }
                 default: // Assign
                     {
                         var attachedValue = Bind(property.Value, attachedValueType, tagInfo);
@@ -623,7 +651,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             propertyTargetType = tagInfo.ComponentOutputType;
         }
         if (targetPropSymbol is null &&
-            property.Operator is ParsedPropertyOperator.Assign or ParsedPropertyOperator.BindBack or ParsedPropertyOperator.BindTwoWay &&
+            property.Operator is ParsedPropertyOperator.Assign or ParsedPropertyOperator.BindBack or ParsedPropertyOperator.BindBackDelegate or ParsedPropertyOperator.BindTwoWay &&
             !property.IsKeyForeign)
         {
             ErrorUnknownProperty(property, tagInfo, property.Key);
@@ -731,6 +759,34 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                     depName,
                     targetPropertyName
                 ));
+                break;
+            case ParsedPropertyOperator.BindBackDelegate:
+                // <QM Value+=>`value => Target = Preprocess(value)` />
+                if (property.Value is not QuickMarkupForeign lambdaForeign)
+                {
+                    Error(new QMBinderBindBackDelegateRequiresLambdaError(property, property.Key));
+                    break;
+                }
+                if (targetType is null)
+                {
+                    Error(new QMBinderBindBackDelegateUnresolvedTypeError(property, property.Key));
+                    break;
+                }
+                {
+                    var depInfo = resolver.TryGetDependencyProperty(
+                        propertyTargetType,
+                        property.Key,
+                        out var dependencyPropertyName);
+                    targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
+                        targetType,
+                        targetPropertyName,
+                        AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(targetType, lambdaForeign.Code)),
+                        BindingModes.TargetToSourceDelegate,
+                        depInfo,
+                        dependencyPropertyName ?? "",
+                        targetPropertyName
+                    ));
+                }
                 break;
             case ParsedPropertyOperator.None:
                 // extension or boolean value

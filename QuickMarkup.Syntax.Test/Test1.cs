@@ -501,6 +501,59 @@ namespace QuickMarkup.Syntax.Test
         }
 
         [TestMethod]
+        public void Parse_PropertyBindBackDelegate()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Text+=>`txt => Target = Preprocess(txt)` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Text", prop.Key);
+            Assert.AreEqual(ParsedPropertyOperator.BindBackDelegate, prop.Operator);
+            var foreign = prop.Value as QuickMarkupForeign;
+            Assert.IsNotNull(foreign);
+            Assert.AreEqual("txt => Target = Preprocess(txt)", foreign.Code);
+        }
+
+        [TestMethod]
+        public void Parse_AttachedPropertyBindBackDelegate()
+        {
+            var sfc = Parse("""
+                <root>
+                    <Test Grid.Row+=>`row => Target = row` />
+                </root>
+                """);
+
+            Assert.IsNotNull(sfc.Template?.Children);
+            var tag = sfc.Template.Children[0] as QuickMarkupParsedTag;
+            Assert.IsNotNull(tag);
+            var prop = tag.InlineMembers[0] as QuickMarkupParsedProperty;
+            Assert.IsNotNull(prop);
+            Assert.AreEqual("Grid.Row", prop.Key);
+            Assert.AreEqual(ParsedPropertyOperator.BindBackDelegate, prop.Operator);
+            Assert.IsTrue(prop.IsAttachedPropertyKey);
+            Assert.IsInstanceOfType<QuickMarkupForeign>(prop.Value);
+        }
+
+        [TestMethod]
+        public void Lex_BindBackDelegateOperator()
+        {
+            var output = Lex("<Test Text+=>`txt => Target = txt` />", QuickMarkupLexer.LexerStates.BeforeRoot).ToArray();
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagOpen, output[0].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[1].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Identifier, output[2].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.PlusEqualArrowRight, output[3].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.Foreign, output[4].TokenType);
+            Assert.AreEqual(QuickMarkupLexer.Tokens.QMOpenTagCloseAuto, output[5].TokenType);
+        }
+
+        [TestMethod]
         public void Parse_AttachedPropertyChildTag_IntValue()
         {
             var sfc = Parse("""
