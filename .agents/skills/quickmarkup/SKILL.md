@@ -284,15 +284,21 @@ On the initial run `InputLabel` will be null, but after `InputLabel` is set, `` 
 <NumberBox NumberFormatter=<DecimalFormatter IntegerDigits=1 /> />
 ```
 
-### Templates (ItemTemplate)
+### Templates (DataTemplate)
 
-Assign a `template` value to a template-typed property (e.g. `ItemTemplate`) for controls that use the `ItemsSource` + `ItemTemplate` contract:
+Support: Uno Platform only. WASDK and UWP target project are not supported.
+
+Assign a `template` value to a DataTemplate-typed property for controls that use the `ItemsSource` + `ItemTemplate` contract:
 
 ```quickmarkup
 <ItemsControl ItemsSource=`Items` ItemTemplate=template (Person? person) { <TextBlock Text=`person?.Name` /> } />
+// or without fragment works too
+<ItemsControl ItemTemplate=template (Person? person) <TextBlock Text=`person?.Name` /> />
 ```
 
-The body must contain **exactly one plain element**. `if`, `foreach`, and `await` blocks are not allowed in the body, because a template must always return the same single element that the framework materializes once. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
+The direct body must resolve to **exactly one plain element** — nested fragments must still collapse to a single element. `if`, `foreach`, and `await` blocks are not allowed in the body, because a template must always return the same single element that the framework materializes once. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
+
+When the element is first created, the input value will be default value (ie. `null` for reference types or `default(YourValueType)` for value types) due to framework limitation. Ensure you guard null case properly.
 
 The framework materializes the template per item and sets the element's `DataContext`. The parameter is bridged from `DataContext`, so the body must handle the value being `null` — the framework assigns `DataContext` **after** first materialization, so write null-safe expressions (`` `person?.Name` ``) or guard the initial render yourself.
 

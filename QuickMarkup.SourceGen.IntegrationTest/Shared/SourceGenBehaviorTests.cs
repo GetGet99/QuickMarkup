@@ -731,6 +731,24 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ItemTemplateBareBody_MaterializesWithDataContextBinding()
+    {
+        var page = new ItemTemplateBareCase();
+        var control = TestTreeAssert.Child<TestItemsControl>(page.Children, 0);
+
+        control.Materialize(new TestItem(1, "one"));
+        ReactiveScheduler.Tick();
+
+        var first = TestTreeAssert.Child<TestText>(control.Items, 0);
+        Assert.AreEqual("one", first.Text);
+
+        control.Materialize(new TestItem(2, "two"));
+        ReactiveScheduler.Tick();
+
+        Assert.AreEqual("two", TestTreeAssert.Child<TestText>(control.Items, 1).Text);
+    }
+
+    [TestMethod]
     public void UnicodeInStringLiteral_RendersCorrectCharacters()
     {
         var page = new UnicodeStringCase();

@@ -104,8 +104,8 @@ public sealed class TemplateBinderDiagnosticTests
             """);
 
         Assert.IsTrue(
-            analysis.Diagnostics.Any(d => d.Message.Contains("if block")),
-            $"Expected 'if block' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+            analysis.Diagnostics.Any(d => d.Message.Contains("if is not allowed here")),
+            $"Expected 'if is not allowed here' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
     }
 
     [TestMethod]
@@ -116,7 +116,43 @@ public sealed class TemplateBinderDiagnosticTests
             """);
 
         Assert.IsFalse(
-            analysis.Diagnostics.Any(d => d.Message.Contains("if block")),
-            $"Did not expect 'if block' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+            analysis.Diagnostics.Any(d => d.Message.Contains("if is not allowed here")),
+            $"Did not expect 'if is not allowed here' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void TemplateBody_NestedFragmentsWithIf_ReportsDiagnostic()
+    {
+        var analysis = Analyze("""
+            <TestItemsControl ItemTemplate=template (TestItem? item) { { { if (`true`) { <TestText /> } } } } />
+            """);
+
+        Assert.IsTrue(
+            analysis.Diagnostics.Any(d => d.Message.Contains("if is not allowed here")),
+            $"Expected 'if is not allowed here' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void TemplateBody_NestedFragmentsWithPlainElement_NoDiagnostic()
+    {
+        var analysis = Analyze("""
+            <TestItemsControl ItemTemplate=template (TestItem? item) { { <TestText Text=`item?.Text` /> } } />
+            """);
+
+        Assert.IsFalse(
+            analysis.Diagnostics.Any(d => d.Message.Contains("single fixed element")),
+            $"Did not expect single-fixed-element diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void TemplateBody_BareElementWithoutFragment_NoDiagnostic()
+    {
+        var analysis = Analyze("""
+            <TestItemsControl ItemTemplate=template (TestItem? item) <TestText Text=`item?.Text` /> />
+            """);
+
+        Assert.IsFalse(
+            analysis.Diagnostics.Any(d => d.Message.Contains("single fixed element")),
+            $"Did not expect single-fixed-element diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
     }
 }

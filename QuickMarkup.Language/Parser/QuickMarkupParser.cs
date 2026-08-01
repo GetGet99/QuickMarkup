@@ -540,6 +540,15 @@ public partial class QuickMarkupParser : ParserBase<Terminal, NonTerminal, Quick
             ParsedFragmentNode, AS, "Body",
             nameof(CreateTemplateNode)
         )]
+        [Rule(
+            Terminal.Template,
+            Terminal.OpenBracket,
+            TypeDecl, AS, "VarType",
+            Terminal.Identifier, AS, "VarName",
+            Terminal.CloseBracket,
+            ParsedTag, AS, "Body",
+            nameof(CreateTemplateNode)
+        )]
         QMValueWithoutNamedTag,
         [Type<QuickMarkupValue>]
         [Rule(QMValueWithoutNamedTag, AS, VALUE, IDENTITY)]

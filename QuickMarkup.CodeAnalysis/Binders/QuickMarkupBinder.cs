@@ -328,11 +328,19 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
     {
         return child switch
         {
+            QuickMarkupParsedIfNode ifNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+                => ErrorImmutableSingleIf(ifNode, tagInfo),
+            QuickMarkupParsedForNode forNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+                => ErrorImmutableSingleFor(forNode, tagInfo),
+            QuickMarkupParsedAwaitNode awaitNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+                => ErrorImmutableSingleAwait(awaitNode, tagInfo),
             QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
             QuickMarkupParsedAwaitNode awaitNode => BindSingleChildAwait(awaitNode, tagInfo),
             QuickMarkupParsedFragmentNode fragment => BindSingleChildFragment(fragment, tagInfo),
             QuickMarkupParsedTag tag => BindSingleChildTag(tag),
+            QuickMarkupValue val when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+                => ErrorImmutableSingleValue(val, tagInfo),
             QuickMarkupValue val => Bind(val, tagInfo.ChildrenType, tagInfo),
             _ => throw new NotImplementedException($"Unsupported child node: {child.GetType().Name}")
         };
@@ -790,7 +798,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             Error(template, "Template value requires a template-like target property.");
         }
 
-        var body = BindTemplateBody(template, tagInfo);
+        var body = BindTemplateBody(template);
 
         return new QMTemplateNodeSymbol<ITypeSymbol?>(
             paramType?.WithNullableAnnotation(
@@ -803,35 +811,16 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             templateType);
     }
 
-    IQMNodeChildSymbol BindTemplateBody(QuickMarkupParsedTemplateNode template, QMBinderTagInfo? tagInfo)
+    IQMNodeChildSymbol BindTemplateBody(QuickMarkupParsedTemplateNode template)
     {
-        if (template.Body is not QuickMarkupParsedFragmentNode fragment)
-        {
-            Error(template, "Template body must be a fragment.");
-            return ErrorRecoveryChild(tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
-        }
-
-        if (fragment.Children.Count != 1 || fragment.Children[0] is not QuickMarkupParsedTag rootTag)
-        {
-            if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedIfNode ifNode)
-                Error(ifNode, "Template body cannot be an if block because a template must always return the same single element, which cannot be swapped after returning.");
-            else if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedForNode forNode)
-                Error(forNode, "Template body cannot be a foreach block because a template must return exactly one element.");
-            else if (fragment.Children.Count == 1 && fragment.Children[0] is QuickMarkupParsedAwaitNode awaitNode)
-                Error(awaitNode, "Template body cannot be an await block because a template must always return the same single element, which cannot be swapped after returning.");
-            else
-                Error(fragment, $"Template body must contain exactly one element, but got {fragment.Children.Count}.");
-            foreach (var child in fragment.Children)
-                BindCollectionChildForDiagnostics(child, tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
-            return ErrorRecoveryChild(tagInfo ?? new(null, "template", null, null, ChildrenModes.None));
-        }
-
         scopedLocalNames.Push(template.VarName);
-        var body = Bind(rootTag);
+        var body = BindSingleChildNode(
+            template.Body,
+            new QMBinderTagInfo(null, "template", null, null, ChildrenModes.ImmutableSingle));
         scopedLocalNames.Pop();
 
-        if (body.ComponentKind is not QMComponentKind.None)
-            Error(rootTag, "Template body must be a plain element, not a component.");
+        if (body is QMNodeSymbol<ITypeSymbol?> node && node.ComponentKind is not QMComponentKind.None)
+            Error((AST.AST)template.Body, "Template body must be a plain element, not a component.");
         return body;
     }
 
@@ -976,6 +965,26 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
     {
         Error(node, "foreach is not allowed in a single-child content position.");
         _ = Bind(node, tagInfo);
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorImmutableSingleIf(QuickMarkupParsedIfNode node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "if is not allowed here: a single fixed element is required that cannot be swapped at runtime.");
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorImmutableSingleFor(QuickMarkupParsedForNode node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "foreach is not allowed here: a single fixed element is required.");
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorImmutableSingleAwait(QuickMarkupParsedAwaitNode node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "await is not allowed here: a single fixed element is required that cannot be swapped at runtime.");
+        return ErrorRecoveryChild(tagInfo);
+    }
+    IQMNodeChildSymbol ErrorImmutableSingleValue(QuickMarkupValue node, QMBinderTagInfo tagInfo)
+    {
+        Error(node, "A single element is required here; a value expression is not allowed.");
         return ErrorRecoveryChild(tagInfo);
     }
     IQMNodeChildSymbol ErrorRecoveryChild(QMBinderTagInfo tagInfo)

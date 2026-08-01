@@ -14,7 +14,8 @@ public enum ChildrenModes
 {
     None,
     Assignment,
-    Add
+    Add,
+    ImmutableSingle
 }
 
 public enum BindingModes

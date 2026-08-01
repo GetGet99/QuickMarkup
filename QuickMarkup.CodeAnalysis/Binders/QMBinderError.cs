@@ -30,6 +30,7 @@ public record class QMBinderChildrenTooMany(AST Node, QMBinderTagInfo ParentTagI
             ChildrenModes.None => "no child elements",
             ChildrenModes.Assignment => "a single child",
             ChildrenModes.Add => "any number of children",
+            ChildrenModes.ImmutableSingle => "a single fixed element",
             _ => "unknown number of children"
         };
 }
