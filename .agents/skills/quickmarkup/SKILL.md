@@ -71,6 +71,22 @@ References auto-notify the UI on change. Computed variables cache and re-evaluat
 
 References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed. Async computed gets `*Async` backing field (`AsyncComputed<T>`), plus `*Status` (`AsyncComputedState`) and `*Failure` (`Exception?`) properties. The value property throws if not yet loaded — check `*Status` first.
 
+### Generic types
+
+If you want to use generics inside reference declaration, wrap the type in `` `backticks` ``.
+
+```
+`MyGenericType<int>?` MyData;
+`ObservableCollection<MyType>` Items = `new()`;
+`List<MyType>` Items2 = `new()`;
+```
+
+Collection notes: do note that by putting collections inside here, would generate `Reference<ObservableCollection<MyType>> ItemsProp { get; }` property (with `ObservableCollection<MyType> Items { get; set; }`).
+
+Depending on what you mean, you may either use:
+- Declare inside QuickMarkup if you expect parents to replace the collection or provide their own collection.
+- Declare inside C# as `ObservableCollection<MyType> Items { get; } = new()` if you want the class to own the collection.
+
 ## Required Properties
 
 Mark a reference declaration with the `required` keyword to make it a **required** for consumers to provide:
