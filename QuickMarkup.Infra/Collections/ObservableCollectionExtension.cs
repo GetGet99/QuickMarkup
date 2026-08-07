@@ -20,7 +20,7 @@ public static class ObservableCollectionExtension
         /// var prop = myCollection.ReactiveProp;
         /// var sample1 = Computed(() => ReactiveProp.Value.Count); // this is reactive
         /// var collection2 = myCollection.ReactiveProp.Value;
-        /// var sample2 = Computed(() => collection2); // this is NOT reactive
+        /// var sample2 = Computed(() => collection2.Count); // this is NOT reactive and will not work as expected
         /// </code>
         /// </remarks>
         public IReference<ObservableCollection<T>> ReactiveProp
@@ -45,7 +45,7 @@ public static class ObservableCollectionExtension
         /// <code>
         /// var sample1 = Computed(() => myCollection.Reactive.Count); // this is reactive
         /// var collection2 = myCollection.Reactive;
-        /// var sample2 = Computed(() => collection2); // this is NOT reactive
+        /// var sample2 = Computed(() => collection2.Count); // this is NOT reactive and will not work as expected
         /// </code>
         /// </remarks>
         public ObservableCollection<T> Reactive
