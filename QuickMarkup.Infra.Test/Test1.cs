@@ -1,5 +1,6 @@
 ﻿using QuickMarkup.Infra;
 
+#pragma warning disable CS0618
 namespace QuickMarkup.Infra.Test
 {
     [TestClass]

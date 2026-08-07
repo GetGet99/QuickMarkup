@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace QuickMarkup.Infra.Collections;
 
-public class ReactiveList<T> : IList<T>, IReference
+public class ReactiveList<T> : IList<T>, IReadOnlyList<T>, IReference
 {
     readonly List<T> backingList = [];
 

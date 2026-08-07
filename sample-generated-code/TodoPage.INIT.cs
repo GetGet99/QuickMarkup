@@ -77,9 +77,9 @@ partial class TodoPage {
             () => new global::QuickMarkup.Infra.FragmentBlock<global::Microsoft.UI.Xaml.UIElement>(
             new global::QuickMarkup.Infra.ReactiveScope(),
             (QUICKMARKUP_NODE_16, QUICKMARKUP_NODE_17) => {
-                QUICKMARKUP_NODE_16.AddBlock(global::QuickMarkup.Infra.ForBlock.Create(
+                QUICKMARKUP_NODE_16.AddBlock(global::QuickMarkup.Infra.Blocks.ForBlock.Create(
                     new global::QuickMarkup.Infra.ReactiveScope(),
-                    Todos,
+                    () => Todos,
                     (QUICKMARKUP_NODE_19, QUICKMARKUP_NODE_18) => new global::QuickMarkup.Infra.FragmentBlock<global::Microsoft.UI.Xaml.UIElement>(
                     new global::QuickMarkup.Infra.ReactiveScope(),
                     (QUICKMARKUP_NODE_20, QUICKMARKUP_NODE_21) => {

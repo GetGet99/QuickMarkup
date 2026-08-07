@@ -481,6 +481,48 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void ForeachReactiveListReconcilesChildren()
+    {
+        var page = new ForeachReactiveListCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "one", "two");
+
+        page.Items.Add(new(3, "three"));
+        ReactiveScheduler.Tick();
+        ReactiveScheduler.Tick();
+
+        TestTreeAssert.Texts(panel.Children, "one", "two", "three");
+
+        page.Items.RemoveAt(1);
+        ReactiveScheduler.Tick();
+        ReactiveScheduler.Tick();
+
+        TestTreeAssert.Texts(panel.Children, "one", "three");
+    }
+
+    [TestMethod]
+    public void ForeachLinqOverReactiveListReconcilesChildren()
+    {
+        var page = new ForeachLinqOverReactiveListCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        TestTreeAssert.Texts(panel.Children, "two", "three");
+
+        page.Items.Add(new(4, "four"));
+        ReactiveScheduler.Tick();
+        ReactiveScheduler.Tick();
+
+        TestTreeAssert.Texts(panel.Children, "two", "three", "four");
+
+        page.Items.RemoveAt(0);
+        ReactiveScheduler.Tick();
+        ReactiveScheduler.Tick();
+
+        TestTreeAssert.Texts(panel.Children, "two", "three", "four");
+    }
+
+    [TestMethod]
     public void ForeachCapturedEventHandlerKeepsDelegateType()
     {
         ForeachEventCaptureCase.FirstClickCount = 0;

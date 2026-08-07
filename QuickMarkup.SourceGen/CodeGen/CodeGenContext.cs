@@ -647,17 +647,17 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             var keyFactory = CGenForKeyFactory(forNode);
             if (forNode.IndexVarName is null)
                 return $$"""
-                global::QuickMarkup.Infra.ForBlock.Create(
+                global::QuickMarkup.Infra.Blocks.ForBlock.Create(
                     new global::QuickMarkup.Infra.ReactiveScope(),
-                    {{source}},
+                    () => {{source}},
                     {{keyFactory}},
                     ({{itemRef}}) => {{body}})
                 """;
 
             return $$"""
-            global::QuickMarkup.Infra.ForBlock.Create(
+            global::QuickMarkup.Infra.Blocks.ForBlock.Create(
                 new global::QuickMarkup.Infra.ReactiveScope(),
-                {{source}},
+                () => {{source}},
                 {{keyFactory}},
                 ({{indexRef}}, {{itemRef}}) => {{body}})
             """;
@@ -665,16 +665,16 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
 
         if (forNode.IndexVarName is null)
             return $$"""
-            global::QuickMarkup.Infra.ForBlock.Create(
+            global::QuickMarkup.Infra.Blocks.ForBlock.Create(
                 new global::QuickMarkup.Infra.ReactiveScope(),
-                {{source}},
+                () => {{source}},
                 ({{itemRef}}) => {{body}})
             """;
 
         return $$"""
-        global::QuickMarkup.Infra.ForBlock.Create(
+        global::QuickMarkup.Infra.Blocks.ForBlock.Create(
             new global::QuickMarkup.Infra.ReactiveScope(),
-            {{source}},
+            () => {{source}},
             ({{indexRef}}, {{itemRef}}) => {{body}})
         """;
     }

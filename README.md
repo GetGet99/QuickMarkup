@@ -28,6 +28,7 @@ QuickMarkup currently provides the best experience on WinUI 3 and UWP, with expe
 ```cs
 [QuickMarkup("""
     using static QuickMarkup.Infra.QuickRefs;
+    using QuickMarkup.Infra.Collections;
 
     string Input = "";
 
@@ -80,7 +81,7 @@ QuickMarkup currently provides the best experience on WinUI 3 and UWP, with expe
     """)]
 public partial class TodoPage : Page
 {
-    ObservableCollection<string> Todos = [
+    ReactiveList<string> Todos = [
         "Ship QuickMarkup",
         "Write documentation"
     ];

@@ -1,7 +1,9 @@
 using System.Collections.Specialized;
 
+#pragma warning disable CS0618
 namespace QuickMarkup.Infra;
 
+[Obsolete("Use QuickMarkup.Infra.Blocks.ForBlock instead.")]
 public sealed class ForBlock<TSrc, TElement> : ForBlock<TSrc, TElement, int>
 {
     public ForBlock(
@@ -49,6 +51,7 @@ public sealed class ForBlock<TSrc, TElement> : ForBlock<TSrc, TElement, int>
     }
 }
 
+[Obsolete("Use QuickMarkup.Infra.Blocks.ForBlock instead.")]
 public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
 {
     readonly ReactiveScope controllerScope;
@@ -294,6 +297,7 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
     }
 }
 
+[Obsolete("Use QuickMarkup.Infra.Blocks.ForBlock instead.")]
 public static class ForBlock
 {
     public static ForBlock<TSrc, TElement, int> Create<TSrc, TElement>(

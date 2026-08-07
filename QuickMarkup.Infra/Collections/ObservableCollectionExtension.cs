@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 
-namespace QuickMarkup.Infra;
+namespace QuickMarkup.Infra.Collections;
 
 public static class ObservableCollectionExtension
 {
@@ -38,7 +38,8 @@ public class ObservableCollectionCountReference<T> : IReference<int>
     readonly ObservableCollection<T> collection;
     public ObservableCollectionCountReference(ObservableCollection<T> collection)
     {
-        ArgumentNullException.ThrowIfNull(collection);
+        if (collection is null)
+            throw new ArgumentNullException(nameof(collection));
         Value = collection.Count;
         this.collection = collection;
     }

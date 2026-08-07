@@ -649,7 +649,7 @@ Ranges are declared with `start..end` or `..end` syntax where `start` and `end` 
 
 ##### Loop over iterables
 
-Iterable loops are backed by reactive collection blocks when the source collection implements `INotifyCollectionChanged`, such as `ObservableCollection<T>`. When that collection changes, QuickMarkup reconciles the generated children. Plain arrays and other non-notifying enumerables can still be rendered initially, but they will not notify QuickMarkup about later insert, remove, replace, or move operations.
+Iterable loops are backed by reactive collection blocks when the source collection implements `INotifyCollectionChanged`, such as `ObservableCollection<T>`, **or** is a reference-tracked collection such as `ReactiveList<T>`. When that collection changes, QuickMarkup reconciles the generated children. Plain arrays and other non-notifying enumerables can still be rendered initially, but they will not notify QuickMarkup about later insert, remove, replace, or move operations.
 
 ```cs
 <setup>

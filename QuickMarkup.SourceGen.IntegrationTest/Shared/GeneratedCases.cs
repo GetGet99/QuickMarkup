@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
+using QuickMarkup.Infra.Collections;
 
 namespace QuickMarkup.SourceGen.Test.Shared;
 
@@ -544,6 +545,45 @@ public partial class ForeachCase : TestRoot
     [
         new(1, "one"),
         new(2, "two")
+    ];
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestPanel>
+            foreach (var item in `Items`) {
+                <TestText Text=`item.Text` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class ForeachReactiveListCase : TestRoot
+{
+    public ReactiveList<TestItem> Items { get; } =
+    [
+        new(1, "one"),
+        new(2, "two")
+    ];
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestPanel>
+            foreach (var item in `Items.Where(x => x.Id > 1)`) {
+                <TestText Text=`item.Text` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class ForeachLinqOverReactiveListCase : TestRoot
+{
+    public ReactiveList<TestItem> Items { get; } =
+    [
+        new(1, "one"),
+        new(2, "two"),
+        new(3, "three")
     ];
 }
 

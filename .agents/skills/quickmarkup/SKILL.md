@@ -355,6 +355,19 @@ else <TextBlock Text="Fallback" />
 
 The `else` branch is required for single-child content positions (e.g., `Content`).
 
+#### Notes about using it on ObservableCollection.
+
+When using with `ObservableCollection<T>` it is worth knowing that `Count` property is NOT reactive. Use `ReactiveCount` extension property defined by QuickMarkup instead (you need to add `using QuickMarkup.Infra.Collections;` namespace).
+
+```quickmarkup
+// Avoid: won't update when myObservableCollection size changes
+if (`myObservableCollection.Count == 0`) { <TextBlock Text="No items" /> }
+// Use: will update when myObservableCollection size changes
+if (`myObservableCollection.ReactiveCount == 0`) { <TextBlock Text="No items" /> }
+```
+
+Note: `ReactiveList<T>` does not have this limitation and does not have `ReactiveCount` extension property. You can use `reactiveList.Count`.
+
 ### Foreach Loops
 
 ```
@@ -362,10 +375,13 @@ The `else` branch is required for single-child content positions (e.g., `Content
 foreach (var i in ..3) { <TextBlock Text=/-$"Row {i}"-/ /> }
 foreach (var i in 1..4) { <TextBlock Text=/-$"Item {i}"-/ /> }
 
-// Iterable — reactive when source implements INotifyCollectionChanged
+// Iterable — any IEnumerable expression is accepted (materialized per reconcile). Reactive when the
+// source implements INotifyCollectionChanged (e.g. ObservableCollection) or is a reference-tracked
+// collection (e.g. ReactiveList<T>), so LINQ like `reactiveList.Take(10)` / `.Where(...)` stays reactive.
 foreach (var item in `items`) { <TextBlock Text=/-item-/ /> }
 
-// With key expression (for stable identity across collection changes), source still must implement INotifyCollectionChanged, but will use id as identity in case of collection reset
+// With key expression (for stable identity across collection changes), works for INotifyCollectionChanged
+// or reference-tracked collections; uses the key as identity across resets/refreshes
 foreach (var item in `animals`; `item.Id`) { <TextBlock Text=`item.Name` /> }
 
 // With index variable
@@ -374,6 +390,10 @@ foreach (index; var item in `items`) { <TextBlock Text=`$"{index + 1}. {item}"` 
 // With both
 foreach (index; var item in `items`; `item.Id`) { <TextBlock Text=`$"{index + 1}. {item}"` /> }
 ```
+
+### IMPORTANT
+
+When using with `ReactiveList<T>` or any reactive expression to create list of items, you should almost always provide the key expression. Without key expression, all UI gets recreated and it will be *very* expensive. QuickMarkup is not VDOM framework so it will recreate actual UI elements and will reset all the UI states and have bad performance without the key.
 
 ### Await Blocks
 
@@ -676,6 +696,36 @@ Effect(() => { ... }, ref1, ref2);  // runs when any listed ref changes
 ```
 
 `ReferenceTracker.NoCapture(() => expr)` reads without tracking dependencies.
+
+### `ReactiveList<T>`
+
+`ReactiveList<T>` is a collection defined by QuickMarkup where mutating it will reevaluate all access.
+
+`ReactiveList<T>` itself is a single reactive reference. Mutating anything in the list will revaluate everything.
+
+```csharp
+ReactiveList<int> integers = new();
+var count = Computed(() => integers.Count);
+var firstTwoItems = Computed(() => integers.Take(2)); // Take from LINQ
+
+// ...
+
+integers.Add(1); // will reevaluate `integers.Count` and `integers.Take(2)`
+integers.Add(2); // will reevaluate `integers.Count` and `integers.Take(2)`
+integers.Add(3); // will reevaluate `integers.Count` and including `integers.Take(2)`
+integers[0] = 4; // yes, this will still reevaluate `integers.Count` and `integers.Take(2)`
+```
+
+Most of the time if you use the list's state with minimal computation like just checking `integers.Count > 0`, it will probably be fine even if `Count` does not change.
+
+Reactive List is a very powerful tool especially when trimming the list of items down like `reactiveList.Take(10)` to render top 10 items, or filtering `reactiveList.Where(x => x.SomeData is not null)`. These LINQ expressions are `IEnumerable<T>` and can be used directly in a `foreach` — the foreach materializes the enumerable each reconcile, and because it re-reads the `ReactiveList` reference, it stays reactive:
+
+```quickmarkup
+foreach (var item in `reactiveList.Take(10)`) { <TextBlock Text=`item.Name` /> }
+foreach (var item in `reactiveList.Where(x => x.SomeData is not null)`) { <TextBlock Text=`item.Name` /> }
+```
+
+
 
 ## QuickMarkup.WinUI / QuickMarkup.UWP (NuGet Packages)
 
