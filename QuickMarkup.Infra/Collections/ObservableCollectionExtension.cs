@@ -1,7 +1,4 @@
-
-
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 
 namespace QuickMarkup.Infra.Collections;
@@ -10,69 +7,49 @@ public static class ObservableCollectionExtension
 {
     extension<T>(ObservableCollection<T> collection)
     {
-        public IReference<int> ReactiveCountProp
+        /// <summary>
+        /// Wraps <see cref="ObservableCollection{T}"/> into an <see cref="IReference{T}"/>. It notifies whenever <see cref="ObservableCollection{T}"/> collection changed.
+        /// </summary>
+        /// <remarks>
+        /// Reference always return the same <see cref="ObservableCollection{T}"/> instance <c>ReferenceEquals(myCollection, myCollection.ReactiveProp.Value)</c>.
+        /// However, <c>myCollection.ReactiveProp.Value</c> will participate in QuickMarkup reactive chain. <c>.Value</c> getter must be invoked in reactive tracking context for the reference to be tracked.<br/>
+        /// <code>
+        /// var prop = myCollection.ReactiveProp;
+        /// var sample1 = Computed(() => ReactiveProp.Value.Count); // this is reactive
+        /// var collection2 = myCollection.ReactiveProp.Value;
+        /// var sample2 = Computed(() => collection2); // this is NOT reactive
+        /// </code>
+        /// </remarks>
+        public IReference<ObservableCollection<T>> ReactiveProp
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return ObservableCollectionCountCache<T>.Table.GetValue(
-                    collection,
-                    static c => new ObservableCollectionCountReference<T>(c));
+                return SingletonWeakTable<ObservableCollection<T>, ObservableCollectionReference<T>>.Table.GetValue(
+                collection,
+                static c => new(c));
             }
         }
-        public int ReactiveCount
+
+        /// <summary>
+        /// Enable <see cref="ObservableCollection{T}"/> to participate in reactive chain.
+        /// </summary>
+        /// <remarks>
+        /// Property returns the same <see cref="ObservableCollection{T}"/> instance <c>ReferenceEquals(myCollection, myCollection.Reactive)</c>.
+        /// However, <c>myCollection.Reactive</c> will participate in QuickMarkup reactive chain. <c>.Reactive</c> getter must be invoked in reactive tracking context for the reference to be tracked.<br/>
+        /// <code>
+        /// var sample1 = Computed(() => myCollection.Reactive.Count); // this is reactive
+        /// var collection2 = myCollection.Reactive;
+        /// var sample2 = Computed(() => collection2); // this is NOT reactive
+        /// </code>
+        /// </remarks>
+        public ObservableCollection<T> Reactive
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => collection.ReactiveCountProp.Value;
+            get
+            {
+                return collection.ReactiveProp.Value;
+            }
         }
     }
-}
-static class ObservableCollectionCountCache<T>
-{
-    internal static readonly ConditionalWeakTable<
-        ObservableCollection<T>,
-        ObservableCollectionCountReference<T>> Table = new();
-}
-public class ObservableCollectionCountReference<T> : IReference<int>
-{
-    readonly ObservableCollection<T> collection;
-    public ObservableCollectionCountReference(ObservableCollection<T> collection)
-    {
-        if (collection is null)
-            throw new ArgumentNullException(nameof(collection));
-        Value = collection.Count;
-        this.collection = collection;
-    }
-    public int Value {
-        get
-        {
-            ReferenceTracker.NotifyRefernceRead(this);
-            return field;
-        }
-        private set
-        {
-            if (field == value)
-                return;
-            field = value;
-            _ValueChanged?.Invoke();
-        }
-    }
-
-    Action? _ValueChanged;
-    public event Action ValueChanged
-    {
-        add
-        {
-            if (_ValueChanged is null)
-                collection.CollectionChanged += ReactiveCountCollectionChangedHandler;
-            _ValueChanged += value;
-        }
-        remove
-        {
-            _ValueChanged -= value;
-            if (_ValueChanged is null)
-                collection.CollectionChanged -= ReactiveCountCollectionChangedHandler;
-        }
-    }
-    void ReactiveCountCollectionChangedHandler(object? sender, NotifyCollectionChangedEventArgs args) => Value = collection.Count;
 }

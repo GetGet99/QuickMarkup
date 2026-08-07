@@ -18,7 +18,7 @@ namespace QuickMarkup.Infra.Test
         public void ObservableCollection_ReactiveCount_TracksChanges()
         {
             var collection = new ObservableCollection<string> { "a", "b" };
-            var computed = new Computed<int>(() => collection.ReactiveCount);
+            var computed = new Computed<int>(() => collection.Reactive.Count);
 
             Assert.AreEqual(2, computed.Value);
 
@@ -34,18 +34,23 @@ namespace QuickMarkup.Infra.Test
         }
 
         [TestMethod]
-        public void ObservableCollection_ReactiveCountProp_TracksChanges()
+        public void ObservableCollection_ReactiveProp_TracksChanges()
         {
             var collection = new ObservableCollection<string> { "a" };
-            var refs = new HashSet<IReference>();
-            var computed = new Computed<int>(() => collection.ReactiveCountProp.Value);
+            var evaluationCount = 0;
+            var computed = new Computed<ObservableCollection<string>>(() =>
+            {
+                evaluationCount++;
+                return collection.ReactiveProp.Value;
+            });
 
-            Assert.AreEqual(1, computed.Value);
+            Assert.AreEqual(1, evaluationCount);
 
             collection.Add("b");
             ReactiveScheduler.Tick();
 
-            Assert.AreEqual(2, computed.Value);
+            Assert.AreEqual(2, evaluationCount);
+            Assert.AreSame(collection, computed.Value);
         }
     }
 }

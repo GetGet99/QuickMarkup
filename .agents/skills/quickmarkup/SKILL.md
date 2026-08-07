@@ -357,16 +357,18 @@ The `else` branch is required for single-child content positions (e.g., `Content
 
 #### Notes about using it on ObservableCollection.
 
-When using with `ObservableCollection<T>` it is worth knowing that `Count` property is NOT reactive. Use `ReactiveCount` extension property defined by QuickMarkup instead (you need to add `using QuickMarkup.Infra.Collections;` namespace).
+When using with `ObservableCollection<T>` it is worth knowing that `Count` property is NOT reactive. Use the `Reactive` extension property defined by QuickMarkup instead (you need to add `using QuickMarkup.Infra.Collections;` namespace).
 
 ```quickmarkup
 // Avoid: won't update when myObservableCollection size changes
 if (`myObservableCollection.Count == 0`) { <TextBlock Text="No items" /> }
 // Use: will update when myObservableCollection size changes
-if (`myObservableCollection.ReactiveCount == 0`) { <TextBlock Text="No items" /> }
+if (`myObservableCollection.Reactive.Count == 0`) { <TextBlock Text="No items" /> }
 ```
 
-Note: `ReactiveList<T>` does not have this limitation and does not have `ReactiveCount` extension property. You can use `reactiveList.Count`.
+Note: `ReactiveList<T>` does not have this limitation and does not need the `Reactive` extension property. You can use `reactiveList.Count`.
+
+There are more important details about the `Reactive` extension property below in the [`ObservableCollection<T>` helpers](#observablecollectiont-helpers) section.
 
 ### Foreach Loops
 
@@ -725,7 +727,20 @@ foreach (var item in `reactiveList.Take(10)`) { <TextBlock Text=`item.Name` /> }
 foreach (var item in `reactiveList.Where(x => x.SomeData is not null)`) { <TextBlock Text=`item.Name` /> }
 ```
 
+### `ObservableCollection<T>` helpers
 
+The `Reactive` extension property enables an `ObservableCollection<T>` to participate in the reactive chain. It returns the same `ObservableCollection<T>` instance (`ReferenceEquals(myCollection, myCollection.Reactive)`). The `.Reactive` getter must be evaluated inside the reactive tracking context (i.e. directly in a backtick expression) for the reference to be tracked. Reading it into a variable first loses reactivity:
+
+```csharp
+// Reactive: `.Reactive` getter invoked inside the tracking context
+var sample1 = Computed(() => myCollection.Reactive.Count);
+
+// NOT reactive: the getter is read outside the tracking context
+var collection2 = myCollection.Reactive;
+var sample2 = Computed(() => collection2);
+```
+
+There is also a `ReactiveProp` extension property that returns the same wrapper as an `IReference<ObservableCollection<T>>`. Like `Reactive`, its `.Value` getter must be invoked in the reactive tracking context to be tracked. `Reactive` is simply `ReactiveProp.Value`.
 
 ## QuickMarkup.WinUI / QuickMarkup.UWP (NuGet Packages)
 
