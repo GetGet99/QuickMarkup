@@ -742,6 +742,13 @@ var sample2 = Computed(() => collection2);
 
 There is also a `ReactiveProp` extension property that returns the same wrapper as an `IReference<ObservableCollection<T>>`. Like `Reactive`, its `.Value` getter must be invoked in the reactive tracking context to be tracked. `Reactive` is simply `ReactiveProp.Value`.
 
+Like `ReactiveList<T>`, `myCollection.Reactive` works with LINQ too — LINQ expressions like `myCollection.Reactive.Where(...)` / `.Take(...)` stay reactive because the foreach re-reads the `Reactive` reference each reconcile:
+
+```quickmarkup
+foreach (var item in `myCollection.Reactive.Take(10)`) { <TextBlock Text=`item.Name` /> }
+foreach (var item in `myCollection.Reactive.Where(x => x.SomeData is not null)`) { <TextBlock Text=`item.Name` /> }
+```
+
 ## QuickMarkup.WinUI / QuickMarkup.UWP (NuGet Packages)
 
 These packages provide WinUI 3 / UWP helpers that consume QuickMarkup's generated code.
