@@ -87,6 +87,54 @@ Depending on what you mean, you may either use:
 - Declare inside QuickMarkup if you expect parents to replace the collection or provide their own collection.
 - Declare inside C# as `ObservableCollection<MyType> Items { get; } = new()` if you want the class to own the collection.
 
+### References are shallow
+
+Type fields and properties are NOT reactive.
+
+```quickmarkup
+MyType MyValue = `new()`;
+```
+
+```csharp
+MyValue = new(); // reassigning value triggers reactivity
+MyValue.SomeProperty = 2; // this does NOT trigger reactivity
+```
+
+TO make them reactive, put them inside QuickMarkup or use `Reference<T>`/`Computed<T>`.
+
+```csharp
+[QuickMarkup("""
+    // QuickMarkup can be applied to non-UI class. There is no restriction that the class needs to be UI.
+    
+    // Declare reference markup creates reactive fields.
+    int IntegerValue; // reactive on change
+    """)]
+partial class MyClass {
+    // regular fields is NOT reactive
+    public string field; // not reactive
+    // Property that does not go through reference/computed are NOT reactive.
+    public double Property { get; set; } // not reactive
+
+    readonly Reference<int> someRef = new(0);
+    
+    // This is reactive because it is backed by reference
+    public string SomePublicWrapper {
+        get => someRef.ToString();
+        set => someRef = int.Parse(value);
+    }
+}
+```
+When used in markup,
+
+```quickmarkup
+MyClass MyValue = `new()`;
+```
+
+```csharp
+MyValue = new(); // reassigning value triggers reactivity as usual
+MyValue.SomePublicWrapper = 2; // triggers reactivity too
+```
+
 ## Required Properties
 
 Mark a reference declaration with the `required` keyword to make it a **required** for consumers to provide:
