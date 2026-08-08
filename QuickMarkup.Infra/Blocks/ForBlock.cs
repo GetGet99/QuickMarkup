@@ -69,7 +69,7 @@ public sealed class ForBlock<TSrc, TElement> : ForBlock<TSrc, TElement, int>
     }
 }
 
-public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
+public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement> where TKey : notnull
 {
     static readonly IReadOnlyList<TSrc> EmptySource = Array.Empty<TSrc>();
 
@@ -299,6 +299,9 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
         var nextItems = new List<ForItemState<TSrc, TElement, TKey>>(source.Count);
         var reused = new HashSet<ForItemState<TSrc, TElement, TKey>>();
         var nextKeys = new HashSet<TKey>();
+        var oldByKey = new Dictionary<TKey, ForItemState<TSrc, TElement, TKey>>(oldItems.Length);
+        foreach (var state in oldItems)
+            oldByKey[state.Key] = state;
 
         for (var i = 0; i < source.Count; i++)
         {
@@ -306,9 +309,9 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
             if (!nextKeys.Add(key))
                 throw new InvalidOperationException($"Duplicate key found in for block: {key}");
 
-            var state = FindState(oldItems, key);
-            if (state is not null)
+            if (oldByKey.TryGetValue(key, out var state))
             {
+                oldByKey.Remove(key);
                 state.IndexRef?.Value = i;
                 state.ItemRef.Value = source[i];
                 reused.Add(state);
@@ -320,20 +323,57 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
             }
         }
 
-        foreach (var old in oldItems)
+        // Dispose blocks whose keys no longer exist, keeping the rest mounted.
+        for (var i = items.Count - 1; i >= 0; i--)
         {
-            if (reused.Contains(old))
-                childHost!.DetachBlock(old.Block);
-            else
-                childHost!.RemoveBlock(old.Block);
+            if (!reused.Contains(items[i]))
+            {
+                childHost!.RemoveBlock(items[i].Block);
+                items.RemoveAt(i);
+            }
         }
 
-        items.Clear();
-        foreach (var item in nextItems)
+        // Reorder survivors and mount new blocks; untouched blocks stay mounted.
+        ReorderToMatch(nextItems);
+    }
+
+    void ReorderToMatch(List<ForItemState<TSrc, TElement, TKey>> nextItems)
+    {
+        for (var i = 0; i < nextItems.Count; i++)
         {
-            items.Add(item);
-            childHost!.AddBlock(item.Block);
+            var key = nextItems[i].Key;
+            var j = FindStateIndex(items, i, key);
+            if (j < 0)
+            {
+                items.Insert(i, nextItems[i]);
+                childHost!.InsertBlock(i, nextItems[i].Block);
+                continue;
+            }
+
+            if (j != i)
+            {
+                childHost!.MoveBlock(j, i);
+                var state = items[j];
+                items.RemoveAt(j);
+                items.Insert(i, state);
+            }
         }
+    }
+
+    static int FindStateIndex(
+        IReadOnlyList<ForItemState<TSrc, TElement, TKey>> states,
+        int start,
+        TKey key)
+    {
+        var comparer = EqualityComparer<TKey>.Default;
+
+        for (var i = start; i < states.Count; i++)
+        {
+            if (comparer.Equals(states[i].Key, key))
+                return i;
+        }
+
+        return -1;
     }
 
     void AddInitialItem(TKey key, TSrc item)
@@ -379,21 +419,6 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
             if (!keys.Add(key))
                 throw new InvalidOperationException($"Duplicate key found in for block: {key}");
         }
-    }
-
-    static ForItemState<TSrc, TElement, TKey>? FindState(
-        IReadOnlyList<ForItemState<TSrc, TElement, TKey>> states,
-        TKey key)
-    {
-        var comparer = EqualityComparer<TKey>.Default;
-
-        for (var i = 0; i < states.Count; i++)
-        {
-            if (comparer.Equals(states[i].Key, key))
-                return states[i];
-        }
-
-        return null;
     }
 }
 
@@ -451,7 +476,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -464,7 +489,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -477,7 +502,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -490,7 +515,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IReadOnlyList<TSrc> source,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -503,7 +528,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IReadOnlyList<TSrc>> sourceGetter,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -516,7 +541,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IReadOnlyList<TSrc>> sourceGetter,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -529,7 +554,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IReadOnlyList<TSrc>> sourceGetter,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -542,7 +567,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IReadOnlyList<TSrc>> sourceGetter,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -603,7 +628,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IEnumerable<TSrc> source,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -616,7 +641,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IEnumerable<TSrc> source,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -629,7 +654,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IEnumerable<TSrc> source,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -642,7 +667,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         IEnumerable<TSrc> source,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -655,7 +680,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IEnumerable<TSrc>> sourceGetter,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -668,7 +693,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IEnumerable<TSrc>> sourceGetter,
         Func<TSrc, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -681,7 +706,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IEnumerable<TSrc>> sourceGetter,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,
@@ -694,7 +719,7 @@ public static class ForBlock
         ReactiveScope controllerScope,
         Func<IEnumerable<TSrc>> sourceGetter,
         Func<TSrc, int, TKey> keyFn,
-        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory)
+        Func<Reference<int>, Reference<TSrc>, IUIBlock<TElement>> itemFactory) where TKey : notnull
     {
         return new(
             controllerScope,

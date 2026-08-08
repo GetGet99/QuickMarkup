@@ -664,7 +664,7 @@ ObservableCollection<string> animals = ["Dog", "Cat", "Tiger"];
 </root>
 ```
 
-For stable identity across collection changes, provide a key expression after a semicolon. Key must be unqiue (otherwise there will be a thrown exception).
+For stable identity across collection changes, provide a key expression after a semicolon. Key must be unqiue and non-null (otherwise there will be a thrown exception). Keyed items are reused incrementally — a single add/remove/move only mounts/unmounts the affected item and leaves the rest of the list mounted.
 
 ```cs
 // C#

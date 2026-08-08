@@ -405,6 +405,112 @@ namespace QuickMarkup.Infra.Test.Blocks
             ReactiveScheduler.Tick();
         }
 
+        [TestMethod]
+        public void ReactiveForBlock_SingleAdd_MountsOnlyTheNewBlock()
+        {
+            var source = new ReactiveList<int> { 1, 2, 3 };
+            var counter = new BlockLifecycleCounter();
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new QuickMarkup.Infra.Blocks.ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateCountingTextBlock(itemRef, value => value.ToString(), counter)));
+
+            ForBlockTestSupport.AssertText(target, "1", "2", "3");
+            Assert.AreEqual(3, counter.Created);
+            Assert.AreEqual(3, counter.Mounted);
+
+            source.Add(4);
+            TickReactive();
+
+            ForBlockTestSupport.AssertText(target, "1", "2", "3", "4");
+            Assert.AreEqual(4, counter.Created);
+            Assert.AreEqual(4, counter.Mounted);
+            Assert.AreEqual(0, counter.Unmounted);
+            Assert.AreEqual(0, counter.Disposed);
+        }
+
+        [TestMethod]
+        public void ReactiveForBlock_SingleRemove_UnmountsOnlyTheRemovedBlock()
+        {
+            var source = new ReactiveList<int> { 1, 2, 3 };
+            var counter = new BlockLifecycleCounter();
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new QuickMarkup.Infra.Blocks.ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateCountingTextBlock(itemRef, value => value.ToString(), counter)));
+
+            source.RemoveAt(1);
+            TickReactive();
+
+            ForBlockTestSupport.AssertText(target, "1", "3");
+            Assert.AreEqual(3, counter.Created);
+            Assert.AreEqual(3, counter.Mounted);
+            Assert.AreEqual(1, counter.Unmounted);
+            Assert.AreEqual(1, counter.Disposed);
+        }
+
+        [TestMethod]
+        public void ReactiveForBlock_Move_MovesBlocksWithoutRemounting()
+        {
+            var source = new ReactiveList<int> { 1, 2, 3 };
+            var counter = new BlockLifecycleCounter();
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(new QuickMarkup.Infra.Blocks.ForBlock<int, TextBlock>(
+                new ReactiveScope(),
+                source,
+                itemRef => CreateCountingTextBlock(itemRef, value => value.ToString(), counter)));
+
+            var moving = source[2];
+            source.RemoveAt(2);
+            source.Insert(0, moving);
+            TickReactive();
+
+            ForBlockTestSupport.AssertText(target, "3", "1", "2");
+            Assert.AreEqual(3, counter.Created);
+            Assert.AreEqual(3, counter.Mounted);
+            Assert.AreEqual(0, counter.Unmounted);
+        }
+
+        [TestMethod]
+        public void ReactiveForBlock_ExplicitKeys_SingleAdd_MountsOnlyTheNewBlock()
+        {
+            var source = new ReactiveList<ReactiveKeyedItem>
+            {
+                new(new(1), new("one")),
+                new(new(2), new("two")),
+            };
+            var counter = new BlockLifecycleCounter();
+            List<TextBlock> target = [];
+            UIBlockHost<TextBlock> host = new(new TargetUICollection<TextBlock>(target));
+
+            host.AddBlock(QuickMarkup.Infra.Blocks.ForBlock.Create<ReactiveKeyedItem, TextBlock, int>(
+                new ReactiveScope(),
+                source,
+                (item, _) => item.Id.Value,
+                itemRef => CreateCountingTextBlock(itemRef, item => item.Text.Value, counter)));
+
+            var first = target.ToArray();
+
+            source.Add(new(new(3), new("three")));
+            TickReactive();
+
+            Assert.AreSame(first[0], target[0]);
+            Assert.AreSame(first[1], target[1]);
+            ForBlockTestSupport.AssertText(target, "one", "two", "three");
+            Assert.AreEqual(3, counter.Created);
+            Assert.AreEqual(3, counter.Mounted);
+            Assert.AreEqual(0, counter.Unmounted);
+            Assert.AreEqual(0, counter.Disposed);
+        }
+
         static StaticBlock<TextBlock> CreateKeyedTextBlock(Reference<ReactiveKeyedItem> itemRef)
         {
             return new StaticBlock<TextBlock>(
@@ -419,6 +525,72 @@ namespace QuickMarkup.Infra.Test.Blocks
                 });
         }
 
+        static CountingBlock<TextBlock> CreateCountingTextBlock<T>(
+            Reference<T> itemRef,
+            Func<T, string> text,
+            BlockLifecycleCounter counter)
+        {
+            var scope = new ReactiveScope();
+            var box = new TextBlock();
+            scope.Add(ReferenceTracker.RunAndRerunOnReferenceChange(
+                () => itemRef.Value,
+                value => box.Text = text(value)));
+            return new CountingBlock<TextBlock>([box], scope, counter);
+        }
+
         sealed record ReactiveKeyedItem(Reference<int> Id, Reference<string> Text);
+    }
+
+    sealed class BlockLifecycleCounter
+    {
+        public int Created;
+        public int Mounted;
+        public int Unmounted;
+        public int Disposed;
+    }
+
+    sealed class CountingBlock<TElement> : IUIBlock<TElement>
+    {
+        readonly List<TElement> elements;
+        readonly ReactiveScope scope;
+        readonly BlockLifecycleCounter counter;
+        UIBlockHost<TElement>? host;
+
+        public CountingBlock(List<TElement> elements, ReactiveScope scope, BlockLifecycleCounter counter)
+        {
+            this.elements = elements;
+            this.scope = scope;
+            this.counter = counter;
+            counter.Created++;
+        }
+
+        public int Count => elements.Count;
+
+        public void Mount(UIBlockHost<TElement> host)
+        {
+            this.host = host;
+            counter.Mounted++;
+            for (var i = 0; i < elements.Count; i++)
+                host.InsertElement(this, i, elements[i]);
+        }
+
+        public void Unmount()
+        {
+            if (host is null)
+                return;
+
+            counter.Unmounted++;
+            for (var i = 0; i < elements.Count; i++)
+                host.RemoveElement(this, 0);
+
+            host = null;
+        }
+
+        public void Dispose()
+        {
+            counter.Disposed++;
+            Unmount();
+            scope.Dispose();
+        }
     }
 }

@@ -399,7 +399,9 @@ foreach (var i in 1..4) { <TextBlock Text=/-$"Item {i}"-/ /> }
 foreach (var item in `items`) { <TextBlock Text=/-item-/ /> }
 
 // With key expression (for stable identity across collection changes), works for INotifyCollectionChanged
-// or reference-tracked collections; uses the key as identity across resets/refreshes
+// or reference-tracked collections; uses the key as identity across resets/refreshes. Keys must be
+// unique and non-null. Keyed reconciles are incremental: a single Add/Remove/Move only mounts/unmounts
+// the affected item, leaving the rest of the list mounted.
 foreach (var item in `animals`; `item.Id`) { <TextBlock Text=`item.Name` /> }
 
 // With index variable

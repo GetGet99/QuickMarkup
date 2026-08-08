@@ -77,6 +77,82 @@ public sealed class UIBlockHost<TElement>
         blocks.Remove(block);
     }
 
+    /// <summary>
+    /// Moves a mounted block to a new position in this host without unmounting it.
+    /// </summary>
+    public void MoveBlock(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex)
+            return;
+
+        var block = blocks[oldIndex];
+        var count = block.Count;
+
+        if (count == 0)
+        {
+            blocks.RemoveAt(oldIndex);
+            blocks.Insert(newIndex, block);
+            return;
+        }
+
+        var oldStart = GetStartIndex(block);
+
+        blocks.RemoveAt(oldIndex);
+
+        var newStart = newIndex < blocks.Count
+            ? GetStartIndex(blocks[newIndex])
+            : Count;
+
+        blocks.Insert(newIndex, block);
+
+        MoveElementRange(oldStart, count, newStart);
+    }
+
+    void MoveElementRange(int start, int count, int dest)
+    {
+        if (target is not null)
+        {
+            MoveInTarget(target, start, count, dest);
+            return;
+        }
+
+        parentHost!.MoveElementRange(parentOwner!, start, count, dest);
+    }
+
+    /// <summary>
+    /// Moves a contiguous range of elements relative to an owner block within this host.
+    /// </summary>
+    public void MoveElementRange(IUIBlock<TElement> owner, int start, int count, int dest)
+    {
+        var startGlobal = GetStartIndex(owner) + start;
+        var destGlobal = GetStartIndex(owner) + dest;
+
+        if (target is not null)
+        {
+            MoveInTarget(target, startGlobal, count, destGlobal);
+            return;
+        }
+
+        parentHost!.MoveElementRange(parentOwner!, startGlobal, count, destGlobal);
+    }
+
+    static void MoveInTarget(IUICollection<TElement> target, int start, int count, int dest)
+    {
+        if (count == 0 || start == dest)
+            return;
+
+        if (dest < start)
+        {
+            for (var i = 0; i < count; i++)
+                target.Move(start + i, dest + i);
+        }
+        else
+        {
+            for (var i = count - 1; i >= 0; i--)
+                target.Move(start + i, dest + i);
+        }
+    }
+
     public void InsertElement(IUIBlock<TElement> owner, int localIndex, TElement element)
     {
         var index = GetStartIndex(owner) + localIndex;
