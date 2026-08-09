@@ -180,6 +180,23 @@ public sealed class LspDiagnosticConverterTests
     }
 
     [TestMethod]
+    public void ConvertBinderDiagnostic_RefMissingDefaultValue_ReturnsWarning()
+    {
+        var node = new TestAst();
+        var diags = new List<QMDiagnostic>
+        {
+            new QMBinderRefMissingDefaultValueWarning(node, "Text", "string")
+        };
+
+        var result = LspDiagnosticConverter.ConvertAll(diags, []);
+
+        Assert.HasCount(1, result);
+        Assert.AreEqual(DiagnosticSeverity.Warning, result[0].Severity!.Value);
+        Assert.AreEqual("QM1014", (string)result[0].Code!);
+        Assert.Contains("Text", result[0].Message);
+    }
+
+    [TestMethod]
     public void ConvertAll_MixedDiagnostics_ReturnsAll()
     {
         var node = new TestAst();

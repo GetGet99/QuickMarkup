@@ -30,6 +30,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         BindErrorTagUnexpected,
         BindErrorTypeMismatch,
         BindErrorRequiredPropertyMissing,
+        BindErrorRefMissingDefaultValue,
         NewLifecycleRequired
     );
     internal readonly static DiagnosticDescriptor ParseErrorUnexpectedInput = new(
@@ -136,6 +137,14 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
         "'{0}' must use the new QuickMarkup lifecycle (remove explicit constructors or add a [QuickMarkupConstructor] method) because the assembly has [QuickMarkupNewLifecycle]",
         "QuickMarkup",
         DiagnosticSeverity.Error,
+        true
+    );
+    internal readonly static DiagnosticDescriptor BindErrorRefMissingDefaultValue = new(
+        "QM1014",
+        "QuickMarkup ref without a default value",
+        "Ref '{0}' of non-nullable reference type '{1}' has no default value and will be initialized to null. Assign a default value or declare the type as nullable ('{1}?').",
+        "QuickMarkup",
+        DiagnosticSeverity.Warning,
         true
     );
 

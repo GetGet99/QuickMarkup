@@ -69,6 +69,8 @@ User MyUser => async `Api.FetchUserAsync(Id)`; // creates AsyncComputed<User>, p
 
 References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change. Computed variables are lazily initialized — not evaluated until first accessed.
 
+> **Note:** A reference declared as a reference type without a default value (e.g. `string Text;`) is initialized to `null`, which produces a QuickMarkup warning (`QM1014`). Assign a default value or declare the type as nullable (`string? Text;`) to avoid warning.
+
 References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed. Async computed gets `*Async` backing field (`AsyncComputed<T>`), plus `*Status` (`AsyncComputedState`) and `*Failure` (`Exception?`) properties. The value property throws if not yet loaded — check `*Status` first.
 
 ### Generic types

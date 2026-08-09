@@ -1,3 +1,4 @@
+using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using QuickMarkup.AST;
 using QuickMarkup.Language.Symbols;
@@ -45,6 +46,15 @@ partial class QuickMarkupBinder
                 Error(r, "Unsupported: Provide/Inject cannot use async computed syntax");
             else
                 kind = RefDeclarationKind.AsyncComputed;
+        }
+
+        if (kind is RefDeclarationKind.Ref &&
+            r.DefaultValue is null &&
+            typeSym is not null &&
+            !r.Type.IsTypeNullable &&
+            !typeSym.IsValueType)
+        {
+            Warn(new QMBinderRefMissingDefaultValueWarning(r.Name.Name, r.Name.Name.Name, typeSym.FullNameWithoutAnnotation()));
         }
 
         string name = r.Name.Name.Name;

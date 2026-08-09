@@ -92,6 +92,9 @@ public record class QMBinderBindBackDelegateUnresolvedTypeError(AST Node, string
 public record class QMBinderBindBackDelegateAttachedRequiresDependencyPropertyError(AST Node, string PropertyName)
     : QMBinderError(Node, $"Bindback delegate '{PropertyName}+=>' on an attached property requires the attached property to be a dependency property.");
 
+public record class QMBinderRefMissingDefaultValueWarning(AST Node, string RefName, string TypeName)
+    : QMBinderWarning(Node, $"Ref '{RefName}' of non-nullable reference type '{TypeName}' has no default value and will be initialized to null. Assign a default value or declare the type as nullable ('{TypeName}?').");
+
 static class QMDiagnosticSuggestion
 {
     public static string AppendSuggestions(string message, string[]? suggestions)

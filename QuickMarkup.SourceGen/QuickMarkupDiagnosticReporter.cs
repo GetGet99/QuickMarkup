@@ -156,6 +156,15 @@ static class QuickMarkupDiagnosticReporter
                     resolver.GetTypeSymbol(typeMismatch.PropertyTypeName)
                 ));
             }
+            else if (diagnostic is QMBinderRefMissingDefaultValueWarning missingDefault)
+            {
+                report(Diagnostic.Create(
+                    QuickMarkupAnalyzer.BindErrorRefMissingDefaultValue,
+                    dLoc,
+                    missingDefault.RefName,
+                    missingDefault.TypeName
+                ));
+            }
             else
             {
                 report(Diagnostic.Create(
