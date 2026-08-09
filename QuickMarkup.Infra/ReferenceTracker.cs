@@ -8,6 +8,23 @@ public class ReferenceTracker
     internal static ThreadLocal<ReferenceTracker> Instance { get; } = new(() => new());
     internal event Action<IReference>? ReferenceRead;
 
+    internal ReactiveScope? StructuralScope { get; set; }
+
+    internal static ReactiveScope? CurrentStructuralScope
+        => Instance.Value!.StructuralScope;
+
+    /// <summary>
+    /// Makes the given structural scope the ambient scope for the duration of the returned
+    /// disposable. Reactive effects and scopes created within inherit this scope.
+    /// </summary>
+    public static IDisposable EnterStructuralScope(ReactiveScope scope)
+    {
+        var current = Instance.Value!;
+        var previous = current.StructuralScope;
+        current.StructuralScope = scope;
+        return new DisposableAction(() => current.StructuralScope = previous);
+    }
+
     internal static void NotifyRefernceRead(IReference reference)
     {
         Instance.Value!.ReferenceRead?.Invoke(reference);

@@ -27,11 +27,17 @@ public sealed class FragmentBlock<TElement> : IUIBlock<TElement>
         if (childHost is null)
         {
             childHost = new UIBlockHost<TElement>(host, this);
-            build(childHost, scope);
+            using (ReferenceTracker.EnterStructuralScope(scope))
+            {
+                build(childHost, scope);
+            }
             return;
         }
 
-        childHost.RemountAll();
+        using (ReferenceTracker.EnterStructuralScope(scope))
+        {
+            childHost.RemountAll();
+        }
     }
 
     public void Unmount()

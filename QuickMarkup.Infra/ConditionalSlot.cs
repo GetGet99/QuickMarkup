@@ -50,11 +50,15 @@ public sealed class ConditionalSlot<T> : IDisposable
             return;
 
         var old = current;
-        var next = conditionValue ? trueFactory() : falseFactory();
 
-        currentConditionValue = conditionValue;
-        current = next;
-        setValue(next.Value);
-        old?.Dispose();
+        using (ReferenceTracker.EnterStructuralScope(controllerScope))
+        {
+            var next = conditionValue ? trueFactory() : falseFactory();
+
+            currentConditionValue = conditionValue;
+            current = next;
+            setValue(next.Value);
+            old?.Dispose();
+        }
     }
 }

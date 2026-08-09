@@ -47,6 +47,7 @@ public class ReactiveScheduler
     private bool NeedsSchedulingTick = true;
     private event Action? ScheduleTickAction;
     private bool isTicking;
+    internal bool IsTicking => isTicking;
     private void ScheduleEffectPrivate(RefEffect effect)
     {
         if (Effects.Add(effect) && AutoTick && NeedsSchedulingTick)
@@ -63,6 +64,20 @@ public class ReactiveScheduler
             NeedsSchedulingTick = false;
             ScheduleTickAction?.Invoke();
         }
+    }
+    static int CompareEffects(RefEffect a, RefEffect b)
+    {
+        var depthA = a.Scope?.Depth ?? -1;
+        var depthB = b.Scope?.Depth ?? -1;
+        if (depthA != depthB)
+            return depthA.CompareTo(depthB);
+
+        var sequenceA = a.Scope?.Sequence ?? 0;
+        var sequenceB = b.Scope?.Sequence ?? 0;
+        if (sequenceA != sequenceB)
+            return sequenceA.CompareTo(sequenceB);
+
+        return a.Sequence.CompareTo(b.Sequence);
     }
     private void DoNowIfScheduledPrivate(RefEffect effect)
     {
@@ -115,10 +130,20 @@ public class ReactiveScheduler
             // clone after callbacks so callback-scheduled effects can run in the same tick
             TickingEffects = [.. Effects];
             Effects.Clear();
-            while (TickingEffects.Count > 0)
+
+            var ordered = new List<RefEffect>(TickingEffects);
+            ordered.Sort(CompareEffects);
+
+            foreach (var effect in ordered)
             {
-                var effect = TickingEffects.First();
-                TickingEffects.Remove(effect);
+                // already run eagerly via DoNowIfScheduled during this tick
+                if (!TickingEffects.Remove(effect))
+                    continue;
+
+                // a structural scope this effect belongs to (or an ancestor scope) was removed/disposed
+                if (effect.Scope?.IsDisposedInHierarchy == true)
+                    continue;
+
                 try
                 {
                     effect.Tick();

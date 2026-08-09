@@ -73,19 +73,22 @@ public sealed class AwaitBlock<TElement, TValue> : IUIBlock<TElement>
 
         currentState = newState;
 
-        IUIBlock<TElement>? next = newState switch
+        using (ReferenceTracker.EnterStructuralScope(scope))
         {
-            AsyncComputedState.Loading => loadingFactory?.Invoke(),
-            AsyncComputedState.Failed => errorFactory?.Invoke(asyncComputed.Failure),
-            AsyncComputedState.Success => successFactory?.Invoke(asyncComputed.Value),
-            _ => null
-        };
+            IUIBlock<TElement>? next = newState switch
+            {
+                AsyncComputedState.Loading => loadingFactory?.Invoke(),
+                AsyncComputedState.Failed => errorFactory?.Invoke(asyncComputed.Failure),
+                AsyncComputedState.Success => successFactory?.Invoke(asyncComputed.Value),
+                _ => null
+            };
 
-        currentBlock = next;
-        if (currentBlock is null)
-            return;
+            currentBlock = next;
+            if (currentBlock is null)
+                return;
 
-        childHost!.AddBlock(currentBlock);
+            childHost!.AddBlock(currentBlock);
+        }
     }
 }
 

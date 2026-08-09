@@ -568,7 +568,7 @@ sp = <StackPanel /* 1. */ First=1 /* 2. */ Second=2
 />
 ```
 
-9. Reactivity changes: properties are rerun whenever values change. No explicit order defined.
+9. Reactivity changes: properties are rerun whenever values change. Within the same block there is no guaranteed property re-evaluation order. Across blocks the order is deterministic by structural scope: a container block (`if`/`foreach`/`await`) reconciles before the property effects of the elements nested inside it, so a removed branch/item cannot leave stale nested effects mutating destroyed UI.
 
 *This behavior is only guaranteed from generated code. If user calls generated constructor themselves, just note that the evaluation step depends on user code.
 

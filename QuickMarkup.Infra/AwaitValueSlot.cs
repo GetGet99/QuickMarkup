@@ -55,18 +55,21 @@ public sealed class AwaitValueSlot<TElement, TValue> : IDisposable
         var old = current;
         currentState = newState;
 
-        ScopedValue<TElement>? next = newState switch
+        using (ReferenceTracker.EnterStructuralScope(controllerScope))
         {
-            AsyncComputedState.Loading => loadingFactory?.Invoke(),
-            AsyncComputedState.Failed => errorFactory?.Invoke(asyncComputed.Failure),
-            AsyncComputedState.Success => successFactory?.Invoke(asyncComputed.Value),
-            _ => null
-        };
+            ScopedValue<TElement>? next = newState switch
+            {
+                AsyncComputedState.Loading => loadingFactory?.Invoke(),
+                AsyncComputedState.Failed => errorFactory?.Invoke(asyncComputed.Failure),
+                AsyncComputedState.Success => successFactory?.Invoke(asyncComputed.Value),
+                _ => null
+            };
 
-        current = next;
-        if (next is not null)
-            setValue(next.Value);
-        old?.Dispose();
+            current = next;
+            if (next is not null)
+                setValue(next.Value);
+            old?.Dispose();
+        }
     }
 }
 

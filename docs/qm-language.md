@@ -555,7 +555,7 @@ It will be evaluated immediately once with input being the object created. This 
 
 #### Order of evaluations for properties
 
-On object initialization, QuickMarkup properties are evaluated in order they are defined. As references change, specific properties will be reevaluated in no particular order.
+On object initialization, QuickMarkup properties are evaluated in order they are defined. As references change, specific properties will be reevaluated in no particular order within the same block. Across blocks, re-evaluation is ordered by structural scope: a container block (`if`/`foreach`/`await`) reconciles before the property effects of the elements nested inside it, so a removed branch/item does not leave stale nested effects mutating destroyed UI.
 
 #### Root Tag With Properties
 

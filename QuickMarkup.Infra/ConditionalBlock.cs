@@ -75,11 +75,14 @@ public sealed class ConditionalBlock<TElement> : IUIBlock<TElement>
 
         currentConditionValue = conditionValue;
 
-        var next = conditionValue ? trueFactory() : falseFactory?.Invoke();
-        current = next;
-        if (current is null)
-            return;
+        using (ReferenceTracker.EnterStructuralScope(controllerScope))
+        {
+            var next = conditionValue ? trueFactory() : falseFactory?.Invoke();
+            current = next;
+            if (current is null)
+                return;
 
-        childHost!.AddBlock(current);
+            childHost!.AddBlock(current);
+        }
     }
 }

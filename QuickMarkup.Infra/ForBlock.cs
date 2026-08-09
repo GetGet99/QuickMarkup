@@ -176,6 +176,12 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
         if (host is null || scheduled)
             return;
 
+        if (ReactiveScheduler.Instance.Value!.IsTicking)
+        {
+            ReconcileOnTick();
+            return;
+        }
+
         scheduled = true;
         ReactiveScheduler.ScheduleCallback(ReconcileOnTick);
     }
@@ -246,6 +252,8 @@ public class ForBlock<TSrc, TElement, TKey> : IUIBlock<TElement>
     ForItemState<TSrc, TElement, TKey> CreateItem(TKey key, TSrc item, int index)
     {
         var itemRef = new Reference<TSrc>(item);
+
+        using var _ = ReferenceTracker.EnterStructuralScope(controllerScope);
 
         if (indexedItemFactory is not null)
         {

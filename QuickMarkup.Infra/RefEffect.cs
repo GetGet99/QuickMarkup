@@ -2,7 +2,18 @@
 
 public class RefEffect(Action<RefEffect> callback) : IDisposable
 {
+    static long EffectSequence;
+
     internal HashSet<IReference> Dependencies { get; } = [];
+
+    /// <summary>
+    /// The structural scope this effect belongs to, assigned when the effect is added to
+    /// a scope. Null for effects without UI structural lifetime (e.g. Computed internals).
+    /// </summary>
+    internal ReactiveScope? Scope { get; set; }
+
+    internal long Sequence { get; } = Interlocked.Increment(ref EffectSequence);
+
     public void AddDependency(IReference reference)
     {
         if (Dependencies.Add(reference))
