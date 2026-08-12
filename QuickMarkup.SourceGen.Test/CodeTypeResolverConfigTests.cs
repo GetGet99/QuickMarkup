@@ -198,6 +198,7 @@ namespace QuickMarkup.SourceGen.Test
             AttachedProperty = new CodeAnalysis.AttachedPropertyConfig("Set"),
             ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
             ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+            DataTemplateFactoryFullName = null,
         };
 
         var extraSource = @"
@@ -251,6 +252,7 @@ namespace QuickMarkup.SourceGen.Test
             AttachedProperty = new CodeAnalysis.AttachedPropertyConfig("Set"),
             ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
             ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+            DataTemplateFactoryFullName = null,
         };
 
         var compilation = CreateCompilation();
@@ -300,6 +302,7 @@ namespace QuickMarkup.SourceGen.Test
             AttachedProperty = new CodeAnalysis.AttachedPropertyConfig("Set"),
             ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
             ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+            DataTemplateFactoryFullName = null,
         };
 
         var extraSource = @"
@@ -341,6 +344,7 @@ depPropertyName, $"Expected dependency property name to contain 'IsHoldingDepPro
             AttachedProperty = new CodeAnalysis.AttachedPropertyConfig("Register"),
             ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
             ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+            DataTemplateFactoryFullName = null,
         };
 
         var extraSource = @"

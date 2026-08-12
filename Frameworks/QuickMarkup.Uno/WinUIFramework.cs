@@ -8,6 +8,7 @@ namespace QuickMarkup.WinUI;
 [QuickMarkupExternalContentProperty(typeof(Microsoft.UI.Xaml.Markup.ContentPropertyAttribute))]
 [QuickMarkupDependencyProperty(typeof(DependencyProperty), "Property")]
 [QuickMarkupAttachedProperty("Set")]
+[QuickMarkupDataTemplateFactory(typeof(DataTemplateFactory))]
 public sealed class WinUIFramework
 {
 }

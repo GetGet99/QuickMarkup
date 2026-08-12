@@ -87,12 +87,17 @@ public sealed class TemplateBinderDiagnosticTests
                 {qmuiBody}
             </root>
             """;
+        var frameworkConfig = CodeAnalysis.FrameworkConfiguration.Default with
+        {
+            DataTemplateFactoryFullName = "global::QuickMarkup.SourceGen.Test.TestDataTemplateFactory",
+        };
         return CodeAnalysis.QuickMarkupFileAnalyzer.Analyze(
             qmui,
             "test.qmui",
             "TestNamespace",
             compilation,
             CodeAnalysis.QuickMarkupGeneratedMemberTable.Empty,
+            frameworkConfig,
             failFast: false);
     }
 
@@ -154,5 +159,43 @@ public sealed class TemplateBinderDiagnosticTests
         Assert.IsFalse(
             analysis.Diagnostics.Any(d => d.Message.Contains("single fixed element")),
             $"Did not expect single-fixed-element diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void Template_NoFactoryConfigured_ReportsDiagnostic()
+    {
+        var compilation = CreateCompilation();
+        var qmui = """
+            using QuickMarkup.SourceGen.Test;
+            namespace TestNamespace;
+            class TestComponent;
+            <root>
+                <TestItemsControl ItemTemplate=template (TestItem? item) { <TestText /> } />
+            </root>
+            """;
+        var analysis = CodeAnalysis.QuickMarkupFileAnalyzer.Analyze(
+            qmui,
+            "test.qmui",
+            "TestNamespace",
+            compilation,
+            CodeAnalysis.QuickMarkupGeneratedMemberTable.Empty,
+            frameworkConfiguration: CodeAnalysis.FrameworkConfiguration.Default,
+            failFast: false);
+
+        Assert.IsTrue(
+            analysis.Diagnostics.Any(d => d.Message.Contains("no data template factory")),
+            $"Expected 'no data template factory' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void TemplateBody_ElementWithConstructorArgs_ReportsDiagnostic()
+    {
+        var analysis = Analyze("""
+            <TestItemsControl ItemTemplate=template (TestItem? item) { <TestText(1) /> } />
+            """);
+
+        Assert.IsTrue(
+            analysis.Diagnostics.Any(d => d.Message.Contains("cannot have constructor arguments")),
+            $"Expected 'cannot have constructor arguments' diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
     }
 }

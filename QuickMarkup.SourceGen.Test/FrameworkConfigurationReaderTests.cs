@@ -98,6 +98,13 @@ namespace QuickMarkup.Infra
         public string SetPrefix { get; }
     }
 
+    [AttributeUsage(AttributeTargets.Class)]
+    public class QuickMarkupDataTemplateFactoryAttribute : Attribute
+    {
+        public QuickMarkupDataTemplateFactoryAttribute(Type factoryType) { FactoryType = factoryType; }
+        public Type FactoryType { get; }
+    }
+
     [AttributeUsage(AttributeTargets.Property)]
     public class QuickMarkupChildrenAttribute : Attribute { }
 
@@ -294,5 +301,34 @@ public class MyFramework
         Assert.AreEqual("Property", config.DependencyProperty.Suffix);
 
         Assert.AreEqual("Set", config.AttachedProperty.SetPrefix);
+
+        Assert.IsNull(config.DataTemplateFactoryFullName);
+    }
+
+    [TestMethod]
+    public void ReadFromCompilation_WithDataTemplateFactoryConfig_ReturnsCorrectConfig()
+    {
+        var frameworkClass = @"
+[QuickMarkup.Infra.QuickMarkupDataTemplateFactory(typeof(MyTemplateFactory))]
+public class MyFramework
+{
+    public static readonly int Marker;
+}
+
+public class MyTemplateFactory
+{
+    public static DataTemplate CreateDataTemplate<T>(Action<T> postprocess) where T : object => null;
+}
+";
+
+        var compilation = CreateCompilation(
+            "",
+            addAssemblyAttribute: true,
+            frameworkClassSource: frameworkClass);
+
+        var config = CodeAnalysis.FrameworkConfigurationReader.ReadFromCompilation(compilation);
+        Assert.IsNotNull(config);
+
+        Assert.AreEqual("global::MyTemplateFactory", config.DataTemplateFactoryFullName);
     }
 }

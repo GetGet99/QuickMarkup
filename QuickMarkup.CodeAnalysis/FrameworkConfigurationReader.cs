@@ -45,6 +45,7 @@ public static class FrameworkConfigurationReader
         var extAttrNames = new List<string>();
         var depPropConfig = new DependencyPropertyConfig("DependencyProperty", "Property"); // defaults
         var attPropConfig = new AttachedPropertyConfig("Set"); // defaults
+        string? dataTemplateFactoryFullName = null;
 
         foreach (var attr in frameworkType.GetAttributes())
         {
@@ -76,6 +77,23 @@ public static class FrameworkConfigurationReader
                             if (!display.StartsWith("global::"))
                                 display = "global::" + display;
                             extAttrNames.Add(display);
+                        }
+                    }
+                    break;
+
+                case "QuickMarkupDataTemplateFactoryAttribute":
+                    // Takes a single Type argument
+                    if (attr.ConstructorArguments.Length == 1
+                        && attr.ConstructorArguments[0].Kind == TypedConstantKind.Type)
+                    {
+                        var factoryType = attr.ConstructorArguments[0].Value as ITypeSymbol;
+                        if (factoryType is not null && factoryType is not IErrorTypeSymbol)
+                        {
+                            var display = factoryType.ToDisplayString(
+                                SymbolDisplayFormat.FullyQualifiedFormat);
+                            if (!display.StartsWith("global::"))
+                                display = "global::" + display;
+                            dataTemplateFactoryFullName = display;
                         }
                     }
                     break;
@@ -118,6 +136,7 @@ public static class FrameworkConfigurationReader
             AttachedProperty = attPropConfig,
             ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
             ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+            DataTemplateFactoryFullName = dataTemplateFactoryFullName,
         };
     }
 

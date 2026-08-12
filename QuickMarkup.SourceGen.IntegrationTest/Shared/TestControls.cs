@@ -2,7 +2,18 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using QuickMarkup.Infra;
 
+[assembly: QuickMarkupFramework(typeof(QuickMarkup.SourceGen.Test.Shared.TestFramework))]
+
 namespace QuickMarkup.SourceGen.Test.Shared;
+
+[QuickMarkupChildrenProperty("Children")]
+[QuickMarkupChildrenProperty("Items")]
+[QuickMarkupContentProperty("Child")]
+[QuickMarkupContentProperty("Content")]
+[QuickMarkupDependencyProperty(typeof(DependencyProperty), "Property")]
+[QuickMarkupAttachedProperty("Set")]
+[QuickMarkupDataTemplateFactory(typeof(TestDataTemplateFactory))]
+public sealed class TestFramework;
 
 public abstract class TestElement
 {
@@ -193,13 +204,26 @@ public sealed class TemplateMaterializationSettings;
 
 public sealed class TestDataTemplate
 {
-    readonly Func<object?, TemplateMaterializationSettings, TestElement> factory;
-    public TestDataTemplate(object? owner, Func<object?, TemplateMaterializationSettings, TestElement> factory)
+    readonly Func<TestElement> factory;
+    public TestDataTemplate(Func<TestElement> factory)
     {
         this.factory = factory;
     }
 
-    public TestElement LoadContent() => factory(null, new());
+    public TestElement LoadContent() => factory();
+}
+
+public static class TestDataTemplateFactory
+{
+    public static TestDataTemplate CreateDataTemplate<T>(Action<T> postprocess) where T : TestElement, new()
+    {
+        return new TestDataTemplate(() =>
+        {
+            var root = new T();
+            postprocess(root);
+            return root;
+        });
+    }
 }
 
 public sealed class TestItemsControl : TestElement

@@ -854,7 +854,12 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             Error(template, "Template value requires a template-like target property.");
         }
 
+        if (resolver.FrameworkConfig.DataTemplateFactoryFullName is null)
+            Error(template, "Templates are not supported by this framework because no data template factory is configured. Add [QuickMarkupDataTemplateFactory(typeof(...))] to the framework class.");
+
         var body = BindTemplateBody(template);
+        if (body is QMNodeSymbol<ITypeSymbol?> { Constructor.Parameters.Count: > 0 })
+            Error((AST.AST)template.Body, "Template body element cannot have constructor arguments because the framework creates the template root.");
 
         return new QMTemplateNodeSymbol<ITypeSymbol?>(
             paramType?.WithNullableAnnotation(

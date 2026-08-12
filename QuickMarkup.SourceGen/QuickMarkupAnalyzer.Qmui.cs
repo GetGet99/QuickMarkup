@@ -68,7 +68,8 @@ partial class QuickMarkupAnalyzer
         if (!target.TryGetTypeSymbol(context.Compilation, out var typeSym, out _))
             return;
 
-        var resolver = new CodeTypeResolver(context.Compilation, sfc.Usings, target.Namespace);
+        var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(context.Compilation) ?? FrameworkConfiguration.Default;
+        var resolver = new CodeTypeResolver(context.Compilation, sfc.Usings, target.Namespace, frameworkConfiguration: frameworkConfig);
         var binder = new QuickMarkupBinder(resolver, Binder.Collect);
 
         if (sfc.Template is not null)

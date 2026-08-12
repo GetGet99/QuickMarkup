@@ -217,7 +217,8 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
             ReportErrorTerminals(errors, locationProvider, d => ctx.ReportDiagnostic(d));
 
             // Bind inline for immediate diagnostic feedback
-            var resolver = new CodeTypeResolver(compilation, qm.Usings, target.Namespace);
+            var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
+            var resolver = new CodeTypeResolver(compilation, qm.Usings, target.Namespace, frameworkConfiguration: frameworkConfig);
             var binder = new QuickMarkupBinder(resolver, Binder.Collect);
 
             if (qm.Template is not null)

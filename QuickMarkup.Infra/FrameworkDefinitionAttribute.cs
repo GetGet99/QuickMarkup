@@ -111,3 +111,14 @@ public sealed class QuickMarkupChildrenAttribute : Attribute;
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class QuickMarkupContentAttribute : Attribute;
+
+/// <summary>
+/// Declares which type provides <c>CreateDataTemplate</c> for the framework.
+/// The source generator emits calls to this factory when compiling template values
+/// (e.g. <c>ItemTemplate=template (Person? p) &lt;TextBlock .../&gt;</c>) instead of
+/// hardcoding a platform-specific <c>DataTemplate</c> constructor.
+/// </summary>
+#pragma warning disable CS9113 // Parameter is unread.
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class QuickMarkupDataTemplateFactoryAttribute(Type factoryType) : Attribute;
+#pragma warning restore CS9113 // Parameter is unread.

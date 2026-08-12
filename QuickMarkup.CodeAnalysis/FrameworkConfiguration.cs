@@ -29,6 +29,13 @@ public sealed partial record FrameworkConfiguration
 
     /// <summary>Full name of the attribute that marks a property as content (single-assignment).</summary>
     public required string ContentPropertyMarkerAttribute { get; init; }
+
+    /// <summary>
+    /// Full name of the framework's data template factory type, whose static
+    /// <c>CreateDataTemplate&lt;T&gt;(Action&lt;T&gt;)</c> the generator calls when
+    /// compiling template values. <c>null</c> when the framework does not support templates.
+    /// </summary>
+    public required string? DataTemplateFactoryFullName { get; init; }
 }
 
 /// <summary>Describes a property that should be treated as children/content, with its resolution mode.</summary>
@@ -75,5 +82,6 @@ public sealed partial record FrameworkConfiguration
         AttachedProperty = new("Set"),
         ChildrenPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupChildrenAttribute",
         ContentPropertyMarkerAttribute = "global::QuickMarkup.Infra.QuickMarkupContentAttribute",
+        DataTemplateFactoryFullName = null,
     };
 }

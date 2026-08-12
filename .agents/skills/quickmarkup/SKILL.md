@@ -353,7 +353,7 @@ On the initial run `InputLabel` will be null, but after `InputLabel` is set, `` 
 
 ### Templates (DataTemplate)
 
-Support: Uno Platform only. WASDK and UWP target project are not supported.
+Support: Uno Platform, WASDK (WinUI 3), and UWP target projects.
 
 Assign a `template` value to a DataTemplate-typed property for controls that use the `ItemsSource` + `ItemTemplate` contract:
 
@@ -363,7 +363,7 @@ Assign a `template` value to a DataTemplate-typed property for controls that use
 <ItemsControl ItemTemplate=template (Person? person) <TextBlock Text=`person?.Name` /> />
 ```
 
-The direct body must resolve to **exactly one plain element** — nested fragments must still collapse to a single element. `if`, `foreach`, and `await` blocks are not allowed in the body, because a template must always return the same single element that the framework materializes once. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type).
+The direct body must resolve to **exactly one plain element** — nested fragments must still collapse to a single element. `if`, `foreach`, and `await` blocks are not allowed in the body, because a template must always return the same single element that the framework materializes once. The template parameter type must be **nullable or a value type**, and `template` is only accepted on template-like properties (name contains `Template`, or a `DataTemplate`/`FrameworkTemplate` type). The template body element must not have constructor arguments — the framework creates the template root itself, so the body configures an already-created element.
 
 When the element is first created, the input value will be default value (ie. `null` for reference types or `default(YourValueType)` for value types) due to framework limitation. Ensure you guard null case properly.
 

@@ -6,8 +6,9 @@ using System.Text;
 
 namespace QuickMarkup.SourceGen.CodeGen;
 
-class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, QuickMarkupInitializationMode initMode, bool hasExplicitConstructors)
+class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, QuickMarkupInitializationMode initMode, bool hasExplicitConstructors, FrameworkConfiguration frameworkConfig)
 {
+    readonly FrameworkConfiguration frameworkConfig = frameworkConfig;
     int counterRef = 0;
     readonly Stack<ForScope> forScopes = [];
     string disposableAddTarget = "QUICKMARKUP_DISPOSABLES";
@@ -115,7 +116,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             // Build lambda body for property initializers
             var lambdaParam = NewVariable();
             var lambdaBuilder = new StringBuilder();
-            var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible, hasExplicitConstructors: true)
+            var lambdaCtx = new CodeGenContext(membersBuilder, lambdaBuilder, QuickMarkupInitializationMode.BackwardCompatible, hasExplicitConstructors: true, frameworkConfig)
             {
                 counterRef = counterRef,
                 disposableAddTarget = disposableAddTarget
@@ -968,7 +969,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
 
     CodeGenContext Clone(StringBuilder builder)
     {
-        var clone = new CodeGenContext(membersBuilder, builder, initMode, hasExplicitConstructors)
+        var clone = new CodeGenContext(membersBuilder, builder, initMode, hasExplicitConstructors, frameworkConfig)
         {
             counterRef = counterRef,
             disposableAddTarget = disposableAddTarget
@@ -992,34 +993,39 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
 
     string CGenTemplate(QMTemplateNodeSymbol<ITypeSymbol?> template)
     {
+        var factory = frameworkConfig.DataTemplateFactoryFullName
+            ?? throw new InvalidOperationException("Template codegen requires a framework data template factory (QuickMarkupDataTemplateFactoryAttribute).");
+
         var nested = new StringBuilder();
         var nestedContext = Clone(nested);
         var scope = nestedContext.NewVariable();
         var reference = nestedContext.NewVariable();
-        var owner = nestedContext.NewVariable();
-        var settings = nestedContext.NewVariable();
+        var root = nestedContext.NewVariable();
         nestedContext.disposableAddTarget = scope;
 
         var paramTypeName = ReferenceExtension.RefTypeDisplayName(template.ParamType, template.ParamName);
-        var templateTypeName = template.TemplateType?.FullNameWithoutAnnotation() ?? "object";
 
         nestedContext.forScopes.Push(new ForScope(template.ParamName, reference, null, null));
-        var root = template.Body switch
+        string rootTypeName;
+        switch (template.Body)
         {
-            QMNodeSymbol<ITypeSymbol?> node => nestedContext.CGenNodeValue(node),
-            _ => throw new NotImplementedException($"Template codegen does not support {template.Body.GetType().Name}.")
-        };
+            case QMNodeSymbol<ITypeSymbol?> node:
+                rootTypeName = TypeName(node.Type);
+                nestedContext.CGenWrite(node, root);
+                break;
+            default:
+                throw new NotImplementedException($"Template codegen does not support {template.Body.GetType().Name}.");
+        }
         nestedContext.forScopes.Pop();
         counterRef = nestedContext.counterRef;
 
         nested.AppendLine($"{root}.DataContextChanged += (_, e) => {reference}.Value = ({paramTypeName})e.NewValue;");
 
         return $$"""
-        new {{templateTypeName}}(null, ({{owner}}, {{settings}}) => {
+        {{factory}}.CreateDataTemplate<{{rootTypeName}}>({{root}} => {
             global::QuickMarkup.Infra.ReactiveScope {{scope}} = new global::QuickMarkup.Infra.ReactiveScope();
             global::QuickMarkup.Infra.Reference<{{paramTypeName}}> {{reference}} = new(default({{paramTypeName}}));
             {{nested.ToString().IndentWOF(1)}}
-            return {{root}};
         })
         """;
     }

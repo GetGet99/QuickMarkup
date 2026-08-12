@@ -210,7 +210,8 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     generatedProperties,
                     codeBuilder,
                     initMode,
-                    hasExplicitConstructors
+                    hasExplicitConstructors,
+                    frameworkConfig
                 );
                 cgen.CGenWrite(output, "this");
                 ct.ThrowIfCancellationRequested();
