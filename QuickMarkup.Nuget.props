@@ -11,7 +11,7 @@
   </PropertyGroup>
   <PropertyGroup>
   <PackageOutputPath Condition="'$(OS)' == 'Windows_NT'">
-    D:\Programming\VS\.LocalNugetPackages
+    D:\Programming\.LocalNugetPackages
   </PackageOutputPath>
 
   <PackageOutputPath Condition="'$(OS)' != 'Windows_NT'">
