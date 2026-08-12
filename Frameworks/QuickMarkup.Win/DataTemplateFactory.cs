@@ -9,9 +9,6 @@ namespace QuickMarkup.WinUI;
 /// <c>XamlReader</c> is used instead, with a delegator attached property running the postprocess
 /// action for each materialized root.
 /// </remarks>
-#if !HAS_UNO
-[Bindable]
-#endif
 public static class DataTemplateFactory
 {
 #if HAS_UNO
@@ -55,7 +52,10 @@ public static class DataTemplateFactory
 /// <summary>
 /// Invokes the postprocess action for a template root that was created by <c>XamlReader</c>.
 /// </summary>
-public static class DataTemplateDelegator
+#if !HAS_UNO
+[Bindable]
+#endif
+public class DataTemplateDelegator
 {
     static readonly Dictionary<string, Action<object>> Delegates = [];
     static int nextId;
