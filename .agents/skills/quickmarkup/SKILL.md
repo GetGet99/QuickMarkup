@@ -69,7 +69,7 @@ User MyUser => async `Api.FetchUserAsync(Id)`; // creates AsyncComputed<User>, p
 
 References auto-notify the UI on change. Computed variables cache and re-evaluate when dependencies change. Computed variables are lazily initialized — not evaluated until first accessed.
 
-> **Note:** A reference declared as a reference type without a default value (e.g. `string Text;`) is initialized to `null`, which produces a QuickMarkup warning (`QM1014`). Assign a default value or declare the type as nullable (`string? Text;`) to avoid warning.
+> **Note:** A reference declared as a reference type without a default value (e.g. `string Text;`) is initialized to `null`, which produces a QuickMarkup warning (`QM1014`). Assign a default value `string Text = "";`, make it required `required string Text;`, or declare the type as nullable `string? Text;` to avoid warning.
 
 References get a `*Prop` backing field and computed get a `*Comp` backing field on the partial class, accessible directly if needed. Async computed gets `*Async` backing field (`AsyncComputed<T>`), plus `*Status` (`AsyncComputedState`) and `*Failure` (`Exception?`) properties. The value property throws if not yet loaded — check `*Status` first.
 
@@ -268,7 +268,7 @@ Contexts form a hierarchy: grandparent → parent → child. A child can find pr
 
 Comments use `//` or `/* */`. **Not** `<!-- -->`.
 
-### Property Values
+### Property and Reference Values
 
 Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 
@@ -284,6 +284,24 @@ Values are **not** quoted (unlike XML/XAML). Use raw values directly.
 | null/default | keyword | `Tag=null` / `Target=default` |
 | C# expression | backticks | `` Text=`$"Count: {Counter}"` `` |
 | Alternate C# literal (backward compatability legacy syntax of above) | `/-...-/` | `Source=/-new Uri("ms-appx:///icon.png")-/` |
+
+### Wrap non QuickMarkup primitive value in backticks
+
+For things that are not mentioned above, need to wrap in backtick. Even if value is constant. These are C# expression, not QuickMarkup expression.
+
+Not wrapping in backtick will not compile and will usually result in parser error.
+
+```quickmarkup incorrect syntax
+double Value = double.MaxValue; // incorrect syntax
+
+<StackPaenl Spacing=MyStaticClass.Spacing /> // incorrect syntax
+```
+
+```quickmarkup
+double Value = `double.MaxValue`; // correct syntax
+
+<StackPaenl Spacing=`MyStaticClass.Spacing` /> // correct syntax
+```
 
 ### Automatic `new` (single-argument constructors)
 

@@ -49,6 +49,7 @@ partial class QuickMarkupBinder
         }
 
         if (kind is RefDeclarationKind.Ref &&
+            !r.IsRequired &&
             r.DefaultValue is null &&
             typeSym is not null &&
             !r.Type.IsTypeNullable &&
