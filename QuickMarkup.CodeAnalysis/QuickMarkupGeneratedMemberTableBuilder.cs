@@ -45,7 +45,9 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     unknownTypes ? null : @ref.TypeName,
                     @ref.Accessibility,
                     memberTableKind,
-                    isRequired));
+                    IsRequired: isRequired,
+                    IsNullableAware: true
+                ));
 
             var backingName = @ref.BackingName;
             
@@ -63,7 +65,10 @@ static class QuickMarkupGeneratedMemberTableBuilder
                         RefDeclarationKind.Provide => QuickMarkupGeneratedPropertyKind.ProvideValue,
                         RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional => QuickMarkupGeneratedPropertyKind.InjectValue,
                         _ => throw new NotImplementedException()
-                    }));
+                    },
+                    IsRequired: false,
+                    IsNullableAware: true
+                ));
 
             if (@ref.Kind is RefDeclarationKind.AsyncComputed)
             {
@@ -73,7 +78,10 @@ static class QuickMarkupGeneratedMemberTableBuilder
                         $"{@ref.Name}Status",
                         unknownTypes ? null : "global::QuickMarkup.Infra.AsyncComputedState",
                         @ref.Accessibility,
-                        QuickMarkupGeneratedPropertyKind.AsyncComputedStatus));
+                        QuickMarkupGeneratedPropertyKind.AsyncComputedStatus,
+                    IsRequired: false,
+                    IsNullableAware: true
+                ));
 
                 AddGeneratedProperty(
                     properties,
@@ -81,7 +89,10 @@ static class QuickMarkupGeneratedMemberTableBuilder
                         $"{@ref.Name}Failure",
                         unknownTypes ? null : "global::System.Exception?",
                         @ref.Accessibility,
-                        QuickMarkupGeneratedPropertyKind.AsyncComputedFailure));
+                        QuickMarkupGeneratedPropertyKind.AsyncComputedFailure,
+                    IsRequired: false,
+                    IsNullableAware: true
+                ));
             }
 
             ct.ThrowIfCancellationRequested();
@@ -100,7 +111,10 @@ static class QuickMarkupGeneratedMemberTableBuilder
                     CodeTypeResolver.ComponentOutputPropertyName,
                     outputTypeName,
                     ResolvedAccessibility.Public,
-                    QuickMarkupGeneratedPropertyKind.ComponentOutput));
+                    QuickMarkupGeneratedPropertyKind.ComponentOutput,
+                    IsRequired: false,
+                    IsNullableAware: true
+                ));
         }
 
         var initMode = hasRequired

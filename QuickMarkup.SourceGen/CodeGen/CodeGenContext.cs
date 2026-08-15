@@ -324,7 +324,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         void AddSourceToTarget()
         {
             codeBuilder.AddPropertyBindOneWay(
-                addProp.PropertyType,
+                addProp.AssignPropertyType,
                 property,
                 CGen(addProp.Value),
                 disposableAddTarget: disposableAddTarget
@@ -380,6 +380,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 break;
             case BindingModes.SourceToTarget:
                 codeBuilder.AddAttachedPropertyBindOneWay(
+                    addProp.AssignPropertyType,
                     addProp.AttachedTypeFullName,
                     addProp.PropertyName,
                     target,
@@ -411,6 +412,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
                 break;
             case BindingModes.TwoWay:
                 codeBuilder.AddAttachedPropertyBindOneWay(
+                    addProp.AssignPropertyType,
                     addProp.AttachedTypeFullName,
                     addProp.PropertyName,
                     target,

@@ -24,7 +24,8 @@ public readonly record struct QuickMarkupGeneratedPropertySymbol(
     string? TypeName,
     ResolvedAccessibility Accessibility,
     QuickMarkupGeneratedPropertyKind Kind,
-    bool IsRequired = false
+    bool IsRequired,
+    bool IsNullableAware
 );
 
 public readonly record struct ResolvedProperty(
@@ -32,14 +33,15 @@ public readonly record struct ResolvedProperty(
     ITypeSymbol? Type,
     IPropertySymbol? RoslynSymbol,
     QuickMarkupGeneratedPropertySymbol? GeneratedSymbol,
-    bool IsRequired = false
+    bool IsRequired,
+    bool IsNullableAware
 )
 {
-    public static ResolvedProperty FromRoslyn(IPropertySymbol property, bool isRequired = false)
-        => new(property.Name, property.Type, property, null, isRequired);
+    public static ResolvedProperty FromRoslyn(IPropertySymbol property, bool isRequired)
+        => new(property.Name, property.Type, property, null, isRequired, property.NullableAnnotation is not NullableAnnotation.None);
 
     public static ResolvedProperty FromGenerated(QuickMarkupGeneratedPropertySymbol property, ITypeSymbol? type)
-        => new(property.Name, type, null, property, property.IsRequired);
+        => new(property.Name, type, null, property, property.IsRequired, property.IsNullableAware);
 }
 
 public readonly record struct QuickMarkupConstructorParameter(

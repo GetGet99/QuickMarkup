@@ -148,8 +148,28 @@ public record class QMAddChildMember<T>(
     ChildCollectionLowering CollectionLowering = ChildCollectionLowering.DirectAdd,
     T? ChildElementType = default
 ) : IQMMemberSymbol;
-public record class QMAddPropertyMember<T>(T? PropertyType, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "", string TargetName = "") : IQMMemberSymbol;
-public record class QMAttachedPropertyMember<T>(T? PropertyType, string AttachedTypeFullName, string PropertyName, IQMValueSymbol Value, BindingModes BindingMode, bool IsDependencyProperty = false, string DependencyPropertyName = "") : IQMMemberSymbol;
+public record class QMAddPropertyMember<T>(
+    // Type for read
+    T? PropertyType,
+    // Type for assign (may relax to allow nullable value when property is not nullable aware)
+    T? AssignPropertyType,
+    string PropertyName,
+    IQMValueSymbol Value,
+    BindingModes BindingMode,
+    bool IsDependencyProperty = false,
+    string DependencyPropertyName = "",
+    string TargetName = ""
+) : IQMMemberSymbol;
+public record class QMAttachedPropertyMember<T>(
+    T? PropertyType,
+    T? AssignPropertyType,
+    string AttachedTypeFullName,
+    string PropertyName,
+    IQMValueSymbol Value,
+    BindingModes BindingMode,
+    bool IsDependencyProperty = false,
+    string DependencyPropertyName = ""
+) : IQMMemberSymbol;
 public record class QMAddEventMember<T>(T? MemberType, string EventName, IQMValueSymbol Value, bool IsShorthand, bool IsAsync = false) : IQMMemberSymbol;
 public record class QMExtensionMember(string Method, string TargetPath = "") : IQMMemberSymbol;
 public record class QMCallbackMember<T>(T? Type, string RawDelegateCode) : IQMMemberSymbol;

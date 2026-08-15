@@ -552,11 +552,13 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             var attachedType = resolver.GetTypeSymbol(typeName);
 
             if (attachedType is null ||
-                !resolver.TryGetAttachedPropertyInfo(attachedType, propName, out var attachedValueType, out var isDep, out var depName))
+                !resolver.TryGetAttachedPropertyInfo(attachedType, propName, out var attachedValueType, out var isDep, out var depName, out var isNullableAware))
             {
                 Error(property, $"Cannot resolve attached property '{property.Key}'. Ensure the type '{typeName}' is valid and has an attached property '{propName}'.");
                 return;
             }
+
+            var attachedAssignValueType = isNullableAware ? attachedValueType : attachedValueType.WithNullableAnnotation(NullableAnnotation.Annotated);
 
             var attachedTypeFullName = attachedType.FullNameWithoutAnnotation();
 
@@ -580,6 +582,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                             throw new InvalidOperationException($"Bind back to {property.Value?.GetType().Name ?? "<null>"} is not supported for attached property");
                         targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
                             attachedValueType,
+                            attachedAssignValueType,
                             attachedTypeFullName,
                             propName,
                             new QMValueSymbol<ITypeSymbol>(attachedValueType, target),
@@ -610,6 +613,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                         }
                         targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
                             attachedValueType,
+                            attachedAssignValueType,
                             attachedTypeFullName,
                             propName,
                             AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(attachedValueType, lambdaForeign.Code)),
@@ -626,6 +630,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                             Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
                         targetCollection.Add(new QMAttachedPropertyMember<ITypeSymbol>(
                             attachedValueType,
+                            attachedAssignValueType,
                             attachedTypeFullName,
                             propName,
                             attachedValue,
@@ -657,6 +662,8 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
             ErrorUnknownProperty(property, tagInfo, property.Key);
         }
         var targetType = targetPropSymbol?.Type;
+        // When symbol is not nullable aware, we want to generate nullable assign.
+        var targetAssignType = targetPropSymbol?.IsNullableAware ?? false ? targetType : targetType?.WithNullableAnnotation(NullableAnnotation.Annotated);
         switch (property.Operator)
         {
             case ParsedPropertyOperator.AddAssign:
@@ -719,6 +726,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                         Error(new QMBinderFragmentComponentAsValueError((AST.AST)property.Value, tagInfo.TagType?.FullNameWithoutAnnotation() ?? tagInfo.TagName));
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
+                        targetAssignType,
                         targetPropertyName,
                         value,
                         // treated as one way binding if it is foreign
@@ -750,6 +758,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                 }
                 targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                     targetType,
+                    targetAssignType,
                     targetPropertyName,
                     AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(targetType, target)),
                     property.Operator is ParsedPropertyOperator.BindBack ?
@@ -779,6 +788,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                         out var dependencyPropertyName);
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
+                        targetAssignType,
                         targetPropertyName,
                         AddCapturedLocalNames(property.Value, new QMValueSymbol<ITypeSymbol>(targetType, lambdaForeign.Code)),
                         BindingModes.TargetToSourceDelegate,
@@ -795,6 +805,7 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
                     // <QM IsEnabled />
                     targetCollection.Add(new QMAddPropertyMember<ITypeSymbol>(
                         targetType,
+                        targetAssignType,
                         targetPropertyName,
                         new QMValueSymbol<ITypeSymbol>(propSymbol.Type, "true"),
                         BindingModes.OneTime

@@ -98,11 +98,12 @@ static class CodeSnippetsExtension
             """);
         }
 
-        public void AddAttachedPropertyBindOneWay(string attachedTypeFullName, string propertyName, string target, string valueExpression, string disposableAddTarget = "QUICKMARKUP_DISPOSABLES")
+        public void AddAttachedPropertyBindOneWay(ITypeSymbol? type, string attachedTypeFullName, string propertyName, string target, string valueExpression, string disposableAddTarget = "QUICKMARKUP_DISPOSABLES")
         {
             codeBuilder.AppendLine($$"""
-            {{disposableAddTarget}}.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange(
-                () => {
+            {{disposableAddTarget}}.Add(global::QuickMarkup.Infra.ReferenceTracker.RunAndRerunOnReferenceChange{{(
+                            type is null ? "" : $"<{new FullType(type)}>"
+                        )}} (() => {
                     return {{valueExpression}};
                 }, QUICKMARUP_TEMPVALUE => {
                     {{attachedTypeFullName}}.Set{{propertyName}}({{target}}, QUICKMARUP_TEMPVALUE);

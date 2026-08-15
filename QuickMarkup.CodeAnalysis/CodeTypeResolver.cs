@@ -429,11 +429,13 @@ class CodeTypeResolver(
         string propertyName,
         [NotNullWhen(true)] out ITypeSymbol? valueType,
         out bool isDependencyProperty,
-        out string dependencyPropertyName)
+        out string dependencyPropertyName,
+        out bool isNullableAware)
     {
         valueType = null;
         isDependencyProperty = false;
         dependencyPropertyName = "";
+        isNullableAware = false;
 
         if (attachedType is null)
             return false;
@@ -443,6 +445,7 @@ class CodeTypeResolver(
         if (setMethod is { IsStatic: true, Parameters.Length: 2 })
         {
             valueType = setMethod.Parameters[1].Type;
+            isNullableAware = setMethod.Parameters[1].NullableAnnotation is not NullableAnnotation.None;
 
             // Also check for dependency property pattern (FooProperty field)
             isDependencyProperty = TryGetDependencyProperty(attachedType, propertyName, out var depName);

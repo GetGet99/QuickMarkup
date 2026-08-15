@@ -348,7 +348,7 @@ public class QmuiSemanticService : IQmuiSemanticService
             return null;
 
         var resolver = CreateResolver(compilation, sfc, generatedMembers);
-        if (resolver.TryGetAttachedPropertyInfo(attachedType, attachedTagStart.PropertyName, out var valueType, out _, out _))
+        if (resolver.TryGetAttachedPropertyInfo(attachedType, attachedTagStart.PropertyName, out var valueType, out _, out _, out _))
         {
             var fullPropertyName = $"{attachedTagStart.TypeName}.{attachedTagStart.PropertyName}";
             return new PropertyResolutionResult(

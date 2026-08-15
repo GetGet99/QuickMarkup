@@ -114,7 +114,10 @@ public sealed class MarkupCursorResolverTests
                 Name: "Name",
                 TypeName: "string",
                 Accessibility: Language.Symbols.ResolvedAccessibility.Public,
-                Kind: QuickMarkupGeneratedPropertyKind.RefValue),
+                Kind: QuickMarkupGeneratedPropertyKind.RefValue,
+                IsRequired: false,
+                IsNullableAware: true
+            ),
             DisplayString: "(reactive) string Name",
             Kind: PropertyResolutionKind.RefDeclaration);
         
@@ -145,7 +148,10 @@ public sealed class MarkupCursorResolverTests
                 Name: "FullName",
                 TypeName: "string",
                 Accessibility: Language.Symbols.ResolvedAccessibility.Public,
-                Kind: QuickMarkupGeneratedPropertyKind.ComputedValue),
+                Kind: QuickMarkupGeneratedPropertyKind.ComputedValue,
+                IsRequired: false,
+                IsNullableAware: true
+            ),
             DisplayString: "(computed) string FullName",
             Kind: PropertyResolutionKind.RefDeclaration);
         

@@ -362,7 +362,7 @@ namespace QuickMarkup.SourceGen.Test
         var type = resolver.GetTypeSymbol("global::QuickMarkup.SourceGen.Test.CustomGrid");
         Assert.IsNotNull(type);
 
-        var found = resolver.TryGetAttachedPropertyInfo(type, "Row", out var valueType, out var isDep, out var depName);
+        var found = resolver.TryGetAttachedPropertyInfo(type, "Row", out var valueType, out var isDep, out var depName, out _);
         Assert.IsTrue(found, "Should detect attached property with custom prefix");
         Assert.IsNotNull(valueType);
     }
@@ -448,7 +448,7 @@ depPropertyName, $"Expected dependency property name to contain 'IsHoldingProper
         var type = resolver.GetTypeSymbol("global::QuickMarkup.SourceGen.Test.Grid");
         Assert.IsNotNull(type);
 
-        var found = resolver.TryGetAttachedPropertyInfo(type, "Row", out var valueType, out var isDep, out var depName);
+        var found = resolver.TryGetAttachedPropertyInfo(type, "Row", out var valueType, out var isDep, out var depName, out _);
         Assert.IsTrue(found, "Grid.Row should be detected as attached property");
         Assert.IsNotNull(valueType);
         Assert.IsTrue(isDep, "Grid.Row should also be a dependency property");
