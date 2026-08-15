@@ -29,6 +29,8 @@ partial class QuickMarkupBinder
 
         var attrs = new List<QMCompileTimeAttributeSymbol>(r.Attributes.Count);
         var kind = r.Kind;
+
+        bool shouldSuppressNullOnCreate = false;
         foreach (var a in r.Attributes)
             attrs.Add(BindCompileTimeAttribute(a));
             
@@ -49,13 +51,18 @@ partial class QuickMarkupBinder
         }
 
         if (kind is RefDeclarationKind.Ref &&
-            !r.IsRequired &&
             r.DefaultValue is null &&
             typeSym is not null &&
             !r.Type.IsTypeNullable &&
             !typeSym.IsValueType)
         {
-            Warn(new QMBinderRefMissingDefaultValueWarning(r.Name.Name, r.Name.Name.Name, typeSym.FullNameWithoutAnnotation()));
+            if (r.IsRequired)
+            {
+                shouldSuppressNullOnCreate = true;
+            } else
+            {
+                Warn(new QMBinderRefMissingDefaultValueWarning(r.Name.Name, r.Name.Name.Name, typeSym.FullNameWithoutAnnotation()));
+            }
         }
 
         string name = r.Name.Name.Name;
@@ -121,6 +128,7 @@ partial class QuickMarkupBinder
             },
             r.IsStatic,
             r.IsRequired,
+            shouldSuppressNullOnCreate,
             attrs);
     }
 

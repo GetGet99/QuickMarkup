@@ -179,4 +179,5 @@ public record class QMRefDeclarationSymbol<T>(
     ResolvedAccessibility Accessibility,
     bool IsStatic,
     bool IsRequired,
+    bool ShouldSuppressNullOnCreate,
     IReadOnlyList<QMCompileTimeAttributeSymbol> CompileTimeAttributes);

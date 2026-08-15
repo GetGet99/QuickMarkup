@@ -26,6 +26,10 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
         var defaultValue = bound.DefaultValue is null
             ? "default"
             : ValueSymbolToInitExpression(bound.DefaultValue);
+        if (bound.ShouldSuppressNullOnCreate)
+        {
+            defaultValue = $"({defaultValue})!";
+        }
         var thisRef = bound.IsStatic ? "" : "this.";
 
         var accessibility = bound.Accessibility switch
