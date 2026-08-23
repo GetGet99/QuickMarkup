@@ -53,8 +53,8 @@ partial class QuickMarkupBinder
         if (kind is RefDeclarationKind.Ref &&
             r.DefaultValue is null &&
             typeSym is not null &&
-            !r.Type.IsTypeNullable &&
-            !typeSym.IsValueType)
+            !typeSym.IsValueType &&
+            typeSym.NullableAnnotation is not NullableAnnotation.NotAnnotated)
         {
             if (r.IsRequired)
             {
