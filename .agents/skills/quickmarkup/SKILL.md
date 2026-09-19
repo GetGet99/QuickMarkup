@@ -456,7 +456,7 @@ if (`selectedItem`) { <TextBlock Text=`selectedItem.Name` /> }
 
 ##### Truthiness rules
 
-| Value | Truthy? | Note |
+| Value | Truthy? | Types |
 |-------|---------|------|
 | `true` | Yes | `bool` |
 | `false` | No | `bool` |
@@ -468,8 +468,8 @@ if (`selectedItem`) { <TextBlock Text=`selectedItem.Name` /> }
 | `0` (integer-like) | No | `sbyte`, `short`, `int`, `long`, `nint`, `byte`, `ushort`, `uint`, `ulong`, `nuint`, `char` |
 | non-zero integer-like | Yes | same types as above |
 | `0` (floating-point) | No | `float`, `double`, `decimal` |
-| non-zero floating-point | Yes | same types as above |
 | `NaN` | No | `float`, `double` |
+| non-zero, non-NaN floating-point | Yes | `float`, `double`, `decimal` |
 | `NaN` (.NET 5+) | No | `Half` |
 | `0` (.NET 5+) | No | `BigInteger`, `Int128`, `UInt128`, `Half` (.NET 5+) |
 
