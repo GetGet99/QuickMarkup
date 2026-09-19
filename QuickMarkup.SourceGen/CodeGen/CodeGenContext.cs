@@ -597,14 +597,14 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
             return $$"""
             new global::QuickMarkup.Infra.ConditionalBlock<{{typeName}}>(
                 new global::QuickMarkup.Infra.ReactiveScope(),
-                () => {{CGen(ifNode.Condition)}},
+                () => global::QuickMarkup.Infra.Markup.Booleanish.Condition({{CGen(ifNode.Condition)}}),
                 () => {{trueBlock}})
             """;
 
         return $$"""
         new global::QuickMarkup.Infra.ConditionalBlock<{{typeName}}>(
             new global::QuickMarkup.Infra.ReactiveScope(),
-            () => {{CGen(ifNode.Condition)}},
+            () => global::QuickMarkup.Infra.Markup.Booleanish.Condition({{CGen(ifNode.Condition)}}),
             () => {{trueBlock}},
             () => {{falseBlock}})
         """;
@@ -798,7 +798,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         codeBuilder.AppendLine($$"""
         var {{slot}} = new global::QuickMarkup.Infra.ConditionalSlot<{{typeName}}>(
             new global::QuickMarkup.Infra.ReactiveScope(),
-            () => {{CGen(conditional.Condition)}},
+            () => global::QuickMarkup.Infra.Markup.Booleanish.Condition({{CGen(conditional.Condition)}}),
             QUICKMARKUP_VALUE => {{target}} = QUICKMARKUP_VALUE,
             () => {
                 {{CGenScopedValueFactoryBody(conditional.ValueWhenTrue, type, target).IndentWOF(2)}}
@@ -913,7 +913,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         {{typeName}} {{value}} = default!;
         var {{slot}} = new global::QuickMarkup.Infra.ConditionalSlot<{{typeName}}>(
             new global::QuickMarkup.Infra.ReactiveScope(),
-            () => {{CGen(conditional.Condition)}},
+            () => global::QuickMarkup.Infra.Markup.Booleanish.Condition({{CGen(conditional.Condition)}}),
             QUICKMARKUP_VALUE => {
                 {{value}} = QUICKMARKUP_VALUE;
                 {{target}} = QUICKMARKUP_VALUE;
