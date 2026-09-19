@@ -439,6 +439,64 @@ else <TextBlock Text="Fallback" />
 
 The `else` branch is required for single-child content positions (e.g., `Content`).
 
+#### Non-boolean conditions (Booleanish)
+
+The `if` condition accepts **any type** for foreign expression, not just `bool`. The value is automatically coerced to `bool` via `Booleanish.Condition(...)`, following the truthiness rules:
+
+```quickmarkup
+// String — truthy when non-empty
+if (`myString`) { <TextBlock Text="Has content" /> }
+
+// Numeric — truthy when non-zero
+if (`itemCount`) { <TextBlock Text="Has items" /> }
+
+// Object — truthy when non-null
+if (`selectedItem`) { <TextBlock Text=`selectedItem.Name` /> }
+```
+
+##### Truthiness rules
+
+| Value | Truthy? | Note |
+|-------|---------|------|
+| `true` | Yes | `bool` |
+| `false` | No | `bool` |
+| `null` (any type) | No | |
+| non-null reference type | Yes | |
+| non-null nullable struct | Yes | |
+| `""` (empty string) | No | `string` |
+| `"text"` (non-empty) | Yes | `string` |
+| `0` (integer-like) | No | `sbyte`, `short`, `int`, `long`, `nint`, `byte`, `ushort`, `uint`, `ulong`, `nuint`, `char` |
+| non-zero integer-like | Yes | same types as above |
+| `0` (floating-point) | No | `float`, `double`, `decimal` |
+| non-zero floating-point | Yes | same types as above |
+| `NaN` | No | `float`, `double` |
+| `NaN` (.NET 5+) | No | `Half` |
+| `0` (.NET 5+) | No | `BigInteger`, `Int128`, `UInt128`, `Half` (.NET 5+) |
+
+Any type not listed above (e.g., custom classes) defaults to `true` when non-null and `false` when null.
+
+Note: Default struct values `default(StructType)` except numeric types and `null` (for nullable struct) above are considered as `true`. Be careful!
+
+##### Non-foreign expression
+
+`if` condition does not accept expression not wrapped in backtick other than `true` and `false` to prevent user errors.
+
+These are allowed for temporary allow/disallow before proper logic is decided.
+
+```quickmarkup
+if (false) {
+    <TextBlock Text="Temporary disabled path" />
+}
+
+if (true) {
+    <TextBlock Text="Coming soon!" />
+} else {
+    <TextBlock Text="Temporary disabled WIP path" />
+}
+```
+
+Note: This us for informational purpose only and may or may not be a recommended pattern. Consult user and codebase rules/instructions.
+
 #### Notes about using it on ObservableCollection.
 
 When using with `ObservableCollection<T>` it is worth knowing that `Count` property is NOT reactive. Use the `Reactive` extension property defined by QuickMarkup instead (you need to add `using QuickMarkup.Infra.Collections;` namespace).
