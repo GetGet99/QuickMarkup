@@ -18,9 +18,6 @@ partial class Booleanish
     public static bool Condition(long value) => value != 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(Int128 value) => value != 0;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(BigInteger value) => value != BigInteger.Zero;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -42,13 +39,7 @@ partial class Booleanish
     public static bool Condition(ulong value) => value != 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(UInt128 value) => value != 0;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(nuint value) => value != 0;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(Half value) => value != default /* 0 */ && !Half.IsNaN(value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(float value) => value != 0 && !float.IsNaN(value);
@@ -58,4 +49,16 @@ partial class Booleanish
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(decimal value) => value != 0;
+
+#if NET5_0_OR_GREATER
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(Int128 value) => value != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(UInt128 value) => value != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(Half value) => value != default /* 0 */ && !Half.IsNaN(value);
+#endif
 }

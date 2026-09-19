@@ -27,7 +27,6 @@ public static class BooleanishExtension
                 short x => Booleanish.Condition(x),
                 int x => Booleanish.Condition(x),
                 long x => Booleanish.Condition(x),
-                Int128 x => Booleanish.Condition(x),
                 BigInteger x => Booleanish.Condition(x),
                 nint x => Booleanish.Condition(x),
                 char x => Booleanish.Condition(x),
@@ -35,13 +34,16 @@ public static class BooleanishExtension
                 ushort x => Booleanish.Condition(x),
                 uint x => Booleanish.Condition(x),
                 ulong x => Booleanish.Condition(x),
-                UInt128 x => Booleanish.Condition(x),
                 nuint x => Booleanish.Condition(x),
-                Half x => Booleanish.Condition(x),
                 float x => Booleanish.Condition(x),
                 double x => Booleanish.Condition(x),
                 decimal x => Booleanish.Condition(x),
                 string x => Booleanish.Condition(x),
+#if NET5_0_OR_GREATER
+                Int128 x => Booleanish.Condition(x),
+                UInt128 x => Booleanish.Condition(x),
+                Half x => Booleanish.Condition(x),
+#endif
                 _ => true
             };
     }

@@ -18,9 +18,6 @@ partial class Booleanish
     public static bool Condition(long? value) => value is {} num && Condition(num);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(Int128? value) => value is {} num && Condition(num);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(BigInteger? value) => value is {} num && Condition(num);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -42,13 +39,7 @@ partial class Booleanish
     public static bool Condition(ulong? value) => value is {} num && Condition(num);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(UInt128? value) => value is {} num && Condition(num);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(nuint? value) => value is {} num && Condition(num);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Condition(Half? value) => value is {} num && Condition(num);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(float? value) => value is {} num && Condition(num);
@@ -58,4 +49,15 @@ partial class Booleanish
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Condition(decimal? value) => value is {} num && Condition(num);
+
+#if NET5_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(Int128? value) => value is {} num && Condition(num);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(UInt128? value) => value is {} num && Condition(num);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool Condition(Half? value) => value is {} num && Condition(num);
+#endif
 }
