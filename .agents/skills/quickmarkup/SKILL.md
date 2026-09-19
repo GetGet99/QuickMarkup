@@ -475,7 +475,7 @@ if (`selectedItem`) { <TextBlock Text=`selectedItem.Name` /> }
 
 Any type not listed above (e.g., custom classes) defaults to `true` when non-null and `false` when null.
 
-Note: Default struct values `default(StructType)` except numeric types and `null` (for nullable struct) above are considered as `true`. Be careful!
+Note: Default struct values `default(StructType)` except cases listed above and `null` (for nullable struct) are considered as `true`. Be careful!
 
 ##### Non-foreign expression
 
