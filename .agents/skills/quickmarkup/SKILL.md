@@ -460,22 +460,18 @@ if (`selectedItem`) { <TextBlock Text=`selectedItem.Name` /> }
 |-------|---------|------|
 | `true` | Yes | `bool` |
 | `false` | No | `bool` |
-| `null` (any type) | No | |
-| non-null reference type | Yes | |
-| non-null nullable struct | Yes | |
 | `""` (empty string) | No | `string` |
 | `"text"` (non-empty) | Yes | `string` |
-| `0` (integer-like) | No | `sbyte`, `short`, `int`, `long`, `nint`, `byte`, `ushort`, `uint`, `ulong`, `nuint`, `char` |
-| non-zero integer-like | Yes | same types as above |
-| `0` (floating-point) | No | `float`, `double`, `decimal` |
-| `NaN` | No | `float`, `double` |
-| non-zero, non-NaN floating-point | Yes | `float`, `double`, `decimal` |
-| `NaN` (.NET 5+) | No | `Half` |
-| `0` (.NET 5+) | No | `BigInteger`, `Int128`, `UInt128`, `Half` (.NET 5+) |
+| `0` or `NaN` | No | Relevant supported numeric types |
+| non-zero, non-NaN numbers | Yes | Relevant supported numeric types |
+| `null` | No | Any reference type or nullable struct |
+| non-null objects and values* not listed above | Yes | Any type |
 
-Any type not listed above (e.g., custom classes) defaults to `true` when non-null and `false` when null.
+Supported numeric types: `sbyte`, `short`, `int`, `long`, `nint`, `byte`, `ushort`, `uint`, `ulong`, `nuint`, `char`, `float`, `double`, `decimal` (also `BigInteger`, `Int128`, `UInt128`, `Half` for .NET 5+)
 
-Note: Default struct values `default(StructType)` except cases listed above and `null` (for nullable struct) are considered as `true`. Be careful!
+Any type not listed above (e.g., custom classes and structs) defaults to `true` when non-null and `false` when null.
+
+*Default struct values `default(StructType)` except cases listed above and `null` (for nullable struct) are considered as `true`. Be careful!
 
 ##### Non-foreign expression
 
