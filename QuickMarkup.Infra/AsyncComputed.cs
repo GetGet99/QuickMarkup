@@ -112,6 +112,20 @@ public class AsyncComputed<T> : IReference, IDisposable
     {
         ReactiveScheduler.ScheduleEffect(effect);
     }
+
+    public Task<T> AwaitResultAsync()
+    {
+        var tcs = new TaskCompletionSource<T>();
+        var effect = Watch(x =>
+        {
+            if (x.State is AsyncComputedState.Success)
+                tcs.SetResult(x.Value);
+            else if (x.State is AsyncComputedState.Failed)
+                tcs.SetException(x.Failure!);
+        }, immediate: true);
+        return tcs.Task;
+    }
+
     void Loading()
     {
         if (disposed) return;

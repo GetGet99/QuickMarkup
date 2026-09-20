@@ -52,6 +52,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             {
                 var (ctx, usings, code, error, isComponent) = value;
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
+                usings = $"""
+                    using QuickMarkup.Infra.Markup;
+                    {usings}
+                    """;
                 EmitInitSource(spc, ctx, usings, code, error, typeModifiers);
             });
         }
@@ -78,6 +82,10 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             {
                 var (ctx, usings, refsCode, isComponent) = value;
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
+                usings = $"""
+                    using QuickMarkup.Infra.Markup;
+                    {usings}
+                    """;
                 EmitRefsSource(spc, ctx, usings, refsCode, typeModifiers);
             });
         }
