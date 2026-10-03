@@ -104,6 +104,26 @@ public sealed class QuickRefsBinderTests
     }
 
     [TestMethod]
+    public void QuickRefsStandalone_Required_ReportsError()
+    {
+        var analysis = AnalyzeMerged(Merge(null, "required string Title;"));
+
+        Assert.IsTrue(
+            analysis.Diagnostics.Any(d => d.Message.Contains("required in [QuickRefs]")),
+            $"Expected required diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
+    public void QuickRefsWithQuickMarkup_Required_NoRequiredDiagnostic()
+    {
+        var analysis = AnalyzeMerged(Merge("<root />", "required string Title;"));
+
+        Assert.IsFalse(
+            analysis.Diagnostics.Any(d => d.Message.Contains("required in [QuickRefs]")),
+            $"Did not expect required diagnostic, got: {string.Join("; ", analysis.Diagnostics.Select(d => d.Message))}");
+    }
+
+    [TestMethod]
     public void QuickRefsFragment_WithMarkupTags_Throws()
     {
         var merged = Merge(null, "<root />");

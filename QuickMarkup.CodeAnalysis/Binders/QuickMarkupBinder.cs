@@ -67,13 +67,15 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
         var tagInfo = new QMBinderTagInfo(type, tag.TagStart.TagName, propSymbol?.Name, childrenType, childrenMode, componentKind, componentOutputType);
 
 
-        var initMode = rootType is null
-            ? resolver.GeneratedMemberTable.FindTypeMembers(type)?.InitMode
-                ?? QuickMarkupInitializationMode.BackwardCompatible
-            : QuickMarkupInitializationMode.BackwardCompatible;
+        var typeMembers = rootType is null
+            ? resolver.GeneratedMemberTable.FindTypeMembers(type)
+            : null;
+        // Types without generated constructors (standalone [QuickRefs]) are consumed like plain C# types.
+        var initMode = typeMembers is { HasGeneratedConstructors: false }
+            ? QuickMarkupInitializationMode.BackwardCompatible
+            : typeMembers?.InitMode ?? QuickMarkupInitializationMode.BackwardCompatible;
 
-        var supportsContext = rootType is null
-            && resolver.GeneratedMemberTable.FindTypeMembers(type)?.SupportsContext == true;
+        var supportsContext = typeMembers is { HasGeneratedConstructors: true, SupportsContext: true };
 
         var members = new List<IQMMemberSymbol>();
         Bind(tag.InlineMembers, tagInfo, members);

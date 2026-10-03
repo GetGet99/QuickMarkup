@@ -55,7 +55,8 @@ public readonly record struct QuickMarkupGeneratedTypeMembers(
     QuickMarkupInitializationMode InitMode,
     bool SupportsContext = false,
     string? QuickMarkupConstructorMethodName = null,
-    IReadOnlyList<QuickMarkupConstructorParameter>? ConstructorParameters = null
+    IReadOnlyList<QuickMarkupConstructorParameter>? ConstructorParameters = null,
+    bool HasGeneratedConstructors = true
 );
 
 public sealed class QuickMarkupGeneratedMemberTable

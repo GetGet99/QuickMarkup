@@ -157,7 +157,7 @@ partial class MyModel
 }
 ```
 
-When the same class also has `[QuickMarkup]`, refs from both attributes merge (template can use refs from either, `required` refs from `[QuickRefs]` become constructor parameters), and the normal `[QuickMarkup]` constructor rules apply — generated constructors take over, use `[QuickMarkupConstructor]` for custom init logic. `provide`/`inject` may appear in `[QuickRefs]` only in that combined case; standalone `[QuickRefs]` rejects them. Duplicate ref names across fragments are an error.
+When the same class also has `[QuickMarkup]`, refs from both attributes merge (template can use refs from either, `required` refs from `[QuickRefs]` become constructor parameters), and the normal `[QuickMarkup]` constructor rules apply — generated constructors take over, use `[QuickMarkupConstructor]` for custom init logic. `provide`/`inject` and `required` may appear in `[QuickRefs]` only in that combined case; standalone `[QuickRefs]` rejects them. Duplicate ref names across fragments are an error.
 
 ## Required Properties
 

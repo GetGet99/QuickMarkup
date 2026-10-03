@@ -128,6 +128,9 @@ partial class QuickMarkupBinder
             };
         }
 
+        if (!hasQuickMarkup && r.IsRequired)
+            Error(r, "Unsupported: required in [QuickRefs] requires [QuickMarkup] on the same class");
+
         return new QMRefDeclarationSymbol<ITypeSymbol?>(
             kind,
             typeSym,

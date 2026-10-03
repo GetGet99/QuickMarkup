@@ -57,4 +57,17 @@ public sealed class QuickRefsTests
 
         Assert.AreEqual("updated", TestTreeAssert.Child<TestText>(page.Children, 1).Text);
     }
+
+    [TestMethod]
+    public void QuickRefsOnlyType_CanBeInstantiatedFromMarkup()
+    {
+        var page = new QuickRefsConsumeCase();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+
+        var withProps = TestTreeAssert.Child<QuickRefsLeafCase>(panel.Children, 0);
+        var withoutProps = TestTreeAssert.Child<QuickRefsLeafCase>(panel.Children, 1);
+
+        Assert.AreEqual(5, withProps.Counter);
+        Assert.AreEqual(0, withoutProps.Counter);
+    }
 }

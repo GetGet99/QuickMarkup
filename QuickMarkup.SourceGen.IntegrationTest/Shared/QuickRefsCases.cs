@@ -31,3 +31,20 @@ public partial class QuickRefsMultipleCase
     string Subtitle = "sub";
     """)]
 public partial class QuickRefsUnionCase : TestRoot;
+
+[QuickRefs("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    int Counter = 0;
+    """)]
+public partial class QuickRefsLeafCase : TestElement;
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    <root>
+        <TestPanel>
+            <QuickRefsLeafCase Counter=5 />
+            <QuickRefsLeafCase />
+        </TestPanel>
+    </root>
+    """)]
+public partial class QuickRefsConsumeCase : TestRoot;

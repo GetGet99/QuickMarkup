@@ -185,7 +185,8 @@ static class QuickMarkupGeneratedMemberTableBuilder
         return new QuickMarkupGeneratedTypeMembers(
             target.FullTypeName, properties, initMode,
             supportsContext,
-            constructorMethod?.Name, ctorParams);
+            constructorMethod?.Name, ctorParams,
+            HasGeneratedConstructors: hasQuickMarkup);
     }
 
     static void AddGeneratedProperty(
