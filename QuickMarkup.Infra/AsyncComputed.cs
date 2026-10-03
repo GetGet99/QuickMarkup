@@ -59,6 +59,7 @@ public class AsyncComputed<T> : IReference, IDisposable
         get
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            ReactiveScheduler.DoNowIfScheduled(effect);
             ReferenceTracker.NotifyRefernceRead(this);
             return field;
         }
@@ -73,6 +74,7 @@ public class AsyncComputed<T> : IReference, IDisposable
         get
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            ReactiveScheduler.DoNowIfScheduled(effect);
             ReferenceTracker.NotifyRefernceRead(this);
             if (State is not AsyncComputedState.Success)
                 throw new InvalidOperationException();
@@ -84,6 +86,7 @@ public class AsyncComputed<T> : IReference, IDisposable
         get
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            ReactiveScheduler.DoNowIfScheduled(effect);
             ReferenceTracker.NotifyRefernceRead(this);
             return field;
         }
@@ -115,7 +118,7 @@ public class AsyncComputed<T> : IReference, IDisposable
 
     public Task<T> AwaitResultAsync()
     {
-        TaskCompletionSource<T>? tcs = new();
+        TaskCompletionSource<T>? tcs = new(), toReturn = tcs;
         RefEffect? effect = null;
         effect = Watch(x =>
         {
@@ -134,7 +137,7 @@ public class AsyncComputed<T> : IReference, IDisposable
                 tcs = null;
             }
         }, immediate: true);
-        return tcs.Task;
+        return toReturn.Task;
     }
 
     void Loading()
