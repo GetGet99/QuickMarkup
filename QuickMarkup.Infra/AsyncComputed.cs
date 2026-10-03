@@ -115,13 +115,24 @@ public class AsyncComputed<T> : IReference, IDisposable
 
     public Task<T> AwaitResultAsync()
     {
-        var tcs = new TaskCompletionSource<T>();
-        var effect = Watch(x =>
+        TaskCompletionSource<T>? tcs = new();
+        RefEffect? effect = null;
+        effect = Watch(x =>
         {
             if (x.State is AsyncComputedState.Success)
-                tcs.SetResult(x.Value);
+            {
+                effect?.Dispose();
+                tcs?.SetResult(x.Value);
+                effect = null;
+                tcs = null;
+            }
             else if (x.State is AsyncComputedState.Failed)
-                tcs.SetException(x.Failure!);
+            {
+                effect?.Dispose();
+                tcs?.SetException(x.Failure!);
+                effect = null;
+                tcs = null;
+            }
         }, immediate: true);
         return tcs.Task;
     }
