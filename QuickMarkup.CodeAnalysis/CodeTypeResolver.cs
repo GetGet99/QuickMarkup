@@ -2,7 +2,9 @@ using Get.EasyCSharp.GeneratorTools;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using QuickMarkup.AST;
 using QuickMarkup.CodeAnalysis.Helpers;
+using System.Collections.Immutable;
 using QuickMarkup.Language.Symbols;
 using System.Diagnostics.CodeAnalysis;
 
@@ -259,16 +261,27 @@ class CodeTypeResolver(
 
     QuickMarkupGeneratedTypeMembers? GenerateMembersForCSharpAttribute(INamedTypeSymbol type)
     {
-        var attr = type.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.FullName() == "global::QuickMarkup.SourceGen.QuickMarkupAttribute");
-        if (attr is null || attr.ConstructorArguments.Length == 0)
+        var attrs = type.GetAttributes()
+            .Where(a => a.AttributeClass?.FullName() is "global::QuickMarkup.SourceGen.QuickMarkupAttribute" or "global::QuickMarkup.SourceGen.QuickRefsAttribute")
+            .ToList();
+        if (attrs.Count is 0)
             return null;
 
-        var markupString = attr.ConstructorArguments[0].Value as string;
-        if (string.IsNullOrEmpty(markupString))
+        QuickMarkupSFC? markupSfc = null;
+        var refsSfcs = new List<QuickMarkupSFC>();
+        foreach (var attr in attrs)
+        {
+            if (attr.ConstructorArguments.Length == 0) continue;
+            if (attr.ConstructorArguments[0].Value is not string markupString) continue;
+            if (string.IsNullOrEmpty(markupString)) continue;
+            var sfc = QuickMarkupProviderExtension.Parse(markupString);
+            if (attr.AttributeClass?.Name is "QuickMarkupAttribute" && markupSfc is null)
+                markupSfc = sfc;
+            else
+                refsSfcs.Add(sfc);
+        }
+        if (markupSfc is null && refsSfcs.Count is 0)
             return null;
-
-        var sfc = QuickMarkupProviderExtension.Parse(markupString);
 
         var ns = type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString();
         var target = new QuickMarkupTargetContext(
@@ -280,7 +293,7 @@ class CodeTypeResolver(
             AttributeLineSpan: default);
 
         return QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(
-            new QuickMarkupParsedAttribute(target, sfc),
+            new QuickMarkupMergedType(target, markupSfc, ImmutableArray.CreateRange(refsSfcs)),
             compilation,
             CancellationToken.None);
     }

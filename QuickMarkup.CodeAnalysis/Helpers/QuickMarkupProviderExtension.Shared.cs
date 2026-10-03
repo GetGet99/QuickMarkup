@@ -6,4 +6,5 @@ namespace QuickMarkup.CodeAnalysis.Helpers;
 partial class QuickMarkupProviderExtension
 {
     static string FullQuickMarkupAttributeName => field ??= typeof(QuickMarkupAttribute).FullName!;
+    static string FullQuickRefsAttributeName => field ??= typeof(QuickRefsAttribute).FullName!;
 }

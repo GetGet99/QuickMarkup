@@ -189,42 +189,47 @@ public class SymbolLocationResolver : ISymbolLocationResolver
                 return null;
 
             var quickMarkupAttributeSymbol = compilation.GetTypeByMetadataName("QuickMarkup.SourceGen.QuickMarkupAttribute");
-            if (quickMarkupAttributeSymbol is null)
+            var quickRefsAttributeSymbol = compilation.GetTypeByMetadataName("QuickMarkup.SourceGen.QuickRefsAttribute");
+            if (quickMarkupAttributeSymbol is null && quickRefsAttributeSymbol is null)
                 return null;
 
-            var attribute = typeSymbol.GetAttributes()
-                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, quickMarkupAttributeSymbol));
-            if (attribute is null || attribute.ConstructorArguments.Length == 0)
-                return null;
-
-            var markup = attribute.ConstructorArguments[0].Value as string;
-            if (string.IsNullOrEmpty(markup))
-                return null;
-
-            Console.Error.WriteLine($"[QuickMarkup] Parsing {typeSymbol.Name} in {typeSymbol.Locations.FirstOrDefault()?.SourceTree?.FilePath ?? "unknown"}");
-            var sfc = QuickMarkupProviderExtension.Parse(markup);
-            if (sfc is null)
-                return null;
-
-            var mapper = new AttributeStringLocationMapper(attribute);
-            if (!mapper.IsValid)
-                return null;
-
-            foreach (var refDecl in sfc.Refs)
+            foreach (var attribute in typeSymbol.GetAttributes())
             {
-                if (refDecl.Name.Name.Name != propertyName)
+                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, quickMarkupAttributeSymbol)
+                    && !SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, quickRefsAttributeSymbol))
+                    continue;
+                if (attribute.ConstructorArguments.Length == 0)
                     continue;
 
-                var location = mapper.GetLocation(refDecl.Name.Name);
-                var syntaxTree = location.SourceTree;
-                if (syntaxTree is null)
-                    return null;
+                var markup = attribute.ConstructorArguments[0].Value as string;
+                if (string.IsNullOrEmpty(markup))
+                    continue;
 
-                return new LspLocation
+                Console.Error.WriteLine($"[QuickMarkup] Parsing {typeSymbol.Name} in {typeSymbol.Locations.FirstOrDefault()?.SourceTree?.FilePath ?? "unknown"}");
+                var sfc = QuickMarkupProviderExtension.Parse(markup);
+                if (sfc is null)
+                    continue;
+
+                var mapper = new AttributeStringLocationMapper(attribute);
+                if (!mapper.IsValid)
+                    continue;
+
+                foreach (var refDecl in sfc.Refs)
                 {
-                    Uri = UriHelper.FromFilePath(syntaxTree.FilePath),
-                    Range = ConvertTextSpanToLspRange(syntaxTree, location.SourceSpan)
-                };
+                    if (refDecl.Name.Name.Name != propertyName)
+                        continue;
+
+                    var location = mapper.GetLocation(refDecl.Name.Name);
+                    var syntaxTree = location.SourceTree;
+                    if (syntaxTree is null)
+                        return null;
+
+                    return new LspLocation
+                    {
+                        Uri = UriHelper.FromFilePath(syntaxTree.FilePath),
+                        Range = ConvertTextSpanToLspRange(syntaxTree, location.SourceSpan)
+                    };
+                }
             }
         }
         catch (Exception ex)

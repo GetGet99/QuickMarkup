@@ -20,31 +20,48 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
     {
         context.RegisterPostInitializationOutput(OnInitialize);
         var (nonErrorMarkups, errorMarkups) = context.SyntaxProvider.ForAllParsedQuickMarkup();
-        var generatedMemberTable = nonErrorMarkups
+        var (nonErrorRefs, errorRefs) = context.SyntaxProvider.ForAllParsedQuickRefs();
+        var merged = nonErrorMarkups.MergeMarkupAndRefs(nonErrorRefs);
+        var generatedMemberTable = merged
             .Combine(context.CompilationProvider)
             .Select((x, ct) =>
             {
-                var (markup, compilation) = x;
-                return QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(markup, compilation, ct);
+                var (merge, compilation) = x;
+                try
+                {
+                    return QuickMarkupGeneratedMemberTableBuilder.BuildTypeMembers(merge, compilation, ct);
+                }
+                catch (Exception ex)
+                {
+                    System.Console.Error.WriteLine($"[QuickMarkup] Member table building failed for {merge.Target.FullTypeName}: {ex.Message}");
+                    return null;
+                }
             })
             .Collect()
             .Select((items, _) => new QuickMarkupGeneratedMemberTable(items.Where(x => x is not null).Select(x => x!.Value)));
         
-        // INIT (SETUP + MARKUP)
+        // INIT (SETUP + MARKUP) — only types with [QuickMarkup]; [QuickRefs]-only types do not take over constructors
         {
-            var sfcs = nonErrorMarkups.Select(
+            var sfcs = merged.Where(static x => x.HasQuickMarkup).Select(
                 (x, _) =>
                 {
-                    var combined = CombineMarkupTags(x.AST.MarkupTags);
-                    return (x.Target, x.AST.Usings, x.AST.Scirpt, combined, x.AST);
+                    var combined = CombineMarkupTags(x.MarkupSource!.MarkupTags);
+                    return (x.Target, x.MergedUsings, x.MarkupSource!.Scirpt, combined, x.MergedRefs());
                 }
             );
 
             var sources = sfcs.Combine(context.CompilationProvider).Combine(generatedMemberTable).Select(
                 (x, ct) =>
                 {
-                    var (((target, usings, scriptAst, template, ast), compilation), generatedMembers) = x;
-                    return GenerateInitSource(target, usings, template, scriptAst, compilation, generatedMembers, ast, ct);
+                    var (((target, usings, scriptAst, template, allRefs), compilation), generatedMembers) = x;
+                    try
+                    {
+                        return GenerateInitSource(target, usings, template, scriptAst, compilation, generatedMembers, allRefs, ct);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        return (target, usings, "", $"Exception Occured during Bindings or Codegen: {ex.GetType().FullName} {ex.Message}", false);
+                    }
                 }
             );
 
@@ -60,22 +77,23 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             });
         }
 
-        // REFS
+        // REFS — all merged types ([QuickMarkup], [QuickRefs], or both)
         {
-            var refs = nonErrorMarkups.Select(
-                (x, _) =>
-                {
-                    return (x.Target, x.AST);
-                }
-            );
-
-            var withCompilation = refs.Combine(context.CompilationProvider).Combine(generatedMemberTable);
+            var withCompilation = merged.Combine(context.CompilationProvider).Combine(generatedMemberTable);
 
             var lines = withCompilation.Select((x, tok) =>
             {
-                var (((target, sfc), compilation), generatedMembers) = x;
-                var (code, isComponent) = GenerateRefsSource(target, sfc, compilation, generatedMembers, tok);
-                return (target, sfc.Usings, code, isComponent);
+                var ((merge, compilation), generatedMembers) = x;
+                try
+                {
+                    var (code, isComponent) = GenerateRefsSource(merge, compilation, generatedMembers, tok);
+                    return (merge.Target, merge.MergedUsings, code, isComponent);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    System.Console.Error.WriteLine($"[QuickMarkup] Refs generation failed for {merge.Target.FullTypeName}: {ex.Message}");
+                    return (merge.Target, merge.MergedUsings, $"/* Refs generation failed: {ex.Message.Replace("*/", "*_/")} */", false);
+                }
             });
 
             context.RegisterSourceOutput(lines, (spc, value) =>
@@ -93,6 +111,11 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         // ERRORS
         {
             context.RegisterSourceOutput(errorMarkups, (spc, value) =>
+            {
+                var (target, errors) = value;
+                EmitErrorSource(spc, target, "ERROR", errors);
+            });
+            context.RegisterSourceOutput(errorRefs, (spc, value) =>
             {
                 var (target, errors) = value;
                 EmitErrorSource(spc, target, "ERROR", errors);
@@ -124,7 +147,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             QuickMarkupScript? scriptAst,
             Compilation compilation,
             QuickMarkupGeneratedMemberTable? generatedMembers,
-            QuickMarkupSFC ast,
+            IEnumerable<RefDeclaration> allRefs,
             CancellationToken ct)
     {
         if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out var failureReason))
@@ -174,7 +197,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         }
 
         // Check for provide/inject with backward compatible mode
-        var hasProvideOrInject = ast.Refs.Any(r => r.Kind is RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional);
+        var hasProvideOrInject = allRefs.Any(r => r.Kind is RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional);
         if (hasProvideOrInject && initMode is QuickMarkupInitializationMode.BackwardCompatible)
         {
             var error = $"Type {target.FullTypeName} uses provide/inject but has BackwardCompatible init mode (has explicit constructors). Provide/Inject requires the new lifecycle. Remove explicit constructors or add a [QuickMarkupConstructor] method.";
@@ -186,7 +209,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         // Bind all declarations and generate init code for provide/inject
         var binder = new QuickMarkupBinder(componentInfoResolver, Binder.FailFast);
-        var boundRefs = binder.BindRefDeclarations(ast.Refs, typeSymbol);
+        var boundRefs = binder.BindRefDeclarations(allRefs, typeSymbol);
 
         foreach (var bound in boundRefs)
         {
@@ -445,6 +468,23 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
 
         StringBuilder sb = new();
         var rgen = new RefsGenContext(sb, target.FullTypeName);
+        rgen.CGenWrite(analysis.RefDeclarations, ct);
+        return (sb.ToString(), analysis.IsComponent);
+    }
+
+    static (string Code, bool IsComponent) GenerateRefsSource(
+        QuickMarkupMergedType merged,
+        Compilation compilation,
+        QuickMarkupGeneratedMemberTable? generatedMembers,
+        CancellationToken ct)
+    {
+        var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
+        var analysis = QuickMarkupFileAnalyzer.AnalyzeMerged(
+            merged, compilation,
+            generatedMembers ?? QuickMarkupGeneratedMemberTable.Empty, frameworkConfig, failFast: true);
+
+        StringBuilder sb = new();
+        var rgen = new RefsGenContext(sb, merged.Target.FullTypeName);
         rgen.CGenWrite(analysis.RefDeclarations, ct);
         return (sb.ToString(), analysis.IsComponent);
     }

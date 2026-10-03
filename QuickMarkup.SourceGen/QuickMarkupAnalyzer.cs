@@ -165,33 +165,40 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
 
             var quickMarkupAttrType = compilation.GetTypeByMetadataName(typeof(QuickMarkupAttribute).FullName!);
             if (quickMarkupAttrType is null) return;
+            var quickRefsAttrType = compilation.GetTypeByMetadataName(typeof(QuickRefsAttribute).FullName!);
 
-            var attribute = (
+            var attributes = (
                 from x in typeSym.GetAttributes()
-                where x.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false
+                where (x.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false)
+                    || (quickRefsAttrType is not null && (x.AttributeClass?.IsSubclassFrom(quickRefsAttrType) ?? false))
                 select x
-            ).FirstOrDefault();
-            if (attribute is null) return;
-            if (attribute.ConstructorArguments[0].Value is not string markup) return;
+            ).ToList();
+            if (attributes.Count is 0) return;
 
+            var hasQuickMarkup = attributes.Any(a =>
+                a.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false);
+            var targetFallback = hasQuickMarkup
+                ? attributes.First(a => a.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false)
+                : attributes[0];
             var target = QuickMarkupTargetContext.FromSyntaxAndSymbol(
-                typeSym, attribute.ApplicationSyntaxReference, ctx.CancellationToken);
-            var locationProvider = new QuickMarkupSourceCodeLocationProvider(attribute, typeSym, ctx.CancellationToken);
+                typeSym, targetFallback.ApplicationSyntaxReference, ctx.CancellationToken);
+            var fallbackProvider = new QuickMarkupSourceCodeLocationProvider(targetFallback, typeSym, ctx.CancellationToken);
 
             if (!target.TryGetTypeSymbol(compilation, out var resolvedTypeSym, out var failureReason))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     BindErrorGeneral,
-                    locationProvider.Fallback,
+                    fallbackProvider.Fallback,
                     $"Internal Error while trying to get type symbol: {failureReason.Message}"
                 ));
                 return;
             }
 
-            // Check for [QuickMarkupNewLifecycle] assembly attribute
+            // Check for [QuickMarkupNewLifecycle] assembly attribute.
+            // Only applies to [QuickMarkup] types since [QuickRefs]-only types never take over constructors.
             var newLifecycleAttr = compilation.Assembly.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name == "QuickMarkupNewLifecycleAttribute");
-            if (newLifecycleAttr is not null)
+            if (newLifecycleAttr is not null && hasQuickMarkup)
             {
                 var hasExplicitConstructors = resolvedTypeSym.InstanceConstructors.Any(c => !c.IsImplicitlyDeclared && !c.GetAttributes().Any(a => a.AttributeClass?.Name == "QuickMarkupGeneratedConstructorAttribute"));
                 if (hasExplicitConstructors)
@@ -204,23 +211,66 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            QuickMarkupSFC qm;
-            List<ErrorTerminalValue> errors;
+            var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
+            foreach (var attribute in attributes)
+            {
+                if (attribute.ConstructorArguments.Length is 0) continue;
+                if (attribute.ConstructorArguments[0].Value is not string markup) continue;
+                var isRefs = !(attribute.AttributeClass?.IsSubclassFrom(quickMarkupAttrType) ?? false);
+                AnalyzeAttributeMarkup(ctx, syntaxNode, typeSym, target, attribute, markup, isRefs, hasQuickMarkup, frameworkConfig);
+            }
+        }, SyntaxKind.ClassDeclaration);
+
+        InitializeQmuiAnalysis(context);
+    }
+
+    void AnalyzeAttributeMarkup(
+        SyntaxNodeAnalysisContext ctx,
+        TypeDeclarationSyntax syntaxNode,
+        ITypeSymbol typeSym,
+        QuickMarkupTargetContext target,
+        AttributeData attribute,
+        string markup,
+        bool isRefs,
+        bool hasQuickMarkup,
+        FrameworkConfiguration frameworkConfig)
+    {
+        _ = syntaxNode;
+        var locationProvider = new QuickMarkupSourceCodeLocationProvider(attribute, typeSym, ctx.CancellationToken);
+
+        QuickMarkupSFC qm;
+        List<ErrorTerminalValue> errors;
+        try
+        {
+            (qm, errors) = QuickMarkupProviderExtension.ParseWithErrorsCore(markup);
+        }
+        catch (Exception e) when (TryHandleParseException(e, locationProvider, d => ctx.ReportDiagnostic(d)))
+        {
+            return;
+        }
+        ReportErrorTerminals(errors, locationProvider, d => ctx.ReportDiagnostic(d));
+
+        // Bind inline for immediate diagnostic feedback
+        var resolver = new CodeTypeResolver(compilation: ctx.Compilation, usings: qm.Usings, @namespace: target.Namespace, frameworkConfiguration: frameworkConfig);
+        var binder = new QuickMarkupBinder(resolver, Binder.Collect);
+
+        if (isRefs)
+        {
             try
             {
-                (qm, errors) = QuickMarkupProviderExtension.ParseWithErrorsCore(markup);
+                _ = binder.BindQuickRefsFragment(qm, typeSym, hasQuickMarkup: hasQuickMarkup);
             }
-            catch (Exception e) when (TryHandleParseException(e, locationProvider, d => ctx.ReportDiagnostic(d)))
+            catch (Exception e)
             {
-                return;
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    BindErrorGeneral,
+                    locationProvider.Fallback,
+                    e.Message
+                ));
             }
-            ReportErrorTerminals(errors, locationProvider, d => ctx.ReportDiagnostic(d));
-
-            // Bind inline for immediate diagnostic feedback
-            var frameworkConfig = FrameworkConfigurationReader.ReadFromCompilation(compilation) ?? FrameworkConfiguration.Default;
-            var resolver = new CodeTypeResolver(compilation, qm.Usings, target.Namespace, frameworkConfiguration: frameworkConfig);
-            var binder = new QuickMarkupBinder(resolver, Binder.Collect);
-
+        }
+        else
+        {
             if (qm.Template is not null)
             {
                 try
@@ -248,9 +298,7 @@ partial class QuickMarkupAnalyzer : DiagnosticAnalyzer
                     e.Message
                 ));
             }
-            ReportBinderDiagnostics(binder.Diagnostics, locationProvider, resolver, d => ctx.ReportDiagnostic(d));
-        }, SyntaxKind.ClassDeclaration);
-
-        InitializeQmuiAnalysis(context);
+        }
+        ReportBinderDiagnostics(binder.Diagnostics, locationProvider, resolver, d => ctx.ReportDiagnostic(d));
     }
 }

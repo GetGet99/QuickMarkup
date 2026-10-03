@@ -3,6 +3,7 @@ using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using QuickMarkup.AST;
+using System.Collections.Immutable;
 
 namespace QuickMarkup.CodeAnalysis.Helpers;
 
@@ -27,6 +28,30 @@ static partial class QuickMarkupProviderExtension
             }
         );
         return temp.Where(static x => x.MarkupString is not null);
+    }
+    public static IncrementalValuesProvider<QuickMarkupAttributeInString> ForAllQuickRefsAttributeInString(this SyntaxValueProvider syntaxValueProvider)
+    {
+        var temp = syntaxValueProvider.ForAttributeWithMetadataName(
+            FullQuickRefsAttributeName,
+            static (syntaxNode, cancelationToken)
+                => syntaxNode is TypeDeclarationSyntax,
+            static (ctx, ct) =>
+            {
+                var type = (ITypeSymbol)ctx.TargetSymbol;
+                var list = new List<QuickMarkupAttributeInString>(ctx.Attributes.Length);
+                foreach (var attr in ctx.Attributes)
+                {
+                    if (attr.ConstructorArguments.Length is 0) continue;
+                    if (attr.ConstructorArguments[0].Value is not string markupString) continue;
+                    list.Add(new QuickMarkupAttributeInString(
+                        Target: QuickMarkupTargetContext.FromSyntaxAndSymbol(type, attr.ApplicationSyntaxReference, ct),
+                        MarkupString: markupString
+                    ));
+                }
+                return ImmutableArray.CreateRange(list);
+            }
+        );
+        return temp.SelectMany(static (x, _) => x);
     }
     /// <summary>
     /// Gets all parsed QuickMarkup attributes, includes both scucessful and failed items during parsing stage
@@ -66,6 +91,45 @@ static partial class QuickMarkupProviderExtension
     }
     public static IncrementalValuesProvider<QuickMarkupParsedAttributeResult> TryParse(this IncrementalValuesProvider<QuickMarkupAttributeInString> stringAttributes)
         => stringAttributes.Select(static (x, _) => x.TryParse());
+    public static (IncrementalValuesProvider<QuickMarkupParsedAttribute> Successful, IncrementalValuesProvider<QuickMarkupParseError> Errors) ForAllParsedQuickRefs(this SyntaxValueProvider syntaxValueProvider)
+    {
+        var parsed = syntaxValueProvider.ForAllQuickRefsAttributeInString().TryParse();
+        return new(parsed.GetAllSuccessfulParse(), parsed.GetAllFailedParse());
+    }
+    public static IncrementalValuesProvider<QuickMarkupMergedType> MergeMarkupAndRefs(
+        this IncrementalValuesProvider<QuickMarkupParsedAttribute> markups,
+        IncrementalValuesProvider<QuickMarkupParsedAttribute> refs)
+    {
+        return markups.Collect().Combine(refs.Collect()).SelectMany(static (x, _) =>
+        {
+            var (markupList, refsList) = x;
+            var groups = new Dictionary<string, (QuickMarkupTargetContext Target, QuickMarkupSFC? Markup, List<QuickMarkupSFC> Refs)>();
+            foreach (var m in markupList)
+            {
+                if (!groups.TryGetValue(m.Target.FullTypeName, out var g))
+                {
+                    g = (m.Target, null, new());
+                    groups[m.Target.FullTypeName] = g;
+                }
+                g = (g.Target, m.AST, g.Refs);
+                groups[m.Target.FullTypeName] = g;
+            }
+            foreach (var r in refsList)
+            {
+                if (!groups.TryGetValue(r.Target.FullTypeName, out var g))
+                {
+                    g = (r.Target, null, new());
+                    groups[r.Target.FullTypeName] = g;
+                }
+                g.Refs.Add(r.AST);
+                groups[r.Target.FullTypeName] = g;
+            }
+            var result = new List<QuickMarkupMergedType>(groups.Count);
+            foreach (var g in groups.Values)
+                result.Add(new QuickMarkupMergedType(g.Target, g.Markup, ImmutableArray.CreateRange(g.Refs)));
+            return ImmutableArray.CreateRange(result);
+        });
+    }
     public static IncrementalValuesProvider<QuickMarkupParsedAttribute> GetAllSuccessfulParse(this IncrementalValuesProvider<QuickMarkupParsedAttributeResult> parsedAttributes)
         => parsedAttributes.Where(static x => x.Result is not null).Select(static (x, _) =>
         {

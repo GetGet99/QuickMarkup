@@ -14,13 +14,51 @@ static class QuickMarkupGeneratedMemberTableBuilder
         Compilation compilation,
         CancellationToken ct = default)
     {
-        var target = markup.Target;
+        return BuildTypeMembersCore(
+            markup.Target,
+            markup.AST.Usings,
+            markup.AST.Refs,
+            markup.AST.Template,
+            hasQuickMarkup: true,
+            compilation,
+            ct);
+    }
+    public static QuickMarkupGeneratedTypeMembers? BuildTypeMembers(
+        QuickMarkupMergedType merged,
+        Compilation compilation,
+        CancellationToken ct = default)
+    {
+        foreach (var refsSource in merged.RefsSources)
+        {
+            if (refsSource.MarkupTags.Count > 0)
+                throw new InvalidOperationException("[QuickRefs] only allows reference declarations, but markup tags were found");
+            if (refsSource.Scirpt is not null)
+                throw new InvalidOperationException("[QuickRefs] only allows reference declarations, but <setup> script was found");
+        }
+        return BuildTypeMembersCore(
+            merged.Target,
+            merged.MergedUsings,
+            merged.MergedRefs(),
+            merged.MergedTemplate,
+            hasQuickMarkup: merged.HasQuickMarkup,
+            compilation,
+            ct);
+    }
+    static QuickMarkupGeneratedTypeMembers? BuildTypeMembersCore(
+        QuickMarkupTargetContext target,
+        string usings,
+        IEnumerable<RefDeclaration> allRefs,
+        QuickMarkupParsedTag? template,
+        bool hasQuickMarkup,
+        Compilation compilation,
+        CancellationToken ct = default)
+    {
         if (!target.TryGetTypeSymbol(compilation, out var typeSymbol, out _))
             return null;
 
-        var resolver = new CodeTypeResolver(compilation, markup.AST.Usings, target.Namespace);
+        var resolver = new CodeTypeResolver(compilation, usings, target.Namespace);
         var binder = new QuickMarkupBinder(resolver, Binder.FailFast);
-        var refs = binder.BindRefDeclarations(markup.AST.Refs, typeSymbol);
+        var refs = binder.BindRefDeclarations(allRefs, typeSymbol, hasQuickMarkup);
         var properties = new Dictionary<string, QuickMarkupGeneratedPropertySymbol>();
         var unknownTypes = typeSymbol.TypeParameters.Length > 0;
         var componentKind = resolver.GetComponentKind(typeSymbol, out var componentOutputType);
@@ -98,7 +136,7 @@ static class QuickMarkupGeneratedMemberTableBuilder
             ct.ThrowIfCancellationRequested();
         }
 
-        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(markup.AST.Template, componentKind))
+        if (componentKind is not QMComponentKind.None && HasComponentRootOutput(template, componentKind))
         {
             var outputTypeName = unknownTypes
                 ? null

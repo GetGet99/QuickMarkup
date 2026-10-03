@@ -33,7 +33,8 @@ public static class QuickMarkupFileAnalyzer
         Compilation compilation,
         QuickMarkupGeneratedMemberTable generatedMemberTable,
         FrameworkConfiguration? frameworkConfiguration = null,
-        bool failFast = false)
+        bool failFast = false,
+        bool hasQuickMarkup = true)
     {
         var typeName = sfc.ClassDeclaration?.Name ?? "";
         var target = CreateTargetContext(filePath, @namespace, typeName);
@@ -47,7 +48,7 @@ public static class QuickMarkupFileAnalyzer
             isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
 
         IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> refDeclarations = [];
-        try { refDeclarations = binder.BindRefDeclarations(sfc.Refs, containingType); }
+        try { refDeclarations = binder.BindRefDeclarations(sfc.Refs, containingType, hasQuickMarkup); }
         catch (Exception ex) { Console.Error.WriteLine($"[QuickMarkup] Ref binding failed for {target.FullTypeName}: {ex.Message}"); }
 
         QMNodeSymbol<ITypeSymbol?>? boundTemplate = null;
@@ -68,6 +69,43 @@ public static class QuickMarkupFileAnalyzer
         return new QuickMarkupFileAnalysis(
             sfc, target, refDeclarations, boundTemplate,
             binder.Diagnostics, generatedMembers, isComponent);
+    }
+
+    public static QuickMarkupFileAnalysis AnalyzeMerged(
+        QuickMarkupMergedType merged,
+        Compilation compilation,
+        QuickMarkupGeneratedMemberTable generatedMemberTable,
+        FrameworkConfiguration? frameworkConfiguration = null,
+        bool failFast = false)
+    {
+        foreach (var refsSource in merged.RefsSources)
+        {
+            if (refsSource.MarkupTags.Count > 0)
+                throw new InvalidOperationException("[QuickRefs] only allows reference declarations, but markup tags were found");
+            if (refsSource.Scirpt is not null)
+                throw new InvalidOperationException("[QuickRefs] only allows reference declarations, but <setup> script was found");
+        }
+        var mergedSfc = new QuickMarkupSFC(merged.MergedUsings, new ListAST<RefDeclaration>(merged.MergedRefs()))
+        {
+            Scirpt = merged.MarkupSource?.Scirpt,
+            MarkupTags = merged.MarkupSource?.MarkupTags ?? new(),
+        };
+        var target = merged.Target;
+        var resolver = new CodeTypeResolver(compilation, merged.MergedUsings, target.Namespace, generatedMemberTable, frameworkConfiguration: frameworkConfiguration);
+        var containingType = TryGetContainingType(compilation, target.FullTypeName);
+        var binder = new QuickMarkupBinder(resolver, failFast ? Binder.FailFast : Binder.Collect);
+
+        var isComponent = false;
+        if (containingType is not null)
+            isComponent = resolver.GetComponentKind(containingType, out _) is not QMComponentKind.None;
+
+        IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> refDeclarations = [];
+        try { refDeclarations = binder.BindRefDeclarations(mergedSfc.Refs, containingType, merged.HasQuickMarkup); }
+        catch (Exception ex) { Console.Error.WriteLine($"[QuickMarkup] Ref binding failed for {target.FullTypeName}: {ex.Message}"); }
+
+        return new QuickMarkupFileAnalysis(
+            mergedSfc, target, refDeclarations, null,
+            binder.Diagnostics, null, isComponent);
     }
 
     static INamedTypeSymbol? TryGetContainingType(Compilation compilation, string fullTypeName)

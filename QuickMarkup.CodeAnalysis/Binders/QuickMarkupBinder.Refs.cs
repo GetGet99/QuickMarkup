@@ -10,16 +10,34 @@ partial class QuickMarkupBinder
     /// <summary>Binds ref/computed/provide/inject declarations.</summary>
     public IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> BindRefDeclarations(
         IEnumerable<RefDeclaration> refs,
-        ITypeSymbol? containingType)
+        ITypeSymbol? containingType,
+        bool hasQuickMarkup = true)
     {
         _ = containingType;
         var list = new List<QMRefDeclarationSymbol<ITypeSymbol?>>();
+        var seen = new HashSet<string>();
         foreach (var r in refs)
-            list.Add(BindRefDeclaration(r));
+        {
+            if (!seen.Add(r.Name.Name.Name))
+                Error(r.Name.Name, $"Duplicate reference '{r.Name.Name.Name}'");
+            list.Add(BindRefDeclaration(r, hasQuickMarkup));
+        }
         return list;
     }
 
-    QMRefDeclarationSymbol<ITypeSymbol?> BindRefDeclaration(RefDeclaration r)
+    public IReadOnlyList<QMRefDeclarationSymbol<ITypeSymbol?>> BindQuickRefsFragment(
+        QuickMarkupSFC sfc,
+        ITypeSymbol? containingType,
+        bool hasQuickMarkup)
+    {
+        if (sfc.MarkupTags.Count > 0)
+            Error(sfc.MarkupTags[^1], "[QuickRefs] only allows reference declarations, but markup tags were found");
+        if (sfc.Scirpt is not null)
+            Error(sfc.Scirpt, "[QuickRefs] only allows reference declarations, but <setup> script was found");
+        return BindRefDeclarations(sfc.Refs, containingType, hasQuickMarkup);
+    }
+
+    QMRefDeclarationSymbol<ITypeSymbol?> BindRefDeclaration(RefDeclaration r, bool hasQuickMarkup = true)
     {
         ITypeSymbol? typeSym = resolver.GetTypeSymbol(r.Type.Type);
         if (r.Type.IsTypeNullable && typeSym is not null)
@@ -29,6 +47,9 @@ partial class QuickMarkupBinder
 
         var attrs = new List<QMCompileTimeAttributeSymbol>(r.Attributes.Count);
         var kind = r.Kind;
+
+        if (!hasQuickMarkup && kind is RefDeclarationKind.Provide or RefDeclarationKind.Inject or RefDeclarationKind.InjectOptional)
+            Error(r, "Unsupported: provide/inject in [QuickRefs] requires [QuickMarkup] on the same class");
 
         bool shouldSuppressNullOnCreate = false;
         foreach (var a in r.Attributes)
