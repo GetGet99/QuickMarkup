@@ -1028,9 +1028,8 @@ public sealed class SourceGenBehaviorTests
         var tcs = new TaskCompletionSource<int>();
         instance.MyTask = tcs.Task;
 
-        // still should not refresh because no tick yet
-        Assert.AreEqual(AsyncComputedState.Success, instance.ResultStatus);
-        Assert.AreEqual(10, instance.Result);
+        Assert.AreEqual(AsyncComputedState.Loading, instance.ResultStatus);
+        Assert.ThrowsExactly<InvalidOperationException>(() => _ = instance.Result);
         Assert.AreEqual("10", instance.GetText());
 
         ReactiveScheduler.Tick();
