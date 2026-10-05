@@ -60,20 +60,21 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        return (target, usings, "", $"Exception Occured during Bindings or Codegen: {ex.GetType().FullName} {ex.Message}", false);
+                        return (target, usings, "", $"Exception Occured during Bindings or Codegen: {ex.GetType().FullName} {ex.Message}", false, false);
                     }
                 }
             );
 
             context.RegisterSourceOutput(sources, (spc, value) =>
             {
-                var (ctx, usings, code, error, isComponent) = value;
+                var (ctx, usings, code, error, isComponent, emitDisposeEffects) = value;
                 var typeModifiers = isComponent ? "sealed partial" : "partial";
                 usings = $"""
                     using QuickMarkup.Infra.Markup;
                     {usings}
                     """;
-                EmitInitSource(spc, ctx, usings, code, error, typeModifiers);
+                var baseTypes = emitDisposeEffects ? EffectsDisposableInterface : null;
+                EmitInitSource(spc, ctx, usings, code, error, typeModifiers, baseTypes);
             });
         }
 
@@ -139,7 +140,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             );
     }
 
-    static (QuickMarkupTargetContext Target, string Usings, string Code, string? Error, bool IsComponent)
+    static (QuickMarkupTargetContext Target, string Usings, string Code, string? Error, bool IsComponent, bool EmitDisposeEffects)
         GenerateInitSource(
             QuickMarkupTargetContext target,
             string usings,
@@ -158,7 +159,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 Stack Trace:
                     {{failureReason.StackTrace.IndentWOF(1)}}
                 """;
-            return (target, usings, "", error, false);
+            return (target, usings, "", error, false, false);
         }
 
         StringBuilder generatedProperties = new();
@@ -173,7 +174,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
             if (CodeTypeResolver.FindRoslynProperty(typeSymbol, CodeTypeResolver.ComponentOutputPropertyName) is not null)
             {
                 var error = $"Type {target.FullTypeName} already declares {CodeTypeResolver.ComponentOutputPropertyName}, but QuickMarkup needs to generate it from <root> children.";
-                return (target, usings, "", error, componentKind is not QMComponentKind.None);
+                return (target, usings, "", error, componentKind is not QMComponentKind.None, false);
             }
 
             var outputType = componentKind is QMComponentKind.Fragment
@@ -193,7 +194,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         if (newLifecycleAttr is not null && initMode is QuickMarkupInitializationMode.BackwardCompatible)
         {
             var error = $"Type {target.FullTypeName} must use the new QuickMarkup lifecycle because the assembly has [QuickMarkupNewLifecycle]. Remove explicit constructors or add a [QuickMarkupConstructor] method.";
-            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+            return (target, usings, "", error, componentKind is not QMComponentKind.None, false);
         }
 
         // Check for provide/inject with backward compatible mode
@@ -201,7 +202,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         if (hasProvideOrInject && initMode is QuickMarkupInitializationMode.BackwardCompatible)
         {
             var error = $"Type {target.FullTypeName} uses provide/inject but has BackwardCompatible init mode (has explicit constructors). Provide/Inject requires the new lifecycle. Remove explicit constructors or add a [QuickMarkupConstructor] method.";
-            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+            return (target, usings, "", error, componentKind is not QMComponentKind.None, false);
         }
 
         // Provide/inject init code builder
@@ -260,21 +261,56 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
                 Stack Trace:
                     {{e.StackTrace.IndentWOF(1)}}
                 """;
-            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+            return (target, usings, "", error, componentKind is not QMComponentKind.None, false);
         }
 
         var requiredRefs = GetRequiredRefs(typeMembers);
         if (requiredRefs.Count > 0 && initMode is QuickMarkupInitializationMode.BackwardCompatible)
         {
             var error = $"Type {target.FullTypeName} has required properties but uses BackwardCompatible init mode (has explicit constructors). To use required properties, remove explicit constructors or add a [QuickMarkupConstructor] method to control initialization.";
-            return (target, usings, "", error, componentKind is not QMComponentKind.None);
+            return (target, usings, "", error, componentKind is not QMComponentKind.None, false);
         }
 
-        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, scriptAst?.RawScript, scriptAst?.IsAsync == true, codeBuilder, requiredRefs, provideInjectInit.ToString());
+        var emitDisposeEffects = !typeSymbol.GetMembers("DisposeEffects")
+            .OfType<IMethodSymbol>()
+            .Any(m => m.Parameters.Length == 0);
+        if (emitDisposeEffects)
+            generatedProperties.AppendLine(BuildDisposeEffectsMembers(boundRefs));
+
+        string generatedMethod = GenerateInitMethod(typeSymbol, initMode, typeMembers, scriptAst?.RawScript, scriptAst?.IsAsync == true, codeBuilder, requiredRefs, provideInjectInit.ToString(), emitDisposeEffects);
         return (target, usings, $$"""
                     {{generatedProperties}}
                     {{generatedMethod}}
-                    """, default(string), componentKind is not QMComponentKind.None);
+                    """, default(string), componentKind is not QMComponentKind.None, emitDisposeEffects);
+    }
+
+    static string BuildDisposeEffectsMembers(
+        IReadOnlyList<QuickMarkup.Language.Symbols.QMRefDeclarationSymbol<ITypeSymbol?>> boundRefs)
+    {
+        var backingDisposal = new StringBuilder();
+        foreach (var bound in boundRefs)
+        {
+            if (bound.Kind is not (RefDeclarationKind.Computed or RefDeclarationKind.AsyncComputed) || bound.IsStatic)
+                continue;
+
+            backingDisposal.AppendLine($"{bound.BackingFieldName}?.Dispose();");
+            backingDisposal.AppendLine($"{bound.BackingFieldName} = null;");
+        }
+
+        return $$"""
+            private bool QUICKMARKUP_EFFECTS_DISPOSED;
+            public void DisposeEffects() {
+                if (QUICKMARKUP_EFFECTS_DISPOSED) {
+                    return;
+                }
+                QUICKMARKUP_EFFECTS_DISPOSED = true;
+                foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
+                    QUICKMARKUP_DISPOSABLE.Dispose();
+                }
+                QUICKMARKUP_DISPOSABLES.Clear();
+                {{backingDisposal.ToString().IndentWOF(1).TrimEnd()}}
+            }
+            """;
     }
 
     static string TypeSymbolName(ITypeSymbol? type)
@@ -303,15 +339,18 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
         bool isAsync,
         StringBuilder codeBuilder,
         List<(string TypeName, string Name)> requiredRefs,
-        string provideInjectInitCode)
+        string provideInjectInitCode,
+        bool emitDisposeEffects)
     {
         var typeName = typeSymbol.Name;
         var scriptBody = script ?? "// No raw scripts was provided";
         var initBody = codeBuilder.ToString();
 
+        var effectsDisposedReset = emitDisposeEffects ? "QUICKMARKUP_EFFECTS_DISPOSED = false;" : "";
         var cleanupBlock = $$"""
             {
                 // in case of re-initialize, cleanup all previous generated disposables
+                {{effectsDisposedReset}}
                 foreach (global::System.IDisposable QUICKMARKUP_DISPOSABLE in QUICKMARKUP_DISPOSABLES) {
                     QUICKMARKUP_DISPOSABLE.Dispose();
                 }
@@ -490,6 +529,7 @@ partial class QuickMarkupGenerator : IIncrementalGenerator
     }
 
     const string ContextAwareInterface = "global::QuickMarkup.Infra.IQuickMarkupContextAware";
+    const string EffectsDisposableInterface = "global::QuickMarkup.Infra.IQuickMarkupEffectsDisposable";
 
     static void EmitInitSource(SourceProductionContext spc, QuickMarkupTargetContext ctx, string usings, string code, string? error, string typeModifiers, string? baseTypes = null)
     {

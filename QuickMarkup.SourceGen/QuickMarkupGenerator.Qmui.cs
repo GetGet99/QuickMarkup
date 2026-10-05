@@ -57,18 +57,22 @@ partial class QuickMarkupGenerator
             var initSources = initData.Select(
                 (x, ct) =>
                 {
-                    var (_, usings, code, error, _) = GenerateInitSource(x.Target, x.Sfc.Usings, x.Markup, x.Sfc.Scirpt, x.Compilation, null, x.Sfc.Refs, ct);
-                    return (Ctx: x.Target, Sfc: x.Sfc, usings, code, error);
+                    var (_, usings, code, error, _, emitDisposeEffects) = GenerateInitSource(x.Target, x.Sfc.Usings, x.Markup, x.Sfc.Scirpt, x.Compilation, null, x.Sfc.Refs, ct);
+                    return (Ctx: x.Target, Sfc: x.Sfc, usings, code, error, emitDisposeEffects);
                 }
             );
 
             context.RegisterSourceOutput(initSources, (spc, value) =>
             {
-                var (ctx, sfc, usings, code, error) = value;
+                var (ctx, sfc, usings, code, error, emitDisposeEffects) = value;
                 var classDecl = sfc?.ClassDeclaration;
                 var typeModifiers = classDecl?.Kind is ClassKind.Component or ClassKind.FragmentComponent
                     ? "sealed partial" : "partial";
                 var baseTypes = classDecl is null ? "" : GetBaseTypesString(classDecl);
+                if (emitDisposeEffects)
+                    baseTypes = string.IsNullOrEmpty(baseTypes)
+                        ? "global::QuickMarkup.Infra.IQuickMarkupEffectsDisposable"
+                        : $"{baseTypes}, global::QuickMarkup.Infra.IQuickMarkupEffectsDisposable";
                 EmitInitSource(spc, ctx, usings, code, error, typeModifiers, baseTypes);
             });
         }

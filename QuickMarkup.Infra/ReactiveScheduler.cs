@@ -50,6 +50,9 @@ public class ReactiveScheduler
     internal bool IsTicking => isTicking;
     private void ScheduleEffectPrivate(RefEffect effect)
     {
+        if (effect.IsDisposed)
+            return;
+
         if (Effects.Add(effect) && AutoTick && NeedsSchedulingTick)
         {
             NeedsSchedulingTick = false;
@@ -81,6 +84,13 @@ public class ReactiveScheduler
     }
     private void DoNowIfScheduledPrivate(RefEffect effect)
     {
+        if (effect.IsDisposed)
+        {
+            Effects.Remove(effect);
+            TickingEffects.Remove(effect);
+            return;
+        }
+
         if (isTicking && TickingEffects.Remove(effect))
         {
             goto tick;
@@ -138,6 +148,9 @@ public class ReactiveScheduler
             {
                 // already run eagerly via DoNowIfScheduled during this tick
                 if (!TickingEffects.Remove(effect))
+                    continue;
+
+                if (effect.IsDisposed)
                     continue;
 
                 // a structural scope this effect belongs to (or an ancestor scope) was removed/disposed

@@ -234,6 +234,46 @@ public sealed class SourceGenBehaviorTests
     }
 
     [TestMethod]
+    public void DiscardedBranchDisposesNestedComponentEffects()
+    {
+        var page = new DisposeEffectsOuterCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        var text = TestTreeAssert.Child<TestText>(panel.Children, 0);
+        Assert.AreEqual("hello!", text.Text);
+
+        page.Show = false;
+        ReactiveScheduler.Tick();
+        Assert.IsEmpty(panel.Children);
+
+        page.OuterText = "stale";
+        ReactiveScheduler.Tick();
+        Assert.AreEqual("hello!", text.Text);
+
+        page.Show = true;
+        ReactiveScheduler.Tick();
+        TestTreeAssert.Texts(panel.Children, "stale!");
+    }
+
+    [TestMethod]
+    public void DisposeEffectsOnRootClearsTreeAndIsIdempotent()
+    {
+        var page = new DisposeEffectsOuterCase();
+        ReactiveScheduler.Tick();
+        var panel = TestTreeAssert.Child<TestPanel>(page.Children, 0);
+        Assert.AreEqual(1, panel.Children.Count);
+
+        var disposable = (IQuickMarkupEffectsDisposable)page;
+        disposable.DisposeEffects();
+        disposable.DisposeEffects();
+        Assert.IsEmpty(panel.Children);
+
+        page.OuterText = "after";
+        ReactiveScheduler.Tick();
+        Assert.IsEmpty(panel.Children);
+    }
+
+    [TestMethod]
     public void NumericLiteralAutoNewsOneParameterTargetType()
     {
         var page = new AutoNewCase();

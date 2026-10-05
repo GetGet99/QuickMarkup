@@ -14,6 +14,8 @@ public class RefEffect(Action<RefEffect> callback) : IDisposable
 
     internal long Sequence { get; } = Interlocked.Increment(ref EffectSequence);
 
+    internal bool IsDisposed { get; private set; }
+
     public void AddDependency(IReference reference)
     {
         if (Dependencies.Add(reference))
@@ -41,6 +43,10 @@ public class RefEffect(Action<RefEffect> callback) : IDisposable
     }
     public void Dispose()
     {
+        if (IsDisposed)
+            return;
+
+        IsDisposed = true;
         ResetDependency();
     }
 }

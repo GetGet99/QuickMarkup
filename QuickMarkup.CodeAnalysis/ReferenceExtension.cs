@@ -20,6 +20,8 @@ public static class ReferenceExtension
             _ => throw new NotImplementedException()
         };
         public string BackingName => $"{refSym.Name}{refSym.BackingSuffix}";
+
+        public string BackingFieldName => $"QUICKMARKUP_BACKING_{refSym.BackingName}";
     }
     extension(QMRefDeclarationSymbol<ITypeSymbol?> refSym)
     {

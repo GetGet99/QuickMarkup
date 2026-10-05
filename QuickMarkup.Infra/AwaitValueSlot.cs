@@ -8,6 +8,7 @@ public sealed class AwaitValueSlot<TElement, TValue> : IDisposable
     readonly Func<ScopedValue<TElement>>? loadingFactory;
     readonly Func<Exception?, ScopedValue<TElement>>? errorFactory;
     readonly Func<TValue, ScopedValue<TElement>>? successFactory;
+    readonly bool ownsAsyncComputed;
     ScopedValue<TElement>? current;
     RefEffect? stateEffect;
     AsyncComputedState? currentState;
@@ -19,7 +20,8 @@ public sealed class AwaitValueSlot<TElement, TValue> : IDisposable
         Action<TElement> setValue,
         Func<ScopedValue<TElement>>? loadingFactory,
         Func<Exception?, ScopedValue<TElement>>? errorFactory,
-        Func<TValue, ScopedValue<TElement>>? successFactory)
+        Func<TValue, ScopedValue<TElement>>? successFactory,
+        bool ownsAsyncComputed = false)
     {
         this.controllerScope = controllerScope;
         this.asyncComputed = asyncComputed;
@@ -27,6 +29,7 @@ public sealed class AwaitValueSlot<TElement, TValue> : IDisposable
         this.loadingFactory = loadingFactory;
         this.errorFactory = errorFactory;
         this.successFactory = successFactory;
+        this.ownsAsyncComputed = ownsAsyncComputed;
 
         stateEffect = ReferenceTracker.RunAndRerunOnReferenceChange(
             () => asyncComputed.State,
@@ -44,6 +47,8 @@ public sealed class AwaitValueSlot<TElement, TValue> : IDisposable
         stateEffect = null;
         current?.Dispose();
         current = null;
+        if (ownsAsyncComputed)
+            asyncComputed.Dispose();
         controllerScope.Dispose();
     }
 
@@ -91,5 +96,5 @@ public static class AwaitValueSlot
         Func<ScopedValue<TElement>>? loadingFactory = null,
         Func<Exception?, ScopedValue<TElement>>? errorFactory = null,
         Func<TValue, ScopedValue<TElement>>? successFactory = null)
-        => new(controllerScope, new(asyncComputed), setValue, loadingFactory, errorFactory, successFactory);
+        => new(controllerScope, new(asyncComputed), setValue, loadingFactory, errorFactory, successFactory, ownsAsyncComputed: true);
 }

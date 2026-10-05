@@ -44,23 +44,28 @@ class RefsGenContext(StringBuilder membersBuilder, string nameHint)
 
         string backingType = bound.BackingTypeName;
         string backingName = bound.BackingName;
+        bool useExplicitField = bound.Kind is RefDeclarationKind.Computed or RefDeclarationKind.AsyncComputed && !bound.IsStatic;
+        string computedFactoryTarget = useExplicitField ? bound.BackingFieldName : "field";
 
         string backingDefaultValue;
         backingDefaultValue = bound.Kind switch
-            {
-                RefDeclarationKind.Ref or RefDeclarationKind.Provide => $"""
-                    => field ??= new {backingType}({defaultValue}, "{nameHint}.{bound.Name}")
-                    """,
-                RefDeclarationKind.Computed => $"""
-                    => field ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
-                    """,
-                RefDeclarationKind.AsyncComputed => $"""
-                    => field ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
-                    """,
-                RefDeclarationKind.Inject => "= null!",
-                RefDeclarationKind.InjectOptional => "= null",
-                _ => throw new NotImplementedException()
-            };
+        {
+            RefDeclarationKind.Ref or RefDeclarationKind.Provide => $"""
+                => field ??= new {backingType}({defaultValue}, "{nameHint}.{bound.Name}")
+                """,
+            RefDeclarationKind.Computed => $"""
+                => {computedFactoryTarget} ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
+                """,
+            RefDeclarationKind.AsyncComputed => $"""
+                => {computedFactoryTarget} ??= new {backingType}(() => {defaultValue}, "{nameHint}.{bound.Name}")
+                """,
+            RefDeclarationKind.Inject => "= null!",
+            RefDeclarationKind.InjectOptional => "= null",
+            _ => throw new NotImplementedException()
+        };
+
+        if (useExplicitField)
+            membersBuilder.AppendLine($"private {backingType}? {bound.BackingFieldName} = null;");
 
         string backingDecl = $"{accessibility} {backingType} {backingName} {backingDefaultValue};";
         membersBuilder.AppendLine(backingDecl);

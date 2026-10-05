@@ -33,7 +33,16 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         var constructor = CGen(node.Constructor);
         var varName = EmitVariableAndField(node, constructor);
         CGenWrite(node, varName);
+        TrackNestedComponent(node, varName);
         return varName;
+    }
+
+    void TrackNestedComponent(QMNodeSymbol<ITypeSymbol?> node, string varName)
+    {
+        if (node.ComponentKind is QMComponentKind.None)
+            return;
+
+        codeBuilder.AppendLine($"global::QuickMarkup.Infra.QuickMarkupEffects.TrackEffects({disposableAddTarget}, {varName});");
     }
 
     /// <summary>
@@ -172,6 +181,7 @@ class CodeGenContext(StringBuilder membersBuilder, StringBuilder codeBuilder, Qu
         if (postInitMembers.Count > 0)
             CGenWrite(postInitMembers, varName);
 
+        TrackNestedComponent(node, varName);
         return varName;
     }
 

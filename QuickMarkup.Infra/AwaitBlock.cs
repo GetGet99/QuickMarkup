@@ -7,6 +7,7 @@ public sealed class AwaitBlock<TElement, TValue> : IUIBlock<TElement>
     readonly Func<IUIBlock<TElement>>? loadingFactory;
     readonly Func<Exception?, IUIBlock<TElement>>? errorFactory;
     readonly Func<TValue, IUIBlock<TElement>>? successFactory;
+    readonly bool ownsAsyncComputed;
     UIBlockHost<TElement>? childHost;
     UIBlockHost<TElement>? host;
     IUIBlock<TElement>? currentBlock;
@@ -18,13 +19,15 @@ public sealed class AwaitBlock<TElement, TValue> : IUIBlock<TElement>
         AsyncComputed<TValue> asyncComputed,
         Func<IUIBlock<TElement>>? loadingFactory,
         Func<Exception?, IUIBlock<TElement>>? errorFactory,
-        Func<TValue, IUIBlock<TElement>>? successFactory)
+        Func<TValue, IUIBlock<TElement>>? successFactory,
+        bool ownsAsyncComputed = false)
     {
         this.scope = scope;
         this.asyncComputed = asyncComputed;
         this.loadingFactory = loadingFactory;
         this.errorFactory = errorFactory;
         this.successFactory = successFactory;
+        this.ownsAsyncComputed = ownsAsyncComputed;
     }
 
     public int Count => childHost?.Count ?? 0;
@@ -57,6 +60,8 @@ public sealed class AwaitBlock<TElement, TValue> : IUIBlock<TElement>
     public void Dispose()
     {
         Unmount();
+        if (ownsAsyncComputed)
+            asyncComputed.Dispose();
         scope.Dispose();
     }
 
@@ -108,5 +113,5 @@ public static class AwaitBlock
         Func<IUIBlock<TElement>>? loadingFactory = null,
         Func<Exception?, IUIBlock<TElement>>? errorFactory = null,
         Func<TValue, IUIBlock<TElement>>? successFactory = null)
-        => new(controllerScope, new(asyncComputed), loadingFactory, errorFactory, successFactory);
+        => new(controllerScope, new(asyncComputed), loadingFactory, errorFactory, successFactory, ownsAsyncComputed: true);
 }

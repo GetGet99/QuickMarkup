@@ -12,6 +12,7 @@ public class AsyncComputed<T> : IReference, IDisposable
 {
     bool disposed;
     readonly RefEffect effect;
+    CancellationTokenSource? currentCts;
 
     event Action? StateChanged;
     event Action IReference.ValueChanged
@@ -27,13 +28,12 @@ public class AsyncComputed<T> : IReference, IDisposable
     {
         Name = name;
         Loading();
-        CancellationTokenSource? cts = null;
         effect = ReferenceTracker.RunAndRerunOnReferenceChange(() =>
         {
-            cts?.Cancel();
-            cts?.Dispose();
-            cts = new();
-            return computed(cts.Token);
+            currentCts?.Cancel();
+            currentCts?.Dispose();
+            currentCts = new();
+            return computed(currentCts.Token);
         }, async task =>
         {
             IntType curIter = Interlocked.Increment(ref currentVersion);
@@ -100,8 +100,15 @@ public class AsyncComputed<T> : IReference, IDisposable
     }
     void Dispose(bool fromGC)
     {
+        if (disposed)
+            return;
+
         disposed = true;
         effect?.Dispose();
+        currentCts?.Cancel();
+        if (!fromGC)
+            currentCts?.Dispose();
+        currentCts = null;
     }
     public RefEffect Watch(Action<AsyncComputed<T>> action, bool immediate = false)
     {

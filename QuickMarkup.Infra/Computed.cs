@@ -2,9 +2,10 @@ using System.Xml.Linq;
 
 namespace QuickMarkup.Infra;
 
-public class Computed<T> : IReference<T>
+public class Computed<T> : IReference<T>, IDisposable
 {
     RefEffect effect;
+    bool disposed;
 
     internal event Action<T, T>? ValueChanged;
     event Action? ValueChangedBase;
@@ -49,7 +50,17 @@ public class Computed<T> : IReference<T>
     }
     ~Computed()
     {
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
         effect?.Dispose();
+        GC.SuppressFinalize(this);
     }
     public void Watch(Action<T> action, bool immediete = false)
     {

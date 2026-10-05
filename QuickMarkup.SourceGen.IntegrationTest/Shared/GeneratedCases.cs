@@ -960,3 +960,29 @@ public partial class AwaitBlockDirectTaskCase : TestRoot;
     """)]
 public partial class SingleChildAwaitDirectTaskCase : TestRoot;
 
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    string Label = "first";
+    string Shouted => `$"{Label}!"`;
+    <root>
+        <TestText Text=`Shouted` />
+    </root>
+    """)]
+public partial class DisposeEffectsInnerComponent : IQuickMarkupComponent<TestText>
+{
+}
+
+[QuickMarkup("""
+    using QuickMarkup.SourceGen.Test.Shared;
+    bool Show = true;
+    string OuterText = "hello";
+    <root>
+        <TestPanel>
+            if (`Show`) {
+                <DisposeEffectsInnerComponent Label=`OuterText` />
+            }
+        </TestPanel>
+    </root>
+    """)]
+public partial class DisposeEffectsOuterCase : TestRoot;
+
