@@ -845,6 +845,7 @@ A class may implement at most **one** of the two interfaces. Implementing both p
 
 Note:
 - `if`/`else`/`foreach` directly on top level without `<root>` tag is currently not supported due to a bug. If you need to use them, you can add `<root>` tag.
+- `IQuickMarkupComponent<T>` `<root>` must be a single static element: `if`/`else` or `await` directly under `<root>` (even nested in fragments) is a compile error. Wrap the branches in a container element or use `IQuickMarkupFragmentComponent<T>` instead.
 - subclassing regular UI still requires `<root>` tag if you have UI markup. Only QuickMarkup components may omit root tags and have non-root tag directly.
 
 ## Reactivity Infrastructure

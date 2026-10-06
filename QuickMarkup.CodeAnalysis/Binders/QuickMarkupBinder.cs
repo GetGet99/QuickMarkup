@@ -330,11 +330,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
     {
         return child switch
         {
-            QuickMarkupParsedIfNode ifNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+            QuickMarkupParsedIfNode ifNode when IsSingleFixedElement(tagInfo)
                 => ErrorImmutableSingleIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
                 => ErrorImmutableSingleFor(forNode, tagInfo),
-            QuickMarkupParsedAwaitNode awaitNode when tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+            QuickMarkupParsedAwaitNode awaitNode when IsSingleFixedElement(tagInfo)
                 => ErrorImmutableSingleAwait(awaitNode, tagInfo),
             QuickMarkupParsedIfNode ifNode => BindSingleChildIf(ifNode, tagInfo),
             QuickMarkupParsedForNode forNode => ErrorForNotAllowedInSingleChild(forNode, tagInfo),
@@ -1088,6 +1088,11 @@ partial class QuickMarkupBinder(CodeTypeResolver resolver, Action<QMBinderError>
 
     bool ContainsStructuralChildren(IReadOnlyList<IQMMemberSymbol> members)
         => members.Any(RequiresStructuralLowering);
+
+    static bool IsSingleFixedElement(QMBinderTagInfo tagInfo)
+        => tagInfo.ChildrenMode is ChildrenModes.ImmutableSingle
+            || (tagInfo.ComponentKind is QMComponentKind.Single
+                && tagInfo.ChildrenProperty == CodeTypeResolver.ComponentOutputPropertyName);
 
     static bool IsAwaitExpression(string code)
     {
