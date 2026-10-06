@@ -40,6 +40,32 @@ public class ReactiveScheduler
     }
     internal bool ContinueOnException { get; set; } = false;
     internal bool AutoTick { get; set; } = true;
+
+    /// <summary>
+    /// Raised when a reactive callback or effect throws on this thread's scheduler.
+    /// Set <see cref="ReactiveUnhandledExceptionEventArgs.Handled"/> to true to report
+    /// the exception and let the scheduler continue with the remaining work.
+    /// When no handler marks the exception as handled, the scheduler rethrows.
+    /// The subscription applies to the current thread only, matching the
+    /// thread-local scheduler.
+    /// </summary>
+    public static event EventHandler<ReactiveUnhandledExceptionEventArgs>? UnhandledExceptionForCurrentThread
+    {
+        add => Instance.Value!.UnhandledExceptionPrivate += value;
+        remove => Instance.Value!.UnhandledExceptionPrivate -= value;
+    }
+
+    private event EventHandler<ReactiveUnhandledExceptionEventArgs>? UnhandledExceptionPrivate;
+
+    internal bool HandleException(Exception exception)
+    {
+        var handler = UnhandledExceptionPrivate;
+        if (handler is null)
+            return ContinueOnException;
+        var args = new ReactiveUnhandledExceptionEventArgs(exception);
+        handler(null, args);
+        return ContinueOnException || args.Handled;
+    }
     private readonly HashSet<RefEffect> Effects = [];
     private HashSet<RefEffect> TickingEffects = [];
     private readonly Queue<Action> Callbacks = [];
@@ -103,13 +129,32 @@ public class ReactiveScheduler
     tick:
         if (isTicking)
         {
-            effect.Tick();
+            try
+            {
+                effect.Tick();
+            }
+            catch (Exception e)
+            {
+                if (!HandleException(e))
+                    throw;
+            }
         }
         else
         {
             isTicking = true;
-            effect.Tick();
-            isTicking = false;
+            try
+            {
+                effect.Tick();
+            }
+            catch (Exception e)
+            {
+                if (!HandleException(e))
+                    throw;
+            }
+            finally
+            {
+                isTicking = false;
+            }
         }
     }
     public void TickPrivate()
@@ -132,8 +177,7 @@ public class ReactiveScheduler
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
-                    if (!ContinueOnException)
+                    if (!HandleException(e))
                         throw;
                 }
             }
@@ -163,8 +207,7 @@ public class ReactiveScheduler
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
-                    if (!ContinueOnException)
+                    if (!HandleException(e))
                         throw;
                 }
             }

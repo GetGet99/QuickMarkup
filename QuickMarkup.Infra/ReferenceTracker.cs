@@ -45,8 +45,15 @@ public class ReferenceTracker
     {
         var tracker = Instance.Value!;
         RefEffect effect = new(Rerun);
-        // run once
-        effect.Tick();
+        try
+        {
+            effect.Tick();
+        }
+        catch (Exception e)
+        {
+            if (!ReactiveScheduler.Instance.Value!.HandleException(e))
+                throw;
+        }
 
         return effect;
 
@@ -66,25 +73,16 @@ public class ReferenceTracker
 
             // Run the function
             tracker.CurrentEffect = effect;
-            T? result;
             try
             {
-                result = func();
-
-                tracker.CurrentEffect = null;
-
-                tracker.ReferenceRead -= OnRead;
-
+                T? result = func();
                 continueAction(result);
             }
-            catch (Exception e)
+            finally
             {
                 tracker.CurrentEffect = null;
 
                 tracker.ReferenceRead -= OnRead;
-                Console.WriteLine(e);
-                if (!ReactiveScheduler.Instance.Value!.ContinueOnException)
-                    throw;
             }
         }
     }

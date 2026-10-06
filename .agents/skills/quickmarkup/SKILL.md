@@ -618,6 +618,18 @@ ReactiveScheduler.AddTickCallbackForCurrentThread(delegate
 });
 ```
 
+### Reporting reactive exceptions
+
+Reactive callbacks that throw are reported via `ReactiveScheduler.UnhandledExceptionForCurrentThread`. Set `e.Handled = true` to record the exception and let remaining effects run, otherwise the scheduler rethrows.
+
+```csharp
+ReactiveScheduler.UnhandledExceptionForCurrentThread += (_, e) =>
+{
+    Log(e.Exception);
+    e.Handled = true;
+};
+```
+
 ## Order of Operations
 
 ### Recommended Pattern (`[QuickMarkupConstructor]` / no explicit constructor)
