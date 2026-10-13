@@ -19,6 +19,9 @@
     <Project Path="Parser/Get.RegexMachine.Shared/Get.RegexMachine.Shared.shproj" />
     <Project Path="Parser/Get.RegexMachine/Get.RegexMachine.csproj" />
   </Folder>
+  <Folder Name="/Extensions/">
+    <Project Path="QuickMarkup.Gallery/QuickMarkup.Gallery.csproj" />
+  </Folder>
   <Project Path="QuickMarkup.Infra.Test/QuickMarkup.Infra.Test.csproj" />
   <Project Path="QuickMarkup.Infra/QuickMarkup.Infra.csproj" />
   <Project Path="QuickMarkup.Language/QuickMarkup.Language.csproj" />
