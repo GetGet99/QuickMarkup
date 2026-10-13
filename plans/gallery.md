@@ -11,7 +11,7 @@ Two parts:
 
 Two authoring flavors:
 
-1. One `[GalleryStory]` attribute: works out of the box for primitives and enums. Complex types fall back to read-only with a warning.
+1. Split attributes: `[GalleryCategory]` + `[GalleryName]` + `[GalleryStory]`. Simple mode works out of the box for primitives and enums. Complex types fall back to read-only with a warning.
 2. Storybook style: explicit story factory methods and custom editors for variants, complex args, and actions.
 
 ## Locked Decisions
@@ -20,8 +20,10 @@ Two authoring flavors:
 2. Wide input range, no vendor lock-in (non-urgent). v0/v1 optimize for QuickMarkup types. Non-QuickMarkup types are supported through hand-written story classes. No reflection anywhere.
 3. Code tab shows usage-code (how to consume the sample), not the sample's own source. Statically generated formatter plus runtime interpolation. Reflection is banned for AOT reasons.
 4. `required` refs are handled through story factories using the existing `Action<T>` initializer constructor. Simple mode errors on unprovidable `required` refs and points at story mode.
-5. Attribute name is `[GalleryStory]`.
-6. Shell may itself be written in QuickMarkup. Sample boundary is `<Border Child=... />`; a buggy sample cannot break the shell beyond its own tile.
+5. Attribute shape is split: `[GalleryCategory]` + `[GalleryName]` + `[GalleryStory]`. Hierarchy is `Category - Component - Story`. Missing category means empty category, shown as "Uncategorized". Missing name means class name. Category accepts `const string` so users can share constants later.
+6. Shell is written in QuickMarkup. Nav and props use `foreach`; sample boundary is `<Border Child=... />`; a buggy sample cannot break the shell beyond its own tile. SourceGen/runtime provide plain lists; shell builds UI from them.
+7. Built-in editor controls: `TextBox` for string, `ToggleSwitch` for bool, `ComboBox` for enum/options, `TextBlock` read-only fallback.
+8. Entry point is generated `GalleryApp.RunGallery()`, called from `OnLaunched` when the user wants the gallery. If never called the app runs normally. No `ModuleInitializer`, no auto-open, AOT-safe.
 
 ## Repo Shape
 
@@ -29,6 +31,7 @@ Two authoring flavors:
 // C#
 QuickMarkup.Gallery/                 // Uno runtime lib, no Roslyn
 QuickMarkup.Gallery.SourceGen/       // IIncrementalGenerator, imports QuickMarkup.CodeAnalysis.props
+QuickMarkup.Gallery.Demo/            // Uno demo app, refs Gallery + SourceGen
 QuickMarkup.Gallery.Test/            // binder mapping + emission unit tests over in-memory Roslyn
 QuickMarkup.Gallery.IntegrationTest/ // registry, factory, usage-code behavior
 docs/gallery.md                      // user doc, written at v1
@@ -51,9 +54,10 @@ The shell only sees a non-generic base. All typing lives in generated closures, 
 // C#
 abstract class GalleryStory
 {
-    public abstract string Id { get; }
-    public abstract string Title { get; }
     public abstract string Category { get; }
+    public abstract string ComponentName { get; }
+    public abstract string StoryTitle { get; }
+    public abstract string Id { get; }
     public abstract string? Description { get; }
 
     public abstract object CreateModel();
@@ -84,6 +88,79 @@ Manual registration exists independent of source-gen and is the seam for non-Qui
 // C#
 GalleryRegistry.Register(GalleryStory story);
 ```
+
+### Catalog grouping
+
+Flat story list is grouped for nav as `Category - Component - Story`, sorted by `(Category, ComponentName, StoryTitle)`. Empty category sorts last and shell shows "Uncategorized".
+
+```csharp
+// C#
+sealed class GalleryCatalog
+{
+    public IReadOnlyList<GalleryCategoryGroup> Categories { get; }
+}
+
+sealed class GalleryCategoryGroup
+{
+    public string Name { get; }
+    public IReadOnlyList<GalleryComponentGroup> Components { get; }
+}
+
+sealed class GalleryComponentGroup
+{
+    public string DisplayName { get; }
+    public IReadOnlyList<GalleryStory> Stories { get; }
+}
+```
+
+### Shell
+
+QuickMarkup shell. SourceGen/runtime hand over `GalleryCatalog` plus current selection; shell renders with `foreach` and embeds via `<Border Child=... />`:
+
+```csharp
+// QuickMarkup
+foreach (var category in `Catalog.Categories`) {
+    <TextBlock Text=`category.Name` />
+    foreach (var component in `category.Components`) {
+        foreach (var story in `component.Stories`) {
+            <Button Content=`story.StoryTitle` @Click+=`() => Select(story)` />
+        }
+    }
+}
+<Border Child=`SelectedElement` />
+foreach (var prop in `CurrentProps`) {
+    <Border Child=`prop.CreateRendering()` />
+}
+<TextBox Text=`CurrentUsageCode` />
+```
+
+### Entry point
+
+```csharp
+// C#
+public static class GalleryApp
+{
+    public static void RunGallery();
+}
+```
+
+Generated. Inits reactive scheduler, builds catalog, opens `Window` with `GalleryShell`, calls `Activate()`.
+
+
+The caller (library user) decides when to invoke it:
+
+```csharp
+// psudocode
+void OnLaunched(...)
+{
+    if (ShouldShowGallery())
+        GalleryApp.RunGallery();
+    else
+        RunApp();
+}
+```
+
+Manual shim `GalleryBoot.RunManual(catalog)` mirrors the shape until the generator replaces it.
 
 ### Prop descriptors: polymorphic, always a renderer
 
@@ -155,7 +232,7 @@ Generator validates that the editor implements `IValueEditor<T>` and is construc
 
 ### Discovery
 
-- `ForAttributeWithMetadataName("QuickMarkup.Gallery.GalleryStoryAttribute")` on classes.
+- `ForAttributeWithMetadataName("QuickMarkup.Gallery.GalleryStoryAttribute")` on classes. Read sibling `[GalleryCategory]` / `[GalleryName]` from the same symbol.
 - Combined with `ForAllQuickMarkupSuccessfulParse()` for ref extraction, same combine pattern as the Snapshot generator.
 - Later: story factory methods (`static`, parameterless, returning the sample type) discovered from story classes.
 
@@ -163,7 +240,9 @@ Generator validates that the editor implements `IValueEditor<T>` and is construc
 
 ```csharp
 // C#
-[GalleryStory("Buttons", "Basic Button", Description = "Default state")]
+[GalleryCategory("Form and user Inputs")]
+[GalleryName("Buttons")]
+[GalleryStory("Basic Button", Description = "Default state")]
 [QuickMarkup("""
     // QuickMarkup
     string Text = "Click me";
@@ -179,8 +258,8 @@ Generator tasks:
 2. `GalleryBinder : Binder` walks `markup.AST.Refs`, skipping computed, async-computed, and `provide`/`inject` unless explicitly opted in (same exclusion rationale as `SnapshotBinder`).
 3. Map `ITypeSymbol` to descriptor kind: `string`, numeric, `bool` to `GalleryProp<T>`; enum to `GalleryOptionsProp<T>`; anything else to read-only fallback plus `QMGAL002`.
 4. Check `[assembly: GalleryValueEditor]` mappings for custom `EditorFactory`.
-5. Emit per-story `GalleryStory<T>` subclass: `CreateTypedModel` factory, `CreateTypedProps` with typed getter/setter closures capturing the model, `CreateTypedElement` unwrapping, `GetTypedUsageCode` formatter with per-type printers (string escaped/quoted, bool lowercase invariant, numeric invariant, enum name, unsupported omitted).
-6. Emit per-assembly registry contributing all stories sorted by `(Category, Title)`.
+5. Emit per-story `GalleryStory<T>` subclass: `Category` / `ComponentName` (override or class name) / `StoryTitle`, `CreateTypedModel` factory, `CreateTypedProps` with typed getter/setter closures capturing the model, `CreateTypedElement` unwrapping, `GetTypedUsageCode` formatter with per-type printers (string escaped/quoted, bool lowercase invariant, numeric invariant, enum name, unsupported omitted).
+6. Emit per-assembly grouped catalog contributing all stories sorted by `(Category, ComponentName, StoryTitle)`, plus generated `GalleryApp.RunGallery()` opening the shell window.
 
 ### Usage-code
 
@@ -202,7 +281,7 @@ One `GalleryItemDescriptor` equivalent (one `GalleryStory` instance) per story m
 
 ### Diagnostics
 
-- `QMGAL001` error: bad target, duplicate story `Id` (same duplicate-key checking approach as Snapshot discriminators), unprovidable `required` ref in simple mode, malformed story method.
+- `QMGAL001` error: bad target, duplicate story `Id` (`Category` + `ComponentName` + `StoryTitle`, same duplicate-key checking approach as Snapshot discriminators), unprovidable `required` ref in simple mode, malformed story method.
 - `QMGAL002` warning: unsupported type downgraded to read-only.
 - `QMGAL003` error: bad `[assembly: GalleryValueEditor]` mapping (editor does not implement `IValueEditor<T>`, not constructible).
 
@@ -223,11 +302,14 @@ Generator ignores non-QM types with an info diagnostic in v0/v1. Roslyn-symbol-b
 
 ## Milestones
 
-### v0: minimal prototype
+### v0: minimal prototype, always runnable
 
-- PR-0 runtime: story bases, prop/editor bases, two or three built-in editors, read-only fallback, `GalleryRegistry`, `GalleryShell` with nav, sample host, props tab, raw code tab. Manual registration only. Two or three hardcoded samples in a demo Uno app.
-- PR-1 source-gen: `[GalleryStory]` discovery, primitive/enum prop emission, usage-code formatter, `QMGAL001`/`QMGAL002`.
-- Done when: demo app lists samples by category, renders a sample, edits a string/bool prop live, views updated usage-code.
+Each slice lands in the same branch as a stacked commit and keeps `QuickMarkup.Gallery.Demo` runnable.
+
+- Slice-0 plan: this file update. No code.
+- Slice-1 runtime + manual demo: story/prop/editor bases, `StringEditor` (`TextBox`), `BoolEditor` (`ToggleSwitch`), read-only fallback (`TextBlock`), `GalleryRegistry` + grouped `GalleryCatalog`, QuickMarkup `GalleryShell` with `foreach` nav, `<Border Child=... />` host, props tab, raw code tab, `GalleryBoot.RunManual`. Two hardcoded samples in demo. Done when demo lists by category, renders a sample, edits string/bool live, views code.
+- Slice-2 source-gen: `[GalleryStory]` (+`Category`/`Name`) discovery, primitive prop emission, usage-code formatter, generated `GalleryApp.RunGallery`, `QMGAL001`/`QMGAL002`. Demo switches from manual to generated. Done when demo behaves as slice-1 with zero manual registration.
+- Slice-3 props + tests: `int` editor, enum `ComboBox` options, "Uncategorized" + `(Category, ComponentName, StoryTitle)` sort, `Gallery.Test` + minimal integration tests. Done when `dotnet test` green on new projects.
 
 Non-goals: search, event log, theming, story factories, custom editor attribute, packaging.
 
