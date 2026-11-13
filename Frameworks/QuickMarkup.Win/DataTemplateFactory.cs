@@ -14,7 +14,7 @@ public static class DataTemplateFactory
 #if HAS_UNO
     public static DataTemplate CreateDataTemplate<T>(Action<T> postprocess) where T : FrameworkElement, new()
     {
-        return new DataTemplate(() =>
+        return Uno.UI.Helpers.MarkupHelper.CreateDataTemplate(null, (_, _) =>
         {
             var root = new T();
             postprocess(root);
